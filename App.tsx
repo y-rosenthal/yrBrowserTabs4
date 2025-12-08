@@ -1,14 +1,45 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { DEMO_NOTICE } from './constants';
-import { ViewMode, WindowData, Tab, TabGroup } from './types';
-import { Search, Info, ExternalLink, RefreshCw, AlertCircle, Maximize2, Download, Table, FileText, Eye, EyeOff, FolderPlus } from 'lucide-react';
+import { ViewMode, WindowData, Tab, TabGroup, OnboardingStep } from './types';
+import { Search, Info, ExternalLink, RefreshCw, AlertCircle, Maximize2, Download, Table, FileText, Eye, EyeOff, FolderPlus, HelpCircle } from 'lucide-react';
 import { organizeTabsWithAI } from './services/geminiService';
 import { getWindows, activateTab, closeTab, getPlatformInfo, moveTabs, createWindowWithTabs, focusOrOpenExtensionTab, subscribeToUpdates } from './services/tabService';
+import { saveCustomWindowName, getStorageData, setOnboardingSeen } from './services/storageService';
 import { TabListView, SortField, SortDirection } from './components/TabListView';
 import { PreviewPanel } from './components/PreviewPanel';
 import { MergeModal } from './components/MergeModal';
+import { UserGuideModal } from './components/UserGuideModal';
+import { OnboardingTour } from './components/OnboardingTour';
 import { generateWindowNames } from './services/nameGenerator';
+
+const ONBOARDING_STEPS: OnboardingStep[] = [
+  {
+    target: 'center',
+    position: 'center',
+    title: 'Welcome to TabMaster AI!',
+    content: 'Take control of your browser chaos. Organize, search, and manage your tabs across all windows from a single dashboard.'
+  },
+  {
+    target: 'sidebar',
+    position: 'left',
+    title: 'Navigate & Rename',
+    content: 'Use the sidebar to filter by window. Double-click any window name to rename it (e.g., "Work Project", "Shopping"). Your custom names are saved!'
+  },
+  {
+    target: 'top-bar',
+    position: 'top-right',
+    title: 'Search & Organize',
+    content: 'Use the search bar to find any tab instantly. Click "Group with Gemini" to let AI automatically categorize your tabs.'
+  },
+  {
+    target: 'tabs',
+    position: 'center',
+    title: 'Keyboard Navigation',
+    content: 'Power user? Use Up/Down arrows to move through lists, and Left/Right arrows to switch between the sidebar and tab list.'
+  }
+];
 
 const App: React.FC = () => {
   // --- STATE ---
@@ -28,7 +59,11 @@ const App: React.FC = () => {
   const [checkedTabIds, setCheckedTabIds] = useState<string[]>([]); // For Multi-select Actions
   const [showPreview, setShowPreview] = useState(true);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showUserGuide, setShowUserGuide] = useState(false);
 
+  // Onboarding
+  const [onboardingIndex, setOnboardingIndex] = useState<number>(-1); // -1 means inactive
+  
   // Merge State
   const [sidebarSelectedWindowIds, setSidebarSelectedWindowIds] = useState<string[]>([]);
   const [showMergeModal, setShowMergeModal] = useState(false);
@@ -51,19 +86,34 @@ const App: React.FC = () => {
   };
 
   const loadTabs = useCallback(async () => {
-    // Only set loading on initial load or manual refresh to avoid UI jitter on auto-refresh
     if (windows.length === 0) setIsLoading(true);
     
     try {
       const data = await getWindows();
+      const storage = await getStorageData();
+
       setWindows(data);
       
-      // Generate names based on current window list order
-      // We only regenerate if we don't have a name for a window ID (stability)
-      setWindowNameMap(prev => {
-        const newNames = generateWindowNames(data.map(w => w.id));
-        return { ...prev, ...newNames };
+      // 1. Generate default names
+      const generated = generateWindowNames(data.map(w => w.id));
+      
+      // 2. Merge with custom names from storage
+      const mergedNames: Record<string, string> = { ...generated };
+      
+      // Only apply stored name if the window ID still exists in current session
+      // (Though we apply it blindly here to allow for eventual consistency if desired)
+      Object.keys(storage.customWindowNames).forEach(id => {
+        if (storage.customWindowNames[id]) {
+          mergedNames[id] = storage.customWindowNames[id];
+        }
       });
+      
+      setWindowNameMap(mergedNames);
+      
+      // Onboarding check
+      if (!storage.hasSeenOnboarding && onboardingIndex === -1) {
+        setOnboardingIndex(0);
+      }
       
       // Clear selections if items disappeared
       setSidebarSelectedWindowIds(prev => prev.filter(id => data.find(w => w.id === id)));
@@ -78,15 +128,11 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [windows.length]);
+  }, [windows.length, onboardingIndex]);
 
   useEffect(() => {
     loadTabs();
-    // Subscribe to Chrome events for auto-refresh
-    const unsubscribe = subscribeToUpdates(() => {
-      // Small delay handled in service, just trigger reload
-      loadTabs();
-    });
+    const unsubscribe = subscribeToUpdates(() => loadTabs());
     return unsubscribe;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -108,7 +154,6 @@ const App: React.FC = () => {
     return tabs;
   }, [allTabs, windows, viewMode, activeWindowId, searchQuery]);
 
-  // Helper to get sorted tabs list based on current filters
   const getSortedTabs = useCallback((tabs: Tab[]) => {
     return [...tabs].sort((a, b) => {
       let valA: string | number = '';
@@ -139,37 +184,38 @@ const App: React.FC = () => {
     });
   }, [sortField, sortDirection, windows, windowNameMap]);
 
-  // Use this memoized list for rendering AND keyboard navigation
   const currentDisplayedTabs = useMemo(() => getSortedTabs(filteredTabs), [filteredTabs, getSortedTabs]);
 
-  // --- KEYBOARD NAVIGATION ---
+  // --- ACTIONS ---
+  const handleRenameWindow = async (windowId: string, newName: string) => {
+    setWindowNameMap(prev => ({ ...prev, [windowId]: newName }));
+    await saveCustomWindowName(windowId, newName);
+    showNotification("Window renamed", 'success');
+  };
+
+  const handleFinishOnboarding = async () => {
+    setOnboardingIndex(-1);
+    await setOnboardingSeen();
+  };
+
+  // Keyboard, Close, Activate, Organize, Move, Export logic...
+  // (Reusing existing logic, just linking handlers)
+  
+  // --- KEYBOARD NAV ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if typing in search input
       if ((e.target as HTMLElement).tagName === 'INPUT') return;
+      if (onboardingIndex !== -1) return; // Disable keyboard nav during tour
 
-      // --- PANE SWITCHING ---
       if (e.key === 'ArrowLeft') {
-        if (focusedArea === 'tabs') {
-          setFocusedArea('sidebar');
-          return;
-        }
+        if (focusedArea === 'tabs') setFocusedArea('sidebar');
       }
-      if (e.key === 'ArrowRight') {
-        if (focusedArea === 'sidebar') {
-          setFocusedArea('tabs');
-          return;
-        }
+      else if (e.key === 'ArrowRight') {
+        if (focusedArea === 'sidebar') setFocusedArea('tabs');
       }
-
-      // --- SIDEBAR NAVIGATION ---
-      if (focusedArea === 'sidebar') {
-        // Map conceptual index to actions:
-        // 0: All Tabs
-        // 1: AI Groups
-        // 2+: Windows
+      // ... Sidebar & Tabs nav logic (same as before) ...
+      else if (focusedArea === 'sidebar') {
         const totalItems = 2 + windows.length;
-        
         if (e.key === 'ArrowDown') {
           e.preventDefault();
           setSidebarFocusIndex(prev => Math.min(prev + 1, totalItems - 1));
@@ -177,172 +223,109 @@ const App: React.FC = () => {
           e.preventDefault();
           setSidebarFocusIndex(prev => Math.max(prev - 1, 0));
         } else if (e.key === 'Enter') {
-          // Activate selection
-          if (sidebarFocusIndex === 0) {
-            setViewMode(ViewMode.ALL);
-            setActiveWindowId(null);
-          } else if (sidebarFocusIndex === 1) {
-            setViewMode(ViewMode.AI_GROUPED);
-            setActiveWindowId(null);
-          } else {
+          if (sidebarFocusIndex === 0) { setViewMode(ViewMode.ALL); setActiveWindowId(null); }
+          else if (sidebarFocusIndex === 1) { setViewMode(ViewMode.AI_GROUPED); setActiveWindowId(null); }
+          else {
             const winIdx = sidebarFocusIndex - 2;
-            if (windows[winIdx]) {
-              setViewMode(ViewMode.BY_WINDOW);
-              setActiveWindowId(windows[winIdx].id);
-            }
+            if (windows[winIdx]) { setViewMode(ViewMode.BY_WINDOW); setActiveWindowId(windows[winIdx].id); }
           }
         }
-      }
-
-      // --- TABS NAVIGATION ---
-      if (focusedArea === 'tabs') {
+      } else if (focusedArea === 'tabs') {
         if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
           e.preventDefault();
           if (currentDisplayedTabs.length === 0) return;
-
           const currentIndex = currentDisplayedTabs.findIndex(t => t.id === selectedTabId);
           let nextIndex = 0;
-
-          if (currentIndex === -1) {
-            nextIndex = 0;
-          } else if (e.key === 'ArrowDown') {
-            nextIndex = Math.min(currentIndex + 1, currentDisplayedTabs.length - 1);
-          } else {
-            nextIndex = Math.max(currentIndex - 1, 0);
-          }
-          
+          if (currentIndex === -1) nextIndex = 0;
+          else if (e.key === 'ArrowDown') nextIndex = Math.min(currentIndex + 1, currentDisplayedTabs.length - 1);
+          else nextIndex = Math.max(currentIndex - 1, 0);
           setSelectedTabId(currentDisplayedTabs[nextIndex].id);
-        } 
-        else if (e.key === 'Enter') {
-          if (selectedTabId) {
-            const tab = currentDisplayedTabs.find(t => t.id === selectedTabId);
-            if (tab) handleActivateTab(tab);
-          }
+        } else if (e.key === 'Enter' && selectedTabId) {
+          const tab = currentDisplayedTabs.find(t => t.id === selectedTabId);
+          if (tab) handleActivateTab(tab);
         }
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentDisplayedTabs, selectedTabId, focusedArea, sidebarFocusIndex, windows]);
+  }, [currentDisplayedTabs, selectedTabId, focusedArea, sidebarFocusIndex, windows, onboardingIndex]);
 
-  // --- ACTIONS ---
   const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection(field === 'lastAccessed' ? 'desc' : 'asc');
-    }
+    if (sortField === field) setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    else { setSortField(field); setSortDirection(field === 'lastAccessed' ? 'desc' : 'asc'); }
   };
 
   const handleCloseTab = async (tabId: string) => {
     try {
       await closeTab(tabId);
-      // Optimistic update for demo mode / instant feedback
-      setWindows(prev => prev.map(w => ({
-        ...w,
-        tabs: w.tabs.filter(t => t.id !== tabId)
-      })));
+      setWindows(prev => prev.map(w => ({ ...w, tabs: w.tabs.filter(t => t.id !== tabId) })));
       if (selectedTabId === tabId) setSelectedTabId(null);
       setCheckedTabIds(prev => prev.filter(id => id !== tabId));
       showNotification("Tab closed", 'info');
-    } catch (error) {
-      showNotification("Failed to close tab", 'info');
-    }
+    } catch (error) { showNotification("Failed to close tab", 'info'); }
   };
 
   const handleActivateTab = async (tab: Tab) => {
-    try {
-      await activateTab(tab);
-      if (!platformInfo.isExtension) {
-        showNotification(`Switched to: ${tab.title.substring(0, 30)}...`, 'success');
-      }
-    } catch (error) {
-      showNotification("Failed to switch tab", 'info');
-    }
+    try { await activateTab(tab); } catch (error) { showNotification("Failed to switch tab", 'info'); }
   };
 
   const handleOrganizeTabs = async () => {
-    if (!process.env.API_KEY) {
-      alert("Please provide an API_KEY in the environment to use the AI feature.");
-      return;
-    }
+    if (!process.env.API_KEY) { alert("Please provide an API_KEY"); return; }
     setIsOrganizing(true);
     try {
       const groups = await organizeTabsWithAI(allTabs);
       setTabGroups(groups);
       setViewMode(ViewMode.AI_GROUPED);
       showNotification("Tabs organized by Gemini!", 'success');
-    } catch (error) {
-      showNotification("Failed to organize tabs. Check console.", 'info');
-    } finally {
-      setIsOrganizing(false);
-    }
+    } catch (error) { showNotification("Failed to organize tabs", 'info'); } finally { setIsOrganizing(false); }
   };
 
   const handleMoveTabsToNewWindow = async () => {
     if (checkedTabIds.length === 0) return;
-    
     setIsLoading(true);
     try {
       await createWindowWithTabs(checkedTabIds);
-      setCheckedTabIds([]); // Clear selection
-      showNotification(`${checkedTabIds.length} tabs moved to new window`, 'success');
-      // If extension, event listeners will reload. If demo:
-      if (!platformInfo.isExtension) {
-         await loadTabs();
+      setCheckedTabIds([]);
+      showNotification(`${checkedTabIds.length} tabs moved`, 'success');
+      if (!platformInfo.isExtension) await loadTabs();
+    } catch (e) { showNotification("Failed to move tabs", 'info'); } finally { setIsLoading(false); }
+  };
+
+  const handleMerge = async (sourceIds: string[], targetId: string) => {
+    setIsMergeProcessing(true);
+    try {
+      for (const src of sourceIds) {
+        const win = windows.find(w => w.id === src);
+        if (!win || win.tabs.length === 0) continue;
+        await moveTabs(win.tabs.map(t => t.id), targetId);
       }
-    } catch (e) {
-      showNotification("Failed to move tabs", 'info');
-    } finally {
-      setIsLoading(false);
-    }
+      showNotification("Windows merged", 'success');
+      setSidebarSelectedWindowIds([]);
+      await loadTabs();
+      setShowMergeModal(false);
+    } catch (e) { showNotification("Failed to merge", 'info'); } finally { setIsMergeProcessing(false); }
   };
 
-  // --- CHECKBOX ACTIONS ---
-  const toggleTabCheck = (tabId: string) => {
-    setCheckedTabIds(prev => 
-      prev.includes(tabId) ? prev.filter(id => id !== tabId) : [...prev, tabId]
-    );
-  };
-
+  const toggleTabCheck = (id: string) => setCheckedTabIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   const toggleAllChecks = (ids: string[], checked: boolean) => {
-    if (checked) {
-      // Add all visible IDs that aren't already checked
-      setCheckedTabIds(prev => {
-        const set = new Set(prev);
-        ids.forEach(id => set.add(id));
-        return Array.from(set);
-      });
-    } else {
-      // Remove all visible IDs
-      setCheckedTabIds(prev => prev.filter(id => !ids.includes(id)));
-    }
+    if (checked) setCheckedTabIds(prev => { const s = new Set(prev); ids.forEach(i => s.add(i)); return Array.from(s); });
+    else setCheckedTabIds(prev => prev.filter(id => !ids.includes(id)));
   };
 
-  // --- EXPORT ---
+  // Export
   const handleExport = (type: 'csv' | 'txt') => {
     let content = '';
     const filename = `tabmaster-export-${new Date().toISOString().slice(0, 10)}`;
-
     if (type === 'csv') {
       content = 'Title,URL,Window,Last Accessed\n';
-      allTabs.forEach(t => {
-        const winName = windowNameMap[t.windowId] || 'Unknown';
-        content += `"${t.title.replace(/"/g, '""')}","${t.url}","${winName}","${new Date(t.lastAccessed).toLocaleString()}"\n`;
-      });
+      allTabs.forEach(t => content += `"${t.title.replace(/"/g, '""')}","${t.url}","${windowNameMap[t.windowId] || 'Unknown'}","${new Date(t.lastAccessed).toLocaleString()}"\n`);
     } else {
       windows.forEach(w => {
-        const winName = windowNameMap[w.id] || w.name;
-        content += `=== ${winName} (${w.tabs.length} tabs) ===\n`;
-        w.tabs.forEach(t => {
-          content += `  - ${t.title}\n    ${t.url}\n`;
-        });
+        content += `=== ${windowNameMap[w.id] || w.name} (${w.tabs.length} tabs) ===\n`;
+        w.tabs.forEach(t => content += `  - ${t.title}\n    ${t.url}\n`);
         content += '\n';
       });
     }
-
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -352,37 +335,7 @@ const App: React.FC = () => {
     setShowExportMenu(false);
   };
 
-  // --- MERGE ---
-  const handleMerge = async (sourceWindowIdsOrdered: string[], targetWindowId: string) => {
-    setIsMergeProcessing(true);
-    try {
-      for (const sourceWinId of sourceWindowIdsOrdered) {
-        const win = windows.find(w => w.id === sourceWinId);
-        if (!win || win.tabs.length === 0) continue;
-        
-        const tabIds = win.tabs.map(t => t.id);
-        await moveTabs(tabIds, targetWindowId);
-      }
-      
-      showNotification("Windows merged successfully!", 'success');
-      setSidebarSelectedWindowIds([]); 
-      await loadTabs(); 
-      setShowMergeModal(false);
-    } catch (e) {
-      showNotification("Failed to merge windows.", 'info');
-    } finally {
-      setIsMergeProcessing(false);
-    }
-  };
-
-  // --- RENDER ---
-  const openFullPage = () => {
-    focusOrOpenExtensionTab();
-  };
-
-  const selectedTab = useMemo(() => 
-    allTabs.find(t => t.id === selectedTabId) || null, 
-  [allTabs, selectedTabId]);
+  const selectedTab = useMemo(() => allTabs.find(t => t.id === selectedTabId) || null, [allTabs, selectedTabId]);
 
   return (
     <div className="flex h-full overflow-hidden bg-slate-950 text-slate-200 font-sans">
@@ -396,14 +349,11 @@ const App: React.FC = () => {
         onOrganize={handleOrganizeTabs}
         isOrganizing={isOrganizing}
         selectedWindowIds={sidebarSelectedWindowIds}
-        onToggleWindowSelection={(id) => {
-          setSidebarSelectedWindowIds(prev => 
-            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-          );
-        }}
+        onToggleWindowSelection={(id) => setSidebarSelectedWindowIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
         onMergeSelected={() => setShowMergeModal(true)}
         focusedArea={focusedArea}
         sidebarFocusIndex={sidebarFocusIndex}
+        onRenameWindow={handleRenameWindow}
       />
 
       <div className={`flex-1 flex flex-col h-full min-w-0 transition-all duration-200 ${focusedArea === 'tabs' ? 'ring-1 ring-inset ring-slate-800' : 'opacity-90'}`}>
@@ -430,10 +380,7 @@ const App: React.FC = () => {
 
             <div className="h-6 w-px bg-slate-800 mx-2 hidden sm:block"></div>
             
-            {/* Action Buttons */}
             <div className="flex items-center gap-1">
-              
-              {/* Checked Action */}
               {checkedTabIds.length > 0 && (
                 <button
                   onClick={handleMoveTabsToNewWindow}
@@ -445,7 +392,15 @@ const App: React.FC = () => {
                 </button>
               )}
 
-              {/* Export Button */}
+              {/* User Guide Trigger */}
+              <button 
+                onClick={() => setShowUserGuide(true)}
+                className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
+                title="Help & User Guide"
+              >
+                <HelpCircle size={18} />
+              </button>
+
               <div className="relative">
                 <button 
                   onClick={() => setShowExportMenu(!showExportMenu)}
@@ -466,7 +421,6 @@ const App: React.FC = () => {
                 )}
               </div>
 
-              {/* Toggle Preview */}
               <button 
                 onClick={() => setShowPreview(!showPreview)}
                 className={`p-2 rounded-full transition-colors ${showPreview ? 'bg-indigo-600/20 text-indigo-400' : 'hover:bg-slate-800 text-slate-400'}`}
@@ -476,7 +430,7 @@ const App: React.FC = () => {
               </button>
 
               <button 
-                onClick={loadTabs}
+                onClick={() => loadTabs()}
                 className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
                 title="Refresh Tabs"
               >
@@ -484,7 +438,7 @@ const App: React.FC = () => {
               </button>
               
               <button 
-                onClick={openFullPage}
+                onClick={focusOrOpenExtensionTab}
                 className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
                 title="Open in new tab (Maximize)"
               >
@@ -496,17 +450,13 @@ const App: React.FC = () => {
 
         {/* Info Banner */}
         <div className={`border-b px-6 py-2 flex items-start gap-3 shrink-0 ${
-          platformInfo.isExtension 
-            ? 'bg-green-900/20 border-green-900/50' 
-            : 'bg-blue-900/20 border-blue-900/50'
+          platformInfo.isExtension ? 'bg-green-900/20 border-green-900/50' : 'bg-blue-900/20 border-blue-900/50'
         }`}>
           {platformInfo.isExtension 
             ? <AlertCircle className="w-4 h-4 text-green-400 mt-0.5 shrink-0" />
             : <Info className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" />
           }
-          <p className={`text-xs leading-relaxed ${
-            platformInfo.isExtension ? 'text-green-200/80' : 'text-blue-200/80'
-          }`}>
+          <p className={`text-xs leading-relaxed ${platformInfo.isExtension ? 'text-green-200/80' : 'text-blue-200/80'}`}>
             {platformInfo.isExtension 
               ? "Extension Active. Arrow keys to navigate. Left/Right to switch between Sidebar and Tabs."
               : DEMO_NOTICE
@@ -514,7 +464,7 @@ const App: React.FC = () => {
           </p>
         </div>
 
-        {/* Content & Preview Split */}
+        {/* Content */}
         <div className="flex flex-1 overflow-hidden" onClick={() => setFocusedArea('tabs')}>
           <main className="flex-1 overflow-y-auto p-6 scroll-smooth">
             {isLoading && windows.length === 0 ? (
@@ -528,17 +478,10 @@ const App: React.FC = () => {
                 <p>No tabs found</p>
               </div>
             ) : viewMode === ViewMode.AI_GROUPED && !searchQuery ? (
-              // Grouped View (Simplified for this update: Just render groups if they exist)
                <div className="space-y-8 pb-10">
-                 {tabGroups.length === 0 && (
-                   <div className="flex flex-col items-center justify-center h-40 text-slate-500">
-                     <p>No groups. Click "Group with Gemini".</p>
-                   </div>
-                 )}
+                 {tabGroups.length === 0 && <div className="flex flex-col items-center justify-center h-40 text-slate-500"><p>No groups. Click "Group with Gemini".</p></div>}
                  {tabGroups.map((group, idx) => {
-                   const groupTabs = group.tabIds
-                     .map(id => allTabs.find(t => t.id === id))
-                     .filter((t): t is Tab => t !== undefined);
+                   const groupTabs = group.tabIds.map(id => allTabs.find(t => t.id === id)).filter((t): t is Tab => t !== undefined);
                    return (
                      <div key={idx} className="space-y-2">
                        <h3 className="text-lg font-semibold text-indigo-300 border-b border-slate-800 pb-1 mb-2">{group.categoryName}</h3>
@@ -563,7 +506,6 @@ const App: React.FC = () => {
                  })}
                </div>
             ) : (
-              // Standard View
               <TabListView 
                 tabs={currentDisplayedTabs}
                 windows={windows}
@@ -583,7 +525,6 @@ const App: React.FC = () => {
             )}
           </main>
           
-          {/* Right Preview Panel */}
           {showPreview && (
             <PreviewPanel 
               tab={selectedTab} 
@@ -607,13 +548,24 @@ const App: React.FC = () => {
             isProcessing={isMergeProcessing}
           />
         )}
+
+        {showUserGuide && (
+          <UserGuideModal onClose={() => setShowUserGuide(false)} />
+        )}
+
+        {onboardingIndex >= 0 && (
+          <OnboardingTour 
+            stepIndex={onboardingIndex}
+            totalSteps={ONBOARDING_STEPS.length}
+            step={ONBOARDING_STEPS[onboardingIndex]}
+            onNext={() => onboardingIndex < ONBOARDING_STEPS.length - 1 ? setOnboardingIndex(i => i + 1) : handleFinishOnboarding()}
+            onSkip={handleFinishOnboarding}
+          />
+        )}
         
-        {/* Notifications */}
         {notification && (
           <div className={`fixed bottom-6 right-6 px-4 py-3 rounded-lg shadow-xl border flex items-center gap-2 animate-in slide-in-from-bottom-5 duration-300 z-50 ${
-            notification.type === 'success' 
-              ? 'bg-slate-800 border-green-500/30 text-green-400' 
-              : 'bg-slate-800 border-indigo-500/30 text-indigo-400'
+            notification.type === 'success' ? 'bg-slate-800 border-green-500/30 text-green-400' : 'bg-slate-800 border-indigo-500/30 text-indigo-400'
           }`}>
              {notification.type === 'success' ? <ExternalLink size={16} /> : <Info size={16} />}
             <span className="text-sm font-medium">{notification.msg}</span>

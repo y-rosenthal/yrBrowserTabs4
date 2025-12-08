@@ -1,5 +1,6 @@
-import React from 'react';
-import { Layout, Sparkles, Layers, CopyPlus } from 'lucide-react';
+
+import React, { useState } from 'react';
+import { Layout, Sparkles, Layers, CopyPlus, Edit2, Check, X } from 'lucide-react';
 import { ViewMode, WindowData } from '../types';
 
 interface SidebarProps {
@@ -16,6 +17,7 @@ interface SidebarProps {
   onMergeSelected: () => void;
   focusedArea: 'sidebar' | 'tabs';
   sidebarFocusIndex: number;
+  onRenameWindow: (id: string, newName: string) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
@@ -31,19 +33,38 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggleWindowSelection,
   onMergeSelected,
   focusedArea,
-  sidebarFocusIndex
+  sidebarFocusIndex,
+  onRenameWindow
 }) => {
   const totalTabs = windows.reduce((acc, win) => acc + win.tabs.length, 0);
-
-  // Helper to determine styling based on current view AND keyboard focus index
-  // Index mapping:
-  // 0: All Tabs
-  // 1: AI Organized
-  // 2...N: Windows
   
+  // Renaming State
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+
+  const startEditing = (id: string, currentName: string) => {
+    setEditingId(id);
+    setEditValue(currentName);
+  };
+
+  const saveEdit = () => {
+    if (editingId && editValue.trim()) {
+      onRenameWindow(editingId, editValue.trim());
+    }
+    setEditingId(null);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') saveEdit();
+    if (e.key === 'Escape') cancelEdit();
+  };
+
   const getButtonStyle = (index: number, isActiveView: boolean) => {
     const isFocused = focusedArea === 'sidebar' && sidebarFocusIndex === index;
-    
     let base = "w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all min-w-0 ";
     
     if (isActiveView) {
@@ -55,7 +76,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (isFocused) {
       base += "ring-1 ring-indigo-400 bg-indigo-600/10 ";
     }
-
     return base;
   };
 
@@ -99,14 +119,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="px-3 space-y-1">
           <p className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Windows</p>
           {windows.map((win, idx) => {
-            // Window indices start at 2
             const listIndex = idx + 2; 
             const isSelected = selectedWindowIds.includes(win.id);
             const isActive = viewMode === ViewMode.BY_WINDOW && activeWindowId === win.id;
             const displayName = windowNames[win.id] || win.name;
+            const isEditing = editingId === win.id;
 
             return (
-              <div key={win.id} className="flex items-center gap-2 group">
+              <div key={win.id} className="flex items-center gap-2 group relative">
                 <div className="relative flex items-center">
                   <input
                     type="checkbox"
@@ -117,18 +137,45 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   />
                 </div>
 
-                <button
-                  onClick={() => { 
-                    setViewMode(ViewMode.BY_WINDOW); 
-                    setActiveWindowId(win.id); 
-                  }}
-                  className={getButtonStyle(listIndex, isActive)}
-                >
-                  <div className="flex-1 text-left truncate" title={displayName}>{displayName}</div>
-                  <span className="text-xs bg-slate-800 px-1.5 py-0.5 rounded text-slate-500">
-                    {win.tabs.length}
-                  </span>
-                </button>
+                {isEditing ? (
+                  <div className="flex-1 flex items-center gap-1 min-w-0">
+                    <input
+                      autoFocus
+                      type="text"
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      onBlur={saveEdit}
+                      className="w-full bg-slate-800 border border-indigo-500 rounded px-2 py-1 text-sm text-white focus:outline-none"
+                    />
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { 
+                      setViewMode(ViewMode.BY_WINDOW); 
+                      setActiveWindowId(win.id); 
+                    }}
+                    onDoubleClick={() => startEditing(win.id, displayName)}
+                    className={getButtonStyle(listIndex, isActive)}
+                  >
+                    <div className="flex-1 text-left truncate" title={`${displayName} (Double click to rename)`}>
+                      {displayName}
+                    </div>
+                    
+                    {/* Hover actions */}
+                    <div 
+                      onClick={(e) => { e.stopPropagation(); startEditing(win.id, displayName); }}
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition-all"
+                      title="Rename Window"
+                    >
+                      <Edit2 size={12} />
+                    </div>
+
+                    <span className="text-xs bg-slate-800 px-1.5 py-0.5 rounded text-slate-500">
+                      {win.tabs.length}
+                    </span>
+                  </button>
+                )}
               </div>
             );
           })}
