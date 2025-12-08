@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { WindowData } from '../types';
-import { Layers, X, ArrowRight, ArrowUp, ArrowDown } from 'lucide-react';
+import { Layers, X, ArrowRight, ArrowUp, ArrowDown, CheckCircle } from 'lucide-react';
 
 interface MergeModalProps {
   windows: WindowData[];
@@ -21,27 +22,41 @@ export const MergeModal: React.FC<MergeModalProps> = ({
 }) => {
   const [targetId, setTargetId] = useState<string>('');
   const [sourceIds, setSourceIds] = useState<string[]>([]);
+  const [validSelectedIds, setValidSelectedIds] = useState<string[]>([]);
 
+  // Initialize
   useEffect(() => {
     // 1. Identify valid selected windows
     const validIds = selectedWindowIds.filter(id => windows.find(w => w.id === id));
+    setValidSelectedIds(validIds);
     
     if (validIds.length === 0) return;
 
-    // 2. Sort them alphabetically by name to find the Target
-    // The "First Alphabetical" window is the Target.
+    // 2. Default target: First Alphabetical
     const sortedIds = [...validIds].sort((a, b) => {
       const nameA = windowNames[a] || '';
       const nameB = windowNames[b] || '';
       return nameA.localeCompare(nameB);
     });
 
-    const primaryId = sortedIds[0];
-    const others = sortedIds.slice(1);
-
-    setTargetId(primaryId);
-    setSourceIds(others); // Initial order is alphabetical, user can change
+    if (!targetId || !validIds.includes(targetId)) {
+      setTargetId(sortedIds[0]);
+    }
   }, [selectedWindowIds, windows, windowNames]);
+
+  // Update source IDs when target changes
+  useEffect(() => {
+    if (!targetId) return;
+    
+    const others = validSelectedIds.filter(id => id !== targetId);
+    // Maintain existing order if possible, or sort alphabetically
+    const sortedOthers = others.sort((a, b) => {
+      const nameA = windowNames[a] || '';
+      const nameB = windowNames[b] || '';
+      return nameA.localeCompare(nameB);
+    });
+    setSourceIds(sortedOthers);
+  }, [targetId, validSelectedIds, windowNames]);
 
   const moveSource = (index: number, direction: 'up' | 'down') => {
     const newOrder = [...sourceIds];
@@ -79,22 +94,35 @@ export const MergeModal: React.FC<MergeModalProps> = ({
 
         <div className="p-6 overflow-y-auto space-y-6">
           <p className="text-sm text-slate-400">
-            Tabs will be gathered into the first alphabetically named window. 
-            You can arrange the order in which tabs from other windows are added.
+            Select the destination window. Tabs from other selected windows will be moved into it.
           </p>
 
-          {/* Target Display */}
+          {/* Target Selection */}
           <div className="bg-indigo-900/20 border border-indigo-500/30 rounded-lg p-4">
              <label className="block text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-2">
-              Destination Window (Fixed)
+              Destination Window
             </label>
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-slate-100 text-lg">{getWindowLabel(targetId)}</span>
-              <span className="text-xs bg-indigo-900/50 text-indigo-300 px-2 py-1 rounded-full">
-                Currently has {getTabCount(targetId)} tabs
-              </span>
+            
+            <div className="relative">
+              <select
+                value={targetId}
+                onChange={(e) => setTargetId(e.target.value)}
+                className="w-full bg-slate-900 border border-indigo-500/50 text-slate-200 rounded-lg p-3 appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {validSelectedIds.map(id => (
+                  <option key={id} value={id}>
+                    {getWindowLabel(id)} ({getTabCount(id)} tabs)
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-400">
+                <CheckCircle size={16} />
+              </div>
             </div>
-            <p className="text-xs text-indigo-300/60 mt-1">Tabs from the lists below will be added here.</p>
+
+            <p className="text-xs text-indigo-300/60 mt-2">
+              Result: {getWindowLabel(targetId)} will contain tabs from {sourceIds.length} other window{sourceIds.length !== 1 ? 's' : ''}.
+            </p>
           </div>
 
           {/* Source Reordering */}
@@ -103,6 +131,7 @@ export const MergeModal: React.FC<MergeModalProps> = ({
               Windows to Merge (Order determines tab sequence)
             </label>
             <div className="space-y-2">
+              {sourceIds.length === 0 && <p className="text-sm text-slate-500 italic">No other windows selected.</p>}
               {sourceIds.map((id, index) => (
                 <div key={id} className="flex items-center gap-3 p-3 rounded-lg border border-slate-700 bg-slate-800">
                   {/* Reorder Controls */}
