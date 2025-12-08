@@ -7,7 +7,8 @@ const isExtension = typeof chrome !== 'undefined' && !!chrome.storage;
 
 const MOCK_STORAGE: StorageData = {
   customWindowNames: {},
-  hasSeenOnboarding: false
+  hasSeenOnboarding: false,
+  theme: 'dark' // Default to dark if not set
 };
 
 // In-memory fallback for demo mode
@@ -16,10 +17,11 @@ let memStorage = { ...MOCK_STORAGE };
 export const getStorageData = async (): Promise<StorageData> => {
   if (isExtension) {
     return new Promise((resolve) => {
-      chrome.storage.local.get(['customWindowNames', 'hasSeenOnboarding'], (result: any) => {
+      chrome.storage.local.get(['customWindowNames', 'hasSeenOnboarding', 'theme'], (result: any) => {
         resolve({
           customWindowNames: result.customWindowNames || {},
-          hasSeenOnboarding: result.hasSeenOnboarding || false
+          hasSeenOnboarding: result.hasSeenOnboarding || false,
+          theme: result.theme || 'dark'
         });
       });
     });
@@ -42,5 +44,13 @@ export const setOnboardingSeen = async (): Promise<void> => {
     await chrome.storage.local.set({ hasSeenOnboarding: true });
   } else {
     memStorage.hasSeenOnboarding = true;
+  }
+};
+
+export const saveTheme = async (theme: 'light' | 'dark'): Promise<void> => {
+  if (isExtension) {
+    await chrome.storage.local.set({ theme });
+  } else {
+    memStorage.theme = theme;
   }
 };

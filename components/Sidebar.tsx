@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Layout, Sparkles, Layers, CopyPlus, Edit2, Check, X } from 'lucide-react';
+import { Layout, Sparkles, Layers, CopyPlus, Edit2 } from 'lucide-react';
 import { ViewMode, WindowData } from '../types';
 
 interface SidebarProps {
@@ -68,27 +68,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
     let base = "w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all min-w-0 ";
     
     if (isActiveView) {
-      base += "bg-indigo-600/20 text-indigo-300 ";
+      base += "bg-indigo-100 dark:bg-indigo-600/20 text-indigo-700 dark:text-indigo-300 ";
     } else {
-      base += "text-slate-400 hover:bg-slate-800 hover:text-slate-200 ";
+      base += "text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 ";
     }
 
     if (isFocused) {
-      base += "ring-1 ring-indigo-400 bg-indigo-600/10 ";
+      base += "ring-1 ring-indigo-400 bg-indigo-50 dark:bg-indigo-600/10 ";
     }
     return base;
   };
 
   return (
-    <div className={`w-64 bg-slate-900 border-r border-slate-800 flex flex-col h-full shrink-0 transition-colors duration-200 ${
-       focusedArea === 'sidebar' ? 'border-r-indigo-500/30' : ''
+    <div className={`w-64 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col h-full shrink-0 transition-colors duration-200 ${
+       focusedArea === 'sidebar' ? 'border-r-indigo-500/50' : ''
     }`}>
-      <div className="p-4 border-b border-slate-800">
-        <div className="flex items-center gap-2 text-indigo-400 font-bold text-xl">
+      <div className="p-4 border-b border-slate-200 dark:border-slate-800">
+        <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold text-xl">
           <Layout className="w-6 h-6" />
           <span>TabMaster</span>
         </div>
-        <div className="mt-1 text-xs text-slate-500">
+        <div className="mt-1 text-xs text-slate-500 dark:text-slate-500">
           {windows.length} Windows • {totalTabs} Tabs
         </div>
       </div>
@@ -96,7 +96,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="flex-1 overflow-y-auto py-4 space-y-6">
         {/* Main Views */}
         <div className="px-3 space-y-1">
-          <p className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Views</p>
+          <p className="px-3 text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider mb-2">Views</p>
           
           <button
             onClick={() => { setViewMode(ViewMode.ALL); setActiveWindowId(null); }}
@@ -117,7 +117,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Windows List */}
         <div className="px-3 space-y-1">
-          <p className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Windows</p>
+          <p className="px-3 text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider mb-2">Windows</p>
           {windows.map((win, idx) => {
             const listIndex = idx + 2; 
             const isSelected = selectedWindowIds.includes(win.id);
@@ -132,7 +132,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     type="checkbox"
                     checked={isSelected}
                     onChange={() => onToggleWindowSelection(win.id)}
-                    className="w-4 h-4 rounded border-slate-600 text-indigo-600 focus:ring-indigo-500 bg-slate-900 border"
+                    className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 bg-white dark:bg-slate-900"
                     title="Select to merge"
                   />
                 </div>
@@ -146,7 +146,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       onChange={(e) => setEditValue(e.target.value)}
                       onKeyDown={handleKeyDown}
                       onBlur={saveEdit}
-                      className="w-full bg-slate-800 border border-indigo-500 rounded px-2 py-1 text-sm text-white focus:outline-none"
+                      className="w-full bg-white dark:bg-slate-800 border border-indigo-500 rounded px-2 py-1 text-sm text-slate-900 dark:text-white focus:outline-none"
                     />
                   </div>
                 ) : (
@@ -165,13 +165,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     {/* Hover actions */}
                     <div 
                       onClick={(e) => { e.stopPropagation(); startEditing(win.id, displayName); }}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition-all"
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-300 dark:hover:bg-slate-700 rounded text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-all"
                       title="Rename Window"
                     >
                       <Edit2 size={12} />
                     </div>
 
-                    <span className="text-xs bg-slate-800 px-1.5 py-0.5 rounded text-slate-500">
+                    <span className="text-xs bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-500">
                       {win.tabs.length}
                     </span>
                   </button>
@@ -183,7 +183,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Footer Actions */}
-      <div className="p-4 border-t border-slate-800 space-y-3">
+      <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
         {selectedWindowIds.length > 1 && (
           <button
             onClick={onMergeSelected}
@@ -197,7 +197,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <button
           onClick={onOrganize}
           disabled={isOrganizing}
-          className="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-700 p-2.5 rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center gap-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-indigo-600 dark:text-indigo-300 border border-slate-300 dark:border-slate-700 p-2.5 rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isOrganizing ? (
             <>

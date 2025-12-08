@@ -42,19 +42,19 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px]" />
 
       {/* The Tooltip Card */}
-      <div className={`pointer-events-auto absolute w-80 bg-slate-900 border border-indigo-500/50 rounded-xl shadow-[0_0_40px_-10px_rgba(79,70,229,0.3)] p-5 flex flex-col gap-3 transition-all duration-500 ${getPositionClasses()}`}>
+      <div className={`pointer-events-auto absolute w-80 bg-white dark:bg-slate-900 border border-indigo-500/50 rounded-xl shadow-[0_0_40px_-10px_rgba(79,70,229,0.3)] p-5 flex flex-col gap-3 transition-all duration-500 ${getPositionClasses()}`}>
         <div className="flex justify-between items-start">
-          <h3 className="text-lg font-bold text-white">{step.title}</h3>
-          <button onClick={onSkip} className="text-slate-500 hover:text-white">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white">{step.title}</h3>
+          <button onClick={onSkip} className="text-slate-500 hover:text-slate-900 dark:hover:text-white">
             <X size={16} />
           </button>
         </div>
         
-        <p className="text-sm text-slate-300 leading-relaxed">
+        <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
           {step.content}
         </p>
 
-        <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-800">
+        <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200 dark:border-slate-800">
           <span className="text-xs text-slate-500 font-medium">
             Step {stepIndex + 1} of {totalSteps}
           </span>

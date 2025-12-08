@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Tab, WindowData } from '../types';
 import { ExternalLink, X, Clock, Copy, Globe } from 'lucide-react';
@@ -21,7 +22,7 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
 }) => {
   if (!tab) {
     return (
-      <div className="w-80 border-l border-slate-800 bg-slate-900/50 p-6 flex flex-col items-center justify-center text-slate-500 text-center h-full">
+      <div className="w-80 border-l border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 p-6 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 text-center h-full">
         <Globe size={48} className="mb-4 opacity-20" />
         <p className="text-sm">Select a tab to view details</p>
       </div>
@@ -46,10 +47,10 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
   };
 
   return (
-    <div className="w-96 border-l border-slate-800 bg-slate-900 flex flex-col h-full shrink-0 shadow-xl">
-      <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-        <h3 className="font-semibold text-slate-200">Tab Preview</h3>
-        <button onClick={onClosePanel} className="text-slate-500 hover:text-slate-300">
+    <div className="w-96 border-l border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex flex-col h-full shrink-0 shadow-xl">
+      <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <h3 className="font-semibold text-slate-700 dark:text-slate-200">Tab Preview</h3>
+        <button onClick={onClosePanel} className="text-slate-500 hover:text-slate-800 dark:hover:text-slate-300">
           <X size={16} />
         </button>
       </div>
@@ -57,7 +58,7 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
       <div className="p-6 flex-1 overflow-y-auto">
         {/* Large Icon */}
         <div className="flex justify-center mb-6">
-          <div className="p-4 bg-slate-800 rounded-2xl shadow-lg border border-slate-700">
+          <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
             <img 
               src={tab.favIconUrl} 
               alt="Icon" 
@@ -69,32 +70,32 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
 
         {/* Title & Domain */}
         <div className="text-center mb-8">
-          <h2 className="text-lg font-bold text-slate-100 mb-2 leading-snug">{tab.title}</h2>
-          <p className="text-indigo-400 text-sm font-medium">{domain}</p>
+          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2 leading-snug">{tab.title}</h2>
+          <p className="text-indigo-600 dark:text-indigo-400 text-sm font-medium">{domain}</p>
         </div>
 
         {/* Details Grid */}
-        <div className="space-y-4 bg-slate-800/50 rounded-lg p-4 border border-slate-800">
+        <div className="space-y-4 bg-white dark:bg-slate-800/50 rounded-lg p-4 border border-slate-200 dark:border-slate-800">
           <div>
-            <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Window</span>
-            <p className="text-sm text-slate-300 mt-1">{windowName}</p>
+            <span className="text-xs text-slate-500 dark:text-slate-500 uppercase tracking-wider font-semibold">Window</span>
+            <p className="text-sm text-slate-700 dark:text-slate-300 mt-1">{windowName}</p>
           </div>
           
           <div>
-            <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Last Accessed</span>
-            <div className="flex items-center gap-1 text-sm text-slate-300 mt-1">
+            <span className="text-xs text-slate-500 dark:text-slate-500 uppercase tracking-wider font-semibold">Last Accessed</span>
+            <div className="flex items-center gap-1 text-sm text-slate-700 dark:text-slate-300 mt-1">
               <Clock size={12} />
               <span>{getRelativeTime(tab.lastAccessed)}</span>
             </div>
           </div>
 
           <div>
-            <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Full URL</span>
-            <div className="flex items-center gap-2 mt-1 bg-slate-950 p-2 rounded border border-slate-800">
-              <p className="text-xs text-slate-400 truncate flex-1 font-mono">{tab.url}</p>
+            <span className="text-xs text-slate-500 dark:text-slate-500 uppercase tracking-wider font-semibold">Full URL</span>
+            <div className="flex items-center gap-2 mt-1 bg-slate-100 dark:bg-slate-950 p-2 rounded border border-slate-200 dark:border-slate-800">
+              <p className="text-xs text-slate-600 dark:text-slate-400 truncate flex-1 font-mono">{tab.url}</p>
               <button 
                 onClick={handleCopyUrl}
-                className="text-slate-500 hover:text-indigo-400 transition-colors"
+                className="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
                 title="Copy URL"
               >
                 <Copy size={12} />
@@ -105,7 +106,7 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
       </div>
 
       {/* Actions Footer */}
-      <div className="p-4 border-t border-slate-800 space-y-2 bg-slate-900">
+      <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-2 bg-slate-100 dark:bg-slate-900">
         <button 
           onClick={() => onActivate(tab)}
           className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"
@@ -115,7 +116,7 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
         </button>
         <button 
           onClick={() => onClose(tab.id)}
-          className="w-full py-2.5 bg-slate-800 hover:bg-red-900/20 hover:text-red-400 text-slate-300 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors border border-slate-700 hover:border-red-900/50"
+          className="w-full py-2.5 bg-white dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 text-slate-700 dark:text-slate-300 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors border border-slate-200 dark:border-slate-700 hover:border-red-200 dark:hover:border-red-900/50"
         >
           <X size={16} />
           Close Tab

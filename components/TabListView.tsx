@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from 'react';
 import { Tab, WindowData } from '../types';
 import { X, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
@@ -64,12 +65,12 @@ export const TabListView: React.FC<TabListViewProps> = ({
 
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) return <ArrowUpDown size={14} className="opacity-30" />;
-    return sortDirection === 'asc' ? <ArrowUp size={14} className="text-indigo-400" /> : <ArrowDown size={14} className="text-indigo-400" />;
+    return sortDirection === 'asc' ? <ArrowUp size={14} className="text-indigo-500 dark:text-indigo-400" /> : <ArrowDown size={14} className="text-indigo-500 dark:text-indigo-400" />;
   };
 
   const Header = ({ field, label, className = "" }: { field: SortField, label: string, className?: string }) => (
     <th 
-      className={`px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-800/50 hover:text-slate-200 transition-colors select-none ${className}`}
+      className={`px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 hover:text-slate-800 dark:hover:text-slate-200 transition-colors select-none ${className}`}
       onClick={() => onSort(field)}
     >
       <div className="flex items-center gap-2">
@@ -84,20 +85,20 @@ export const TabListView: React.FC<TabListViewProps> = ({
   const someVisibleChecked = tabs.some(t => checkedTabIds.includes(t.id));
 
   return (
-    <div className={`w-full overflow-hidden rounded-lg border bg-slate-900/50 shadow-sm transition-all duration-200 ${
-      focusedArea === 'tabs' ? 'border-indigo-500/50 ring-1 ring-indigo-500/20' : 'border-slate-800'
+    <div className={`w-full overflow-hidden rounded-lg border bg-white dark:bg-slate-900/50 shadow-sm transition-all duration-200 ${
+      focusedArea === 'tabs' ? 'border-indigo-500/50 ring-1 ring-indigo-500/20' : 'border-slate-200 dark:border-slate-800'
     }`}>
       <div className="overflow-x-auto">
         <table className="w-full whitespace-nowrap text-left">
           <thead>
-            <tr className="bg-slate-900 border-b border-slate-800">
+            <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
               <th className="w-10 px-4 py-3">
                 <input 
                   type="checkbox"
                   checked={allVisibleChecked}
                   ref={input => { if (input) input.indeterminate = someVisibleChecked && !allVisibleChecked; }}
                   onChange={(e) => onToggleAllChecks(tabs.map(t => t.id), e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-600 text-indigo-600 focus:ring-indigo-500 bg-slate-900 border"
+                  className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 bg-white dark:bg-slate-900 border"
                 />
               </th>
               <th className="w-10 px-4 py-3"></th> {/* Icon column */}
@@ -105,10 +106,10 @@ export const TabListView: React.FC<TabListViewProps> = ({
               <Header field="url" label="Domain" />
               <Header field="window" label="Window" />
               <Header field="lastAccessed" label="Last Accessed" className="hidden lg:table-cell" />
-              <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">Actions</th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800/50">
+          <tbody className="divide-y divide-slate-200 dark:divide-slate-800/50">
             {tabs.map((tab) => {
               const isSelected = selectedTabId === tab.id;
               const isChecked = checkedTabIds.includes(tab.id);
@@ -120,8 +121,8 @@ export const TabListView: React.FC<TabListViewProps> = ({
                   onClick={() => { onSelect(tab.id); onActivate(tab); }}
                   className={`group transition-colors cursor-pointer ${
                     isSelected 
-                      ? 'bg-indigo-600/20 hover:bg-indigo-600/30 ring-1 ring-inset ring-indigo-500/50' 
-                      : 'hover:bg-slate-800/60'
+                      ? 'bg-indigo-50 dark:bg-indigo-600/20 hover:bg-indigo-100 dark:hover:bg-indigo-600/30 ring-1 ring-inset ring-indigo-500/50' 
+                      : 'hover:bg-slate-100 dark:hover:bg-slate-800/60'
                   }`}
                 >
                   {/* Checkbox */}
@@ -130,7 +131,7 @@ export const TabListView: React.FC<TabListViewProps> = ({
                       type="checkbox"
                       checked={isChecked}
                       onChange={() => onToggleTabCheck(tab.id)}
-                      className="w-4 h-4 rounded border-slate-600 text-indigo-600 focus:ring-indigo-500 bg-slate-900 border cursor-pointer"
+                      className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 bg-white dark:bg-slate-900 border cursor-pointer"
                     />
                   </td>
 
@@ -147,7 +148,7 @@ export const TabListView: React.FC<TabListViewProps> = ({
                   {/* Tab Name */}
                   <td className="px-4 py-3">
                     <div className="flex flex-col max-w-md">
-                      <span className={`text-sm font-medium truncate ${isSelected ? 'text-indigo-200' : 'text-slate-200'}`} title={tab.title}>
+                      <span className={`text-sm font-medium truncate ${isSelected ? 'text-indigo-800 dark:text-indigo-200' : 'text-slate-800 dark:text-slate-200'}`} title={tab.title}>
                         {tab.title}
                       </span>
                     </div>
@@ -155,20 +156,20 @@ export const TabListView: React.FC<TabListViewProps> = ({
 
                   {/* Domain */}
                   <td className="px-4 py-3">
-                    <span className="text-sm text-slate-500 truncate max-w-[200px] block">
+                    <span className="text-sm text-slate-500 dark:text-slate-500 truncate max-w-[200px] block">
                       {getDomain(tab.url)}
                     </span>
                   </td>
 
                   {/* Window Name */}
                   <td className="px-4 py-3">
-                    <span className="text-sm text-slate-400 truncate max-w-[150px] block" title={getWindowLabel(tab.windowId)}>
+                    <span className="text-sm text-slate-500 dark:text-slate-400 truncate max-w-[150px] block" title={getWindowLabel(tab.windowId)}>
                       {getWindowLabel(tab.windowId)}
                     </span>
                   </td>
 
                   {/* Last Accessed */}
-                  <td className="px-4 py-3 hidden lg:table-cell text-sm text-slate-500">
+                  <td className="px-4 py-3 hidden lg:table-cell text-sm text-slate-500 dark:text-slate-500">
                      {(() => {
                         const diff = Date.now() - tab.lastAccessed;
                         if (diff < 60000) return 'Just now';
@@ -185,14 +186,14 @@ export const TabListView: React.FC<TabListViewProps> = ({
                     <div className={`flex items-center justify-end gap-1 transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                       <button 
                         onClick={(e) => { e.stopPropagation(); onActivate(tab); }}
-                        className="p-1.5 hover:bg-indigo-500/20 text-slate-400 hover:text-indigo-400 rounded transition-colors"
+                        className="p-1.5 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded transition-colors"
                         title="Switch to Tab"
                       >
                         <ExternalLink size={14} />
                       </button>
                       <button 
                         onClick={(e) => { e.stopPropagation(); onClose(tab.id); }}
-                        className="p-1.5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded transition-colors"
+                        className="p-1.5 hover:bg-red-100 dark:hover:bg-red-500/20 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded transition-colors"
                         title="Close Tab"
                       >
                         <X size={14} />

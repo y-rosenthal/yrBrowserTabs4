@@ -3,10 +3,10 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { DEMO_NOTICE } from './constants';
 import { ViewMode, WindowData, Tab, TabGroup, OnboardingStep } from './types';
-import { Search, Info, ExternalLink, RefreshCw, AlertCircle, Maximize2, Download, Table, FileText, Eye, EyeOff, FolderPlus, HelpCircle, BookOpen } from 'lucide-react';
+import { Search, Info, ExternalLink, RefreshCw, AlertCircle, Maximize2, Download, Table, FileText, Eye, EyeOff, FolderPlus, HelpCircle, BookOpen, Sun, Moon } from 'lucide-react';
 import { organizeTabsWithAI } from './services/geminiService';
 import { getWindows, activateTab, closeTab, getPlatformInfo, moveTabs, createWindowWithTabs, focusOrOpenExtensionTab, subscribeToUpdates } from './services/tabService';
-import { saveCustomWindowName, getStorageData, setOnboardingSeen } from './services/storageService';
+import { saveCustomWindowName, getStorageData, setOnboardingSeen, saveTheme } from './services/storageService';
 import { TabListView, SortField, SortDirection } from './components/TabListView';
 import { PreviewPanel } from './components/PreviewPanel';
 import { MergeModal } from './components/MergeModal';
@@ -64,6 +64,7 @@ const App: React.FC = () => {
   const [isOrganizing, setIsOrganizing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [notification, setNotification] = useState<{msg: string, type: 'success' | 'info'} | null>(null);
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   
   // Selection & Features
   const [selectedTabId, setSelectedTabId] = useState<string | null>(null); // For Preview/Active
@@ -92,15 +93,36 @@ const App: React.FC = () => {
   
   const platformInfo = getPlatformInfo();
 
-  // --- AUTO MAXIMIZE & INITIAL LOAD ---
+  // --- INITIALIZATION ---
   useEffect(() => {
-    // Auto-jump to full screen if extension popup
+    // 1. Auto-jump to full screen if extension popup
     if (platformInfo.isExtension) {
       if (window.innerWidth < 800) { 
         focusOrOpenExtensionTab();
       }
     }
-  }, []);
+
+    // 2. Load Theme
+    getStorageData().then(data => {
+      setTheme(data.theme);
+      if (data.theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const toggleTheme = async () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    if (newTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    await saveTheme(newTheme);
+  };
 
   // --- HELPERS ---
   const showNotification = (msg: string, type: 'success' | 'info' = 'info') => {
@@ -400,7 +422,7 @@ const App: React.FC = () => {
   const selectedTab = useMemo(() => allTabs.find(t => t.id === selectedTabId) || null, [allTabs, selectedTabId]);
 
   return (
-    <div className="flex h-full overflow-hidden bg-slate-950 text-slate-200 font-sans">
+    <div className="flex h-full overflow-hidden bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-200 font-sans transition-colors duration-200">
       <Sidebar 
         viewMode={viewMode}
         setViewMode={setViewMode}
@@ -418,11 +440,11 @@ const App: React.FC = () => {
         onRenameWindow={handleRenameWindow}
       />
 
-      <div className={`flex-1 flex flex-col h-full min-w-0 transition-all duration-200 ${focusedArea === 'tabs' ? 'ring-1 ring-inset ring-slate-800' : 'opacity-90'}`}>
+      <div className={`flex-1 flex flex-col h-full min-w-0 transition-all duration-200 ${focusedArea === 'tabs' ? 'ring-1 ring-inset ring-slate-200 dark:ring-slate-800' : 'opacity-90'}`}>
         {/* Header */}
-        <header className="h-16 border-b border-slate-800 bg-slate-900/50 backdrop-blur-md flex items-center justify-between px-6 shrink-0 z-10 relative">
+        <header className="h-16 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-md flex items-center justify-between px-6 shrink-0 z-10 relative">
           <div className="flex items-center gap-4 flex-1">
-            <h1 className="text-lg font-semibold text-slate-100 hidden md:block">
+            <h1 className="text-lg font-semibold text-slate-800 dark:text-slate-100 hidden md:block">
               {sidebarSelectedWindowIds.length > 0 
                 ? `Selected Windows (${sidebarSelectedWindowIds.length})` 
                 : viewMode === ViewMode.ALL ? 'All Tabs'
@@ -432,18 +454,18 @@ const App: React.FC = () => {
             </h1>
             
             <div className="relative max-w-md w-full ml-auto sm:ml-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
               <input
                 type="text"
                 placeholder="Search tabs..."
                 value={searchQuery}
                 onFocus={() => setFocusedArea('tabs')}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded-full pl-10 pr-4 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-slate-600"
+                className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-200 rounded-full pl-10 pr-4 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-slate-500 dark:placeholder:text-slate-600"
               />
             </div>
 
-            <div className="h-6 w-px bg-slate-800 mx-2 hidden sm:block"></div>
+            <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 mx-2 hidden sm:block"></div>
             
             <div className="flex items-center gap-1">
               {checkedTabIds.length > 0 && (
@@ -457,22 +479,31 @@ const App: React.FC = () => {
                 </button>
               )}
 
-              {/* Help Trigger - Renamed class for Onboarding Target */}
+              {/* Theme Toggle */}
+              <button 
+                  onClick={toggleTheme}
+                  className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors"
+                  title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                >
+                  {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
+
+              {/* Help Trigger */}
               <div className="relative help-btn-wrapper">
                 <button 
                   id="help-btn"
                   onClick={() => setShowHelpMenu(!showHelpMenu)}
-                  className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
+                  className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors"
                   title="Help & Support"
                 >
                   <HelpCircle size={18} />
                 </button>
                 {showHelpMenu && (
-                   <div className="absolute right-0 top-full mt-2 w-48 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50 py-1">
-                    <button onClick={startFullTour} className="w-full text-left px-4 py-2 hover:bg-slate-800 text-sm flex items-center gap-2 text-slate-200">
+                   <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 py-1">
+                    <button onClick={startFullTour} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm flex items-center gap-2 text-slate-700 dark:text-slate-200">
                       <HelpCircle size={14} /> Start Interactive Tour
                     </button>
-                    <button onClick={() => { setShowUserGuide(true); setShowHelpMenu(false); }} className="w-full text-left px-4 py-2 hover:bg-slate-800 text-sm flex items-center gap-2 text-slate-200">
+                    <button onClick={() => { setShowUserGuide(true); setShowHelpMenu(false); }} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm flex items-center gap-2 text-slate-700 dark:text-slate-200">
                       <BookOpen size={14} /> View User Guide
                     </button>
                   </div>
@@ -482,17 +513,17 @@ const App: React.FC = () => {
               <div className="relative">
                 <button 
                   onClick={() => setShowExportMenu(!showExportMenu)}
-                  className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
+                  className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors"
                   title="Export Data"
                 >
                   <Download size={18} />
                 </button>
                 {showExportMenu && (
-                  <div className="absolute right-0 top-full mt-2 w-40 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50 py-1">
-                    <button onClick={() => handleExport('csv')} className="w-full text-left px-4 py-2 hover:bg-slate-800 text-sm flex items-center gap-2">
+                  <div className="absolute right-0 top-full mt-2 w-40 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 py-1">
+                    <button onClick={() => handleExport('csv')} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm flex items-center gap-2 text-slate-700 dark:text-slate-300">
                       <Table size={14} /> CSV
                     </button>
-                    <button onClick={() => handleExport('md')} className="w-full text-left px-4 py-2 hover:bg-slate-800 text-sm flex items-center gap-2">
+                    <button onClick={() => handleExport('md')} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm flex items-center gap-2 text-slate-700 dark:text-slate-300">
                       <FileText size={14} /> Markdown
                     </button>
                   </div>
@@ -501,7 +532,7 @@ const App: React.FC = () => {
 
               <button 
                 onClick={() => setShowPreview(!showPreview)}
-                className={`p-2 rounded-full transition-colors ${showPreview ? 'bg-indigo-600/20 text-indigo-400' : 'hover:bg-slate-800 text-slate-400'}`}
+                className={`p-2 rounded-full transition-colors ${showPreview ? 'bg-indigo-100 dark:bg-indigo-600/20 text-indigo-600 dark:text-indigo-400' : 'hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'}`}
                 title="Toggle Preview Panel"
               >
                 {showPreview ? <Eye size={18} /> : <EyeOff size={18} />}
@@ -509,7 +540,7 @@ const App: React.FC = () => {
 
               <button 
                 onClick={() => loadTabs()}
-                className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
+                className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors"
                 title="Refresh Tabs"
               >
                 <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
@@ -517,7 +548,7 @@ const App: React.FC = () => {
               
               <button 
                 onClick={focusOrOpenExtensionTab}
-                className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
+                className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors"
                 title="Open in new tab (Maximize)"
               >
                 <Maximize2 size={18} />
@@ -528,13 +559,15 @@ const App: React.FC = () => {
 
         {/* Info Banner */}
         <div className={`border-b px-6 py-2 flex items-start gap-3 shrink-0 ${
-          platformInfo.isExtension ? 'bg-green-900/20 border-green-900/50' : 'bg-blue-900/20 border-blue-900/50'
+          platformInfo.isExtension 
+            ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-900/50' 
+            : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-900/50'
         }`}>
           {platformInfo.isExtension 
-            ? <AlertCircle className="w-4 h-4 text-green-400 mt-0.5 shrink-0" />
-            : <Info className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" />
+            ? <AlertCircle className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+            : <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
           }
-          <p className={`text-xs leading-relaxed ${platformInfo.isExtension ? 'text-green-200/80' : 'text-blue-200/80'}`}>
+          <p className={`text-xs leading-relaxed ${platformInfo.isExtension ? 'text-green-800 dark:text-green-200/80' : 'text-blue-800 dark:text-blue-200/80'}`}>
             {platformInfo.isExtension 
               ? "Extension Active. Arrow keys to navigate. Left/Right to switch between Sidebar and Tabs."
               : DEMO_NOTICE
@@ -562,7 +595,7 @@ const App: React.FC = () => {
                    const groupTabs = group.tabIds.map(id => allTabs.find(t => t.id === id)).filter((t): t is Tab => t !== undefined);
                    return (
                      <div key={idx} className="space-y-2">
-                       <h3 className="text-lg font-semibold text-indigo-300 border-b border-slate-800 pb-1 mb-2">{group.categoryName}</h3>
+                       <h3 className="text-lg font-semibold text-indigo-600 dark:text-indigo-300 border-b border-slate-200 dark:border-slate-800 pb-1 mb-2">{group.categoryName}</h3>
                        <TabListView
                          tabs={groupTabs}
                          windows={windows}
