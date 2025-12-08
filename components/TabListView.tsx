@@ -8,6 +8,7 @@ export type SortDirection = 'asc' | 'desc';
 interface TabListViewProps {
   tabs: Tab[];
   windows: WindowData[];
+  windowNames: Record<string, string>;
   onActivate: (tab: Tab) => void;
   onClose: (tabId: string) => void;
   sortField: SortField;
@@ -20,6 +21,7 @@ interface TabListViewProps {
 export const TabListView: React.FC<TabListViewProps> = ({
   tabs,
   windows,
+  windowNames,
   onActivate,
   onClose,
   sortField,
@@ -41,8 +43,7 @@ export const TabListView: React.FC<TabListViewProps> = ({
   }, [selectedTabId]);
 
   const getWindowLabel = (windowId: string) => {
-    const name = windows.find(w => w.id === windowId)?.name || 'Unknown';
-    return name.replace(/Window\s*/i, '').replace('Current', '(Curr)');
+    return windowNames[windowId] || 'Unknown';
   };
 
   const getDomain = (url: string) => {
@@ -79,7 +80,7 @@ export const TabListView: React.FC<TabListViewProps> = ({
               <th className="w-10 px-4 py-3"></th>
               <Header field="title" label="Tab Name" />
               <Header field="url" label="Domain" />
-              <Header field="window" label="Window #" />
+              <Header field="window" label="Window" />
               <Header field="lastAccessed" label="Last Accessed" className="hidden lg:table-cell" />
               <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">Actions</th>
             </tr>
@@ -124,7 +125,7 @@ export const TabListView: React.FC<TabListViewProps> = ({
                     </span>
                   </td>
 
-                  {/* Window # */}
+                  {/* Window Name */}
                   <td className="px-4 py-3">
                     <span className="text-sm text-slate-400 truncate max-w-[150px] block" title={getWindowLabel(tab.windowId)}>
                       {getWindowLabel(tab.windowId)}

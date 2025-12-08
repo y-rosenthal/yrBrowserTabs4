@@ -5,6 +5,7 @@ import { ExternalLink, X, Clock, Copy, Globe } from 'lucide-react';
 interface PreviewPanelProps {
   tab: Tab | null;
   windows: WindowData[];
+  windowNames: Record<string, string>;
   onActivate: (tab: Tab) => void;
   onClose: (tabId: string) => void;
   onClosePanel: () => void;
@@ -13,6 +14,7 @@ interface PreviewPanelProps {
 export const PreviewPanel: React.FC<PreviewPanelProps> = ({ 
   tab, 
   windows, 
+  windowNames,
   onActivate, 
   onClose,
   onClosePanel
@@ -26,7 +28,7 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
     );
   }
 
-  const windowName = windows.find(w => w.id === tab.windowId)?.name || 'Unknown Window';
+  const windowName = windowNames[tab.windowId] || 'Unknown Window';
   const domain = new URL(tab.url).hostname;
 
   const handleCopyUrl = () => {
@@ -75,7 +77,7 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
         <div className="space-y-4 bg-slate-800/50 rounded-lg p-4 border border-slate-800">
           <div>
             <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Window</span>
-            <p className="text-sm text-slate-300 mt-1">{windowName.replace(/Window\s*/i, '').replace('Current', 'Current Window')}</p>
+            <p className="text-sm text-slate-300 mt-1">{windowName}</p>
           </div>
           
           <div>

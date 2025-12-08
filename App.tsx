@@ -2,18 +2,21 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { DEMO_NOTICE } from './constants';
 import { ViewMode, WindowData, Tab, TabGroup } from './types';
-import { Search, Info, ExternalLink, RefreshCw, AlertCircle, Maximize2, Download, Table, FileText, Layout, Eye, EyeOff } from 'lucide-react';
+import { Search, Info, ExternalLink, RefreshCw, AlertCircle, Maximize2, Download, Table, FileText, Eye, EyeOff } from 'lucide-react';
 import { organizeTabsWithAI } from './services/geminiService';
 import { getWindows, activateTab, closeTab, getPlatformInfo, moveTabs, createWindowWithTabs } from './services/tabService';
 import { TabListView, SortField, SortDirection } from './components/TabListView';
 import { PreviewPanel } from './components/PreviewPanel';
 import { MergeModal } from './components/MergeModal';
+import { generateWindowNames } from './services/nameGenerator';
 
 declare const chrome: any;
 
 const App: React.FC = () => {
   // --- STATE ---
   const [windows, setWindows] = useState<WindowData[]>([]);
+  const [windowNameMap, setWindowNameMap] = useState<Record<string, string>>({});
+  
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.ALL);
   const [activeWindowId, setActiveWindowId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -25,9 +28,12 @@ const App: React.FC = () => {
   // Selection & Features
   const [selectedTabId, setSelectedTabId] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(true);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+
+  // Merge State
+  const [sidebarSelectedWindowIds, setSidebarSelectedWindowIds] = useState<string[]>([]);
   const [showMergeModal, setShowMergeModal] = useState(false);
   const [isMergeProcessing, setIsMergeProcessing] = useState(false);
-  const [showExportMenu, setShowExportMenu] = useState(false);
 
   // Sorting
   const [sortField, setSortField] = useState<SortField>('lastAccessed');
@@ -46,6 +52,14 @@ const App: React.FC = () => {
     try {
       const data = await getWindows();
       setWindows(data);
+      
+      // Generate names based on current window list order
+      const names = generateWindowNames(data.map(w => w.id));
+      setWindowNameMap(names);
+      
+      // Clear selection if windows disappear
+      setSidebarSelectedWindowIds(prev => prev.filter(id => data.find(w => w.id === id)));
+      
     } catch (e) {
       showNotification("Error loading tabs", 'info');
     } finally {
@@ -87,8 +101,8 @@ const App: React.FC = () => {
           valB = b.title.toLowerCase();
           break;
         case 'window':
-          valA = windows.find(w => w.id === a.windowId)?.name.toLowerCase() || '';
-          valB = windows.find(w => w.id === b.windowId)?.name.toLowerCase() || '';
+          valA = windowNameMap[a.windowId] || '';
+          valB = windowNameMap[b.windowId] || '';
           break;
         case 'url':
           valA = a.url.toLowerCase();
@@ -104,7 +118,7 @@ const App: React.FC = () => {
       if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [sortField, sortDirection, windows]);
+  }, [sortField, sortDirection, windows, windowNameMap]);
 
   // Use this memoized list for rendering AND keyboard navigation
   const currentDisplayedTabs = useMemo(() => getSortedTabs(filteredTabs), [filteredTabs, getSortedTabs]);
@@ -205,12 +219,13 @@ const App: React.FC = () => {
     if (type === 'csv') {
       content = 'Title,URL,Window,Last Accessed\n';
       allTabs.forEach(t => {
-        const winName = windows.find(w => w.id === t.windowId)?.name || 'Unknown';
+        const winName = windowNameMap[t.windowId] || 'Unknown';
         content += `"${t.title.replace(/"/g, '""')}","${t.url}","${winName}","${new Date(t.lastAccessed).toLocaleString()}"\n`;
       });
     } else {
       windows.forEach(w => {
-        content += `=== ${w.name} (${w.tabs.length} tabs) ===\n`;
+        const winName = windowNameMap[w.id] || w.name;
+        content += `=== ${winName} (${w.tabs.length} tabs) ===\n`;
         w.tabs.forEach(t => {
           content += `  - ${t.title}\n    ${t.url}\n`;
         });
@@ -228,26 +243,22 @@ const App: React.FC = () => {
   };
 
   // --- MERGE ---
-  const handleMerge = async (sourceWindowIds: string[], targetWindowId: string | 'new') => {
+  const handleMerge = async (sourceWindowIdsOrdered: string[], targetWindowId: string) => {
     setIsMergeProcessing(true);
     try {
-      // Gather all tab IDs from source windows
-      // If target is one of the sources, we should exclude its tabs from being "moved" (redundant), 
-      // but the API handles moving to same window gracefully (no-op).
-      // However, if creating NEW window, we move all source tabs.
+      // sourceWindowIdsOrdered is the list of windows to move, in the order the user wants them appended.
+      // We iterate through them and move their tabs to the target.
       
-      const tabsToMove = windows
-        .filter(w => sourceWindowIds.includes(w.id))
-        .flatMap(w => w.tabs)
-        .map(t => t.id);
-
-      if (targetWindowId === 'new') {
-        await createWindowWithTabs(tabsToMove);
-      } else {
-        await moveTabs(tabsToMove, targetWindowId);
+      for (const sourceWinId of sourceWindowIdsOrdered) {
+        const win = windows.find(w => w.id === sourceWinId);
+        if (!win || win.tabs.length === 0) continue;
+        
+        const tabIds = win.tabs.map(t => t.id);
+        await moveTabs(tabIds, targetWindowId);
       }
       
-      showNotification("Tabs merged successfully!", 'success');
+      showNotification("Windows merged successfully!", 'success');
+      setSidebarSelectedWindowIds([]); // Clear selection
       await loadTabs(); // Refresh state
       setShowMergeModal(false);
     } catch (e) {
@@ -276,10 +287,18 @@ const App: React.FC = () => {
         viewMode={viewMode}
         setViewMode={setViewMode}
         windows={windows}
+        windowNames={windowNameMap}
         activeWindowId={activeWindowId}
         setActiveWindowId={setActiveWindowId}
         onOrganize={handleOrganizeTabs}
         isOrganizing={isOrganizing}
+        selectedWindowIds={sidebarSelectedWindowIds}
+        onToggleWindowSelection={(id) => {
+          setSidebarSelectedWindowIds(prev => 
+            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+          );
+        }}
+        onMergeSelected={() => setShowMergeModal(true)}
       />
 
       <div className="flex-1 flex flex-col h-full min-w-0">
@@ -289,7 +308,7 @@ const App: React.FC = () => {
             <h1 className="text-lg font-semibold text-slate-100 hidden md:block">
               {viewMode === ViewMode.ALL && 'All Tabs'}
               {viewMode === ViewMode.AI_GROUPED && 'AI Organized'}
-              {viewMode === ViewMode.BY_WINDOW && windows.find(w => w.id === activeWindowId)?.name.replace(/Window\s*/i, '')}
+              {viewMode === ViewMode.BY_WINDOW && (windowNameMap[activeWindowId || ''] || 'Current Window')}
             </h1>
             
             <div className="relative max-w-md w-full ml-auto sm:ml-4">
@@ -307,15 +326,7 @@ const App: React.FC = () => {
             
             {/* Action Buttons */}
             <div className="flex items-center gap-1">
-              {/* Merge Button */}
-              <button 
-                onClick={() => setShowMergeModal(true)}
-                className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
-                title="Merge Windows"
-              >
-                <Layout size={18} />
-              </button>
-
+              
               {/* Export Button */}
               <div className="relative">
                 <button 
@@ -416,6 +427,7 @@ const App: React.FC = () => {
                        <TabListView
                          tabs={groupTabs}
                          windows={windows}
+                         windowNames={windowNameMap}
                          onActivate={handleActivateTab}
                          onClose={handleCloseTab}
                          sortField={sortField}
@@ -433,6 +445,7 @@ const App: React.FC = () => {
               <TabListView 
                 tabs={currentDisplayedTabs}
                 windows={windows}
+                windowNames={windowNameMap}
                 onActivate={handleActivateTab}
                 onClose={handleCloseTab}
                 sortField={sortField}
@@ -449,6 +462,7 @@ const App: React.FC = () => {
             <PreviewPanel 
               tab={selectedTab} 
               windows={windows} 
+              windowNames={windowNameMap}
               onActivate={handleActivateTab} 
               onClose={handleCloseTab}
               onClosePanel={() => setShowPreview(false)}
@@ -460,6 +474,8 @@ const App: React.FC = () => {
         {showMergeModal && (
           <MergeModal 
             windows={windows}
+            windowNames={windowNameMap}
+            selectedWindowIds={sidebarSelectedWindowIds}
             onMerge={handleMerge}
             onClose={() => setShowMergeModal(false)}
             isProcessing={isMergeProcessing}
