@@ -1,0 +1,5 @@
+{
+  "name": "TabMaster AI",
+  "description": "A smart dashboard to visualize, search, and organize browser tabs across multiple windows. Features AI-powered tab grouping using Gemini. (Note: Uses mock data for demonstration as web apps cannot directly access system tabs).",
+  "requestFramePermissions": []
+}

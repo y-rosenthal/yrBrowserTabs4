@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 
+   Chrome Extension Popup Fix:
+   We set specific dimensions for the popup context, but allow the app to be responsive
+   if opened in a full tab (via the expand button).
+*/
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: #0f172a; /* Slate 950 */
+  color: #e2e8f0; /* Slate 200 */
+}
+
+/* Default to full viewport for new tab view */
+#root {
+  width: 100vw;
+  height: 100vh;
+}
+
+/* 
+   Target the popup explicitly if we can, but since we can't easily detect 'popup' vs 'tab' via CSS alone,
+   we set a min-width/height suitable for the popup, and the body styles in index.html generally constrain it.
+   
+   However, for the specific request of "making it larger", we will force the body to 800px 
+   ONLY if the viewport is small (like in a popup).
+*/
+@media (max-width: 800px) {
+  body {
+    width: 800px;
+    height: 600px;
+    overflow: hidden; 
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
