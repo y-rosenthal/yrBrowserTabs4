@@ -346,19 +346,48 @@ const App: React.FC = () => {
     else setCheckedTabIds(prev => prev.filter(id => !ids.includes(id)));
   };
 
-  const handleExport = (type: 'csv' | 'txt') => {
+  const handleExport = (type: 'csv' | 'md') => {
     let content = '';
-    const filename = `tabmaster-export-${new Date().toISOString().slice(0, 10)}`;
+    
+    // Construct local filename: tabmaster-export-YYYY-MM-DD_HH-MM
+    const now = new Date();
+    const YYYY = now.getFullYear();
+    const MM = String(now.getMonth() + 1).padStart(2, '0');
+    const DD = String(now.getDate()).padStart(2, '0');
+    const HH = String(now.getHours()).padStart(2, '0');
+    const MIN = String(now.getMinutes()).padStart(2, '0');
+    const filename = `tabmaster-export-${YYYY}-${MM}-${DD}_${HH}-${MIN}`;
+
     if (type === 'csv') {
-      content = 'Title,URL,Window,Last Accessed\n';
-      allTabs.forEach(t => content += `"${t.title.replace(/"/g, '""')}","${t.url}","${windowNameMap[t.windowId] || 'Unknown'}","${new Date(t.lastAccessed).toLocaleString()}"\n`);
+      // Order: Window, Last Accessed, Domain, Full URL, Title
+      content = 'Window,Last Accessed,Domain,Full URL,Title\n';
+      
+      allTabs.forEach(t => {
+        const winName = (windowNameMap[t.windowId] || 'Unknown').replace(/"/g, '""');
+        const lastAccessed = new Date(t.lastAccessed).toLocaleString().replace(/"/g, '""');
+        let domain = '';
+        try {
+          domain = new URL(t.url).hostname;
+        } catch (e) {
+          domain = 'local';
+        }
+        const url = t.url.replace(/"/g, '""');
+        const title = t.title.replace(/"/g, '""');
+
+        content += `"${winName}","${lastAccessed}","${domain}","${url}","${title}"\n`;
+      });
     } else {
+      // Markdown Format with blank lines between bullets
       windows.forEach(w => {
-        content += `=== ${windowNameMap[w.id] || w.name} (${w.tabs.length} tabs) ===\n`;
-        w.tabs.forEach(t => content += `  - ${t.title}\n    ${t.url}\n`);
+        const winName = windowNameMap[w.id] || w.name;
+        content += `### ${winName} (${w.tabs.length} tabs)\n\n`;
+        w.tabs.forEach(t => {
+          content += `- [${t.title}](${t.url})\n\n`;
+        });
         content += '\n';
       });
     }
+    
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -463,8 +492,8 @@ const App: React.FC = () => {
                     <button onClick={() => handleExport('csv')} className="w-full text-left px-4 py-2 hover:bg-slate-800 text-sm flex items-center gap-2">
                       <Table size={14} /> CSV
                     </button>
-                    <button onClick={() => handleExport('txt')} className="w-full text-left px-4 py-2 hover:bg-slate-800 text-sm flex items-center gap-2">
-                      <FileText size={14} /> Text
+                    <button onClick={() => handleExport('md')} className="w-full text-left px-4 py-2 hover:bg-slate-800 text-sm flex items-center gap-2">
+                      <FileText size={14} /> Markdown
                     </button>
                   </div>
                 )}
