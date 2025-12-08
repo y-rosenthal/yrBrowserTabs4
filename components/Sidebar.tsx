@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layout, Sparkles, Layers, Check, CopyPlus } from 'lucide-react';
+import { Layout, Sparkles, Layers, CopyPlus } from 'lucide-react';
 import { ViewMode, WindowData } from '../types';
 
 interface SidebarProps {
@@ -14,6 +14,8 @@ interface SidebarProps {
   selectedWindowIds: string[];
   onToggleWindowSelection: (id: string) => void;
   onMergeSelected: () => void;
+  focusedArea: 'sidebar' | 'tabs';
+  sidebarFocusIndex: number;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
@@ -27,12 +29,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOrganizing,
   selectedWindowIds,
   onToggleWindowSelection,
-  onMergeSelected
+  onMergeSelected,
+  focusedArea,
+  sidebarFocusIndex
 }) => {
   const totalTabs = windows.reduce((acc, win) => acc + win.tabs.length, 0);
 
+  // Helper to determine styling based on current view AND keyboard focus index
+  // Index mapping:
+  // 0: All Tabs
+  // 1: AI Organized
+  // 2...N: Windows
+  
+  const getButtonStyle = (index: number, isActiveView: boolean) => {
+    const isFocused = focusedArea === 'sidebar' && sidebarFocusIndex === index;
+    
+    let base = "w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all min-w-0 ";
+    
+    if (isActiveView) {
+      base += "bg-indigo-600/20 text-indigo-300 ";
+    } else {
+      base += "text-slate-400 hover:bg-slate-800 hover:text-slate-200 ";
+    }
+
+    if (isFocused) {
+      base += "ring-1 ring-indigo-400 bg-indigo-600/10 ";
+    }
+
+    return base;
+  };
+
   return (
-    <div className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col h-full shrink-0">
+    <div className={`w-64 bg-slate-900 border-r border-slate-800 flex flex-col h-full shrink-0 transition-colors duration-200 ${
+       focusedArea === 'sidebar' ? 'border-r-indigo-500/30' : ''
+    }`}>
       <div className="p-4 border-b border-slate-800">
         <div className="flex items-center gap-2 text-indigo-400 font-bold text-xl">
           <Layout className="w-6 h-6" />
@@ -50,11 +80,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           
           <button
             onClick={() => { setViewMode(ViewMode.ALL); setActiveWindowId(null); }}
-            className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-              viewMode === ViewMode.ALL 
-                ? 'bg-indigo-600/10 text-indigo-400' 
-                : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-            }`}
+            className={getButtonStyle(0, viewMode === ViewMode.ALL)}
           >
             <Layers size={18} />
             All Tabs
@@ -62,11 +88,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           <button
             onClick={() => { setViewMode(ViewMode.AI_GROUPED); setActiveWindowId(null); }}
-            className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-              viewMode === ViewMode.AI_GROUPED 
-                ? 'bg-purple-600/10 text-purple-400' 
-                : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-            }`}
+            className={getButtonStyle(1, viewMode === ViewMode.AI_GROUPED)}
           >
             <Sparkles size={18} />
             AI Organized
@@ -76,7 +98,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Windows List */}
         <div className="px-3 space-y-1">
           <p className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Windows</p>
-          {windows.map((win) => {
+          {windows.map((win, idx) => {
+            // Window indices start at 2
+            const listIndex = idx + 2; 
             const isSelected = selectedWindowIds.includes(win.id);
             const isActive = viewMode === ViewMode.BY_WINDOW && activeWindowId === win.id;
             const displayName = windowNames[win.id] || win.name;
@@ -98,11 +122,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     setViewMode(ViewMode.BY_WINDOW); 
                     setActiveWindowId(win.id); 
                   }}
-                  className={`flex-1 flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors min-w-0 ${
-                    isActive
-                      ? 'bg-slate-700 text-white' 
-                      : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-                  }`}
+                  className={getButtonStyle(listIndex, isActive)}
                 >
                   <div className="flex-1 text-left truncate" title={displayName}>{displayName}</div>
                   <span className="text-xs bg-slate-800 px-1.5 py-0.5 rounded text-slate-500">

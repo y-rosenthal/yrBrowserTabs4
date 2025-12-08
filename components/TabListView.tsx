@@ -16,6 +16,10 @@ interface TabListViewProps {
   onSort: (field: SortField) => void;
   selectedTabId: string | null;
   onSelect: (tabId: string) => void;
+  checkedTabIds: string[];
+  onToggleTabCheck: (tabId: string) => void;
+  onToggleAllChecks: (tabIds: string[], checked: boolean) => void;
+  focusedArea: 'sidebar' | 'tabs';
 }
 
 export const TabListView: React.FC<TabListViewProps> = ({
@@ -28,19 +32,23 @@ export const TabListView: React.FC<TabListViewProps> = ({
   sortDirection,
   onSort,
   selectedTabId,
-  onSelect
+  onSelect,
+  checkedTabIds,
+  onToggleTabCheck,
+  onToggleAllChecks,
+  focusedArea
 }) => {
   const rowRefs = useRef<{ [key: string]: HTMLTableRowElement | null }>({});
 
-  // Scroll selected item into view
+  // Scroll selected item into view only if tabs area is focused to prevent jumping when navigating sidebar
   useEffect(() => {
-    if (selectedTabId && rowRefs.current[selectedTabId]) {
+    if (focusedArea === 'tabs' && selectedTabId && rowRefs.current[selectedTabId]) {
       rowRefs.current[selectedTabId]?.scrollIntoView({
         behavior: 'smooth',
         block: 'nearest',
       });
     }
-  }, [selectedTabId]);
+  }, [selectedTabId, focusedArea]);
 
   const getWindowLabel = (windowId: string) => {
     return windowNames[windowId] || 'Unknown';
@@ -71,13 +79,28 @@ export const TabListView: React.FC<TabListViewProps> = ({
     </th>
   );
 
+  // Checkbox logic
+  const allVisibleChecked = tabs.length > 0 && tabs.every(t => checkedTabIds.includes(t.id));
+  const someVisibleChecked = tabs.some(t => checkedTabIds.includes(t.id));
+
   return (
-    <div className="w-full overflow-hidden rounded-lg border border-slate-800 bg-slate-900/50 shadow-sm">
+    <div className={`w-full overflow-hidden rounded-lg border bg-slate-900/50 shadow-sm transition-all duration-200 ${
+      focusedArea === 'tabs' ? 'border-indigo-500/50 ring-1 ring-indigo-500/20' : 'border-slate-800'
+    }`}>
       <div className="overflow-x-auto">
         <table className="w-full whitespace-nowrap text-left">
           <thead>
             <tr className="bg-slate-900 border-b border-slate-800">
-              <th className="w-10 px-4 py-3"></th>
+              <th className="w-10 px-4 py-3">
+                <input 
+                  type="checkbox"
+                  checked={allVisibleChecked}
+                  ref={input => { if (input) input.indeterminate = someVisibleChecked && !allVisibleChecked; }}
+                  onChange={(e) => onToggleAllChecks(tabs.map(t => t.id), e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-600 text-indigo-600 focus:ring-indigo-500 bg-slate-900 border"
+                />
+              </th>
+              <th className="w-10 px-4 py-3"></th> {/* Icon column */}
               <Header field="title" label="Tab Name" />
               <Header field="url" label="Domain" />
               <Header field="window" label="Window" />
@@ -88,6 +111,8 @@ export const TabListView: React.FC<TabListViewProps> = ({
           <tbody className="divide-y divide-slate-800/50">
             {tabs.map((tab) => {
               const isSelected = selectedTabId === tab.id;
+              const isChecked = checkedTabIds.includes(tab.id);
+              
               return (
                 <tr 
                   key={tab.id} 
@@ -99,6 +124,16 @@ export const TabListView: React.FC<TabListViewProps> = ({
                       : 'hover:bg-slate-800/60'
                   }`}
                 >
+                  {/* Checkbox */}
+                  <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                    <input 
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => onToggleTabCheck(tab.id)}
+                      className="w-4 h-4 rounded border-slate-600 text-indigo-600 focus:ring-indigo-500 bg-slate-900 border cursor-pointer"
+                    />
+                  </td>
+
                   {/* Favicon */}
                   <td className="px-4 py-3 text-center">
                      <img 

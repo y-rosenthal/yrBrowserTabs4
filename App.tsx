@@ -2,15 +2,13 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { DEMO_NOTICE } from './constants';
 import { ViewMode, WindowData, Tab, TabGroup } from './types';
-import { Search, Info, ExternalLink, RefreshCw, AlertCircle, Maximize2, Download, Table, FileText, Eye, EyeOff } from 'lucide-react';
+import { Search, Info, ExternalLink, RefreshCw, AlertCircle, Maximize2, Download, Table, FileText, Eye, EyeOff, FolderPlus } from 'lucide-react';
 import { organizeTabsWithAI } from './services/geminiService';
-import { getWindows, activateTab, closeTab, getPlatformInfo, moveTabs, createWindowWithTabs } from './services/tabService';
+import { getWindows, activateTab, closeTab, getPlatformInfo, moveTabs, createWindowWithTabs, focusOrOpenExtensionTab, subscribeToUpdates } from './services/tabService';
 import { TabListView, SortField, SortDirection } from './components/TabListView';
 import { PreviewPanel } from './components/PreviewPanel';
 import { MergeModal } from './components/MergeModal';
 import { generateWindowNames } from './services/nameGenerator';
-
-declare const chrome: any;
 
 const App: React.FC = () => {
   // --- STATE ---
@@ -26,7 +24,8 @@ const App: React.FC = () => {
   const [notification, setNotification] = useState<{msg: string, type: 'success' | 'info'} | null>(null);
   
   // Selection & Features
-  const [selectedTabId, setSelectedTabId] = useState<string | null>(null);
+  const [selectedTabId, setSelectedTabId] = useState<string | null>(null); // For Preview/Active
+  const [checkedTabIds, setCheckedTabIds] = useState<string[]>([]); // For Multi-select Actions
   const [showPreview, setShowPreview] = useState(true);
   const [showExportMenu, setShowExportMenu] = useState(false);
 
@@ -34,6 +33,10 @@ const App: React.FC = () => {
   const [sidebarSelectedWindowIds, setSidebarSelectedWindowIds] = useState<string[]>([]);
   const [showMergeModal, setShowMergeModal] = useState(false);
   const [isMergeProcessing, setIsMergeProcessing] = useState(false);
+
+  // Keyboard Navigation State
+  const [focusedArea, setFocusedArea] = useState<'sidebar' | 'tabs'>('tabs');
+  const [sidebarFocusIndex, setSidebarFocusIndex] = useState(0);
 
   // Sorting
   const [sortField, setSortField] = useState<SortField>('lastAccessed');
@@ -47,29 +50,45 @@ const App: React.FC = () => {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  const loadTabs = async () => {
-    setIsLoading(true);
+  const loadTabs = useCallback(async () => {
+    // Only set loading on initial load or manual refresh to avoid UI jitter on auto-refresh
+    if (windows.length === 0) setIsLoading(true);
+    
     try {
       const data = await getWindows();
       setWindows(data);
       
       // Generate names based on current window list order
-      const names = generateWindowNames(data.map(w => w.id));
-      setWindowNameMap(names);
+      // We only regenerate if we don't have a name for a window ID (stability)
+      setWindowNameMap(prev => {
+        const newNames = generateWindowNames(data.map(w => w.id));
+        return { ...prev, ...newNames };
+      });
       
-      // Clear selection if windows disappear
+      // Clear selections if items disappeared
       setSidebarSelectedWindowIds(prev => prev.filter(id => data.find(w => w.id === id)));
+      setCheckedTabIds(prev => {
+         const allTabIds = new Set(data.flatMap(w => w.tabs).map(t => t.id));
+         return prev.filter(id => allTabIds.has(id));
+      });
       
     } catch (e) {
+      console.error(e);
       showNotification("Error loading tabs", 'info');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [windows.length]);
 
   useEffect(() => {
     loadTabs();
-  }, []);
+    // Subscribe to Chrome events for auto-refresh
+    const unsubscribe = subscribeToUpdates(() => {
+      // Small delay handled in service, just trigger reload
+      loadTabs();
+    });
+    return unsubscribe;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- COMPUTED DATA ---
   const allTabs = useMemo(() => windows.flatMap(w => w.tabs), [windows]);
@@ -129,34 +148,83 @@ const App: React.FC = () => {
       // Ignore if typing in search input
       if ((e.target as HTMLElement).tagName === 'INPUT') return;
 
-      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-        e.preventDefault();
-        if (currentDisplayedTabs.length === 0) return;
-
-        const currentIndex = currentDisplayedTabs.findIndex(t => t.id === selectedTabId);
-        let nextIndex = 0;
-
-        if (currentIndex === -1) {
-          nextIndex = 0;
-        } else if (e.key === 'ArrowDown') {
-          nextIndex = Math.min(currentIndex + 1, currentDisplayedTabs.length - 1);
-        } else {
-          nextIndex = Math.max(currentIndex - 1, 0);
+      // --- PANE SWITCHING ---
+      if (e.key === 'ArrowLeft') {
+        if (focusedArea === 'tabs') {
+          setFocusedArea('sidebar');
+          return;
         }
+      }
+      if (e.key === 'ArrowRight') {
+        if (focusedArea === 'sidebar') {
+          setFocusedArea('tabs');
+          return;
+        }
+      }
+
+      // --- SIDEBAR NAVIGATION ---
+      if (focusedArea === 'sidebar') {
+        // Map conceptual index to actions:
+        // 0: All Tabs
+        // 1: AI Groups
+        // 2+: Windows
+        const totalItems = 2 + windows.length;
         
-        setSelectedTabId(currentDisplayedTabs[nextIndex].id);
-      } 
-      else if (e.key === 'Enter') {
-        if (selectedTabId) {
-          const tab = currentDisplayedTabs.find(t => t.id === selectedTabId);
-          if (tab) handleActivateTab(tab);
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setSidebarFocusIndex(prev => Math.min(prev + 1, totalItems - 1));
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setSidebarFocusIndex(prev => Math.max(prev - 1, 0));
+        } else if (e.key === 'Enter') {
+          // Activate selection
+          if (sidebarFocusIndex === 0) {
+            setViewMode(ViewMode.ALL);
+            setActiveWindowId(null);
+          } else if (sidebarFocusIndex === 1) {
+            setViewMode(ViewMode.AI_GROUPED);
+            setActiveWindowId(null);
+          } else {
+            const winIdx = sidebarFocusIndex - 2;
+            if (windows[winIdx]) {
+              setViewMode(ViewMode.BY_WINDOW);
+              setActiveWindowId(windows[winIdx].id);
+            }
+          }
+        }
+      }
+
+      // --- TABS NAVIGATION ---
+      if (focusedArea === 'tabs') {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          if (currentDisplayedTabs.length === 0) return;
+
+          const currentIndex = currentDisplayedTabs.findIndex(t => t.id === selectedTabId);
+          let nextIndex = 0;
+
+          if (currentIndex === -1) {
+            nextIndex = 0;
+          } else if (e.key === 'ArrowDown') {
+            nextIndex = Math.min(currentIndex + 1, currentDisplayedTabs.length - 1);
+          } else {
+            nextIndex = Math.max(currentIndex - 1, 0);
+          }
+          
+          setSelectedTabId(currentDisplayedTabs[nextIndex].id);
+        } 
+        else if (e.key === 'Enter') {
+          if (selectedTabId) {
+            const tab = currentDisplayedTabs.find(t => t.id === selectedTabId);
+            if (tab) handleActivateTab(tab);
+          }
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentDisplayedTabs, selectedTabId]);
+  }, [currentDisplayedTabs, selectedTabId, focusedArea, sidebarFocusIndex, windows]);
 
   // --- ACTIONS ---
   const handleSort = (field: SortField) => {
@@ -171,11 +239,13 @@ const App: React.FC = () => {
   const handleCloseTab = async (tabId: string) => {
     try {
       await closeTab(tabId);
+      // Optimistic update for demo mode / instant feedback
       setWindows(prev => prev.map(w => ({
         ...w,
         tabs: w.tabs.filter(t => t.id !== tabId)
       })));
       if (selectedTabId === tabId) setSelectedTabId(null);
+      setCheckedTabIds(prev => prev.filter(id => id !== tabId));
       showNotification("Tab closed", 'info');
     } catch (error) {
       showNotification("Failed to close tab", 'info');
@@ -208,6 +278,46 @@ const App: React.FC = () => {
       showNotification("Failed to organize tabs. Check console.", 'info');
     } finally {
       setIsOrganizing(false);
+    }
+  };
+
+  const handleMoveTabsToNewWindow = async () => {
+    if (checkedTabIds.length === 0) return;
+    
+    setIsLoading(true);
+    try {
+      await createWindowWithTabs(checkedTabIds);
+      setCheckedTabIds([]); // Clear selection
+      showNotification(`${checkedTabIds.length} tabs moved to new window`, 'success');
+      // If extension, event listeners will reload. If demo:
+      if (!platformInfo.isExtension) {
+         await loadTabs();
+      }
+    } catch (e) {
+      showNotification("Failed to move tabs", 'info');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // --- CHECKBOX ACTIONS ---
+  const toggleTabCheck = (tabId: string) => {
+    setCheckedTabIds(prev => 
+      prev.includes(tabId) ? prev.filter(id => id !== tabId) : [...prev, tabId]
+    );
+  };
+
+  const toggleAllChecks = (ids: string[], checked: boolean) => {
+    if (checked) {
+      // Add all visible IDs that aren't already checked
+      setCheckedTabIds(prev => {
+        const set = new Set(prev);
+        ids.forEach(id => set.add(id));
+        return Array.from(set);
+      });
+    } else {
+      // Remove all visible IDs
+      setCheckedTabIds(prev => prev.filter(id => !ids.includes(id)));
     }
   };
 
@@ -246,9 +356,6 @@ const App: React.FC = () => {
   const handleMerge = async (sourceWindowIdsOrdered: string[], targetWindowId: string) => {
     setIsMergeProcessing(true);
     try {
-      // sourceWindowIdsOrdered is the list of windows to move, in the order the user wants them appended.
-      // We iterate through them and move their tabs to the target.
-      
       for (const sourceWinId of sourceWindowIdsOrdered) {
         const win = windows.find(w => w.id === sourceWinId);
         if (!win || win.tabs.length === 0) continue;
@@ -258,8 +365,8 @@ const App: React.FC = () => {
       }
       
       showNotification("Windows merged successfully!", 'success');
-      setSidebarSelectedWindowIds([]); // Clear selection
-      await loadTabs(); // Refresh state
+      setSidebarSelectedWindowIds([]); 
+      await loadTabs(); 
       setShowMergeModal(false);
     } catch (e) {
       showNotification("Failed to merge windows.", 'info');
@@ -270,11 +377,7 @@ const App: React.FC = () => {
 
   // --- RENDER ---
   const openFullPage = () => {
-    if (typeof chrome !== 'undefined' && chrome.tabs) {
-      chrome.tabs.create({ url: 'index.html' });
-    } else {
-      window.open(window.location.href, '_blank');
-    }
+    focusOrOpenExtensionTab();
   };
 
   const selectedTab = useMemo(() => 
@@ -299,9 +402,11 @@ const App: React.FC = () => {
           );
         }}
         onMergeSelected={() => setShowMergeModal(true)}
+        focusedArea={focusedArea}
+        sidebarFocusIndex={sidebarFocusIndex}
       />
 
-      <div className="flex-1 flex flex-col h-full min-w-0">
+      <div className={`flex-1 flex flex-col h-full min-w-0 transition-all duration-200 ${focusedArea === 'tabs' ? 'ring-1 ring-inset ring-slate-800' : 'opacity-90'}`}>
         {/* Header */}
         <header className="h-16 border-b border-slate-800 bg-slate-900/50 backdrop-blur-md flex items-center justify-between px-6 shrink-0 z-10 relative">
           <div className="flex items-center gap-4 flex-1">
@@ -317,6 +422,7 @@ const App: React.FC = () => {
                 type="text"
                 placeholder="Search tabs..."
                 value={searchQuery}
+                onFocus={() => setFocusedArea('tabs')}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded-full pl-10 pr-4 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-slate-600"
               />
@@ -327,6 +433,18 @@ const App: React.FC = () => {
             {/* Action Buttons */}
             <div className="flex items-center gap-1">
               
+              {/* Checked Action */}
+              {checkedTabIds.length > 0 && (
+                <button
+                  onClick={handleMoveTabsToNewWindow}
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 mr-2 animate-in fade-in zoom-in duration-200"
+                  title="Move selected tabs to a new window"
+                >
+                  <FolderPlus size={14} />
+                  Move {checkedTabIds.length} Tabs
+                </button>
+              )}
+
               {/* Export Button */}
               <div className="relative">
                 <button 
@@ -368,7 +486,7 @@ const App: React.FC = () => {
               <button 
                 onClick={openFullPage}
                 className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
-                title="Open in new tab"
+                title="Open in new tab (Maximize)"
               >
                 <Maximize2 size={18} />
               </button>
@@ -390,16 +508,16 @@ const App: React.FC = () => {
             platformInfo.isExtension ? 'text-green-200/80' : 'text-blue-200/80'
           }`}>
             {platformInfo.isExtension 
-              ? "Running as Extension. Use Up/Down arrows to navigate, Enter to switch."
+              ? "Extension Active. Arrow keys to navigate. Left/Right to switch between Sidebar and Tabs."
               : DEMO_NOTICE
             }
           </p>
         </div>
 
         {/* Content & Preview Split */}
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden" onClick={() => setFocusedArea('tabs')}>
           <main className="flex-1 overflow-y-auto p-6 scroll-smooth">
-            {isLoading ? (
+            {isLoading && windows.length === 0 ? (
                <div className="flex flex-col items-center justify-center h-full text-slate-500">
                 <div className="w-8 h-8 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mb-4" />
                 <p>Loading tabs...</p>
@@ -435,6 +553,10 @@ const App: React.FC = () => {
                          onSort={handleSort}
                          selectedTabId={selectedTabId}
                          onSelect={setSelectedTabId}
+                         checkedTabIds={checkedTabIds}
+                         onToggleTabCheck={toggleTabCheck}
+                         onToggleAllChecks={toggleAllChecks}
+                         focusedArea={focusedArea}
                        />
                      </div>
                    );
@@ -453,6 +575,10 @@ const App: React.FC = () => {
                 onSort={handleSort}
                 selectedTabId={selectedTabId}
                 onSelect={setSelectedTabId}
+                checkedTabIds={checkedTabIds}
+                onToggleTabCheck={toggleTabCheck}
+                onToggleAllChecks={toggleAllChecks}
+                focusedArea={focusedArea}
               />
             )}
           </main>

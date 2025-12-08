@@ -88,6 +88,8 @@ export const createWindowWithTabs = async (tabIds: string[]): Promise<void> => {
 
     // Create window with the first tab
     const firstTabId = ids[0];
+    // Note: We don't remove the tab from the old window explicitly, 
+    // passing 'tabId' to windows.create moves it.
     const newWindow = await chrome.windows.create({ tabId: firstTabId, focused: true });
     
     // Move the rest
@@ -98,4 +100,54 @@ export const createWindowWithTabs = async (tabIds: string[]): Promise<void> => {
   } else {
     console.log(`[Mock] Creating new window with tabs ${tabIds.join(', ')}`);
   }
+};
+
+export const focusOrOpenExtensionTab = async () => {
+  if (isExtension) {
+    const extensionUrl = chrome.runtime.getURL('index.html');
+    
+    // Find existing tab
+    const tabs = await chrome.tabs.query({ url: extensionUrl });
+    
+    if (tabs.length > 0) {
+      // Focus the first found existing tab
+      const existingTab = tabs[0];
+      await chrome.windows.update(existingTab.windowId, { focused: true });
+      await chrome.tabs.update(existingTab.id, { active: true });
+      // Close the current popup if relevant (though window focus usually handles UX)
+    } else {
+      // Create new
+      await chrome.tabs.create({ url: extensionUrl });
+    }
+  } else {
+    window.open(window.location.href, '_blank');
+  }
+};
+
+export const subscribeToUpdates = (callback: () => void) => {
+  if (!isExtension) return () => {};
+
+  // Debounce the callback to avoid too many refreshes
+  let timeout: any;
+  const debouncedCallback = () => {
+    clearTimeout(timeout);
+    timeout = setTimeout(callback, 200);
+  };
+
+  const events = [
+    chrome.tabs.onCreated,
+    chrome.tabs.onUpdated,
+    chrome.tabs.onMoved,
+    chrome.tabs.onRemoved,
+    chrome.tabs.onAttached,
+    chrome.tabs.onDetached,
+    chrome.windows.onCreated,
+    chrome.windows.onRemoved
+  ];
+
+  events.forEach(event => event.addListener(debouncedCallback));
+
+  return () => {
+    events.forEach(event => event.removeListener(debouncedCallback));
+  };
 };
