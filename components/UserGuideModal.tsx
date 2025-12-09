@@ -2,6 +2,7 @@
 import React from 'react';
 import { X, Download, BookOpen } from 'lucide-react';
 // Import the README content as a raw string
+// Use relative path to ensure it resolves correctly without aliases
 import readmeContent from '../README.md?raw';
 
 interface UserGuideModalProps {

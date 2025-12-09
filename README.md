@@ -1,7 +1,36 @@
 
 # TabMaster AI
 
-**TabMaster AI** is a powerful dashboard to visualize, search, and organize browser tabs across multiple windows. It leverages Google's **Gemini AI** to automatically categorize messy tabs into logical groups and rename windows intelligently.
+**TabMaster AI** is a smart dashboard to organize your browser chaos. It uses Google's **Gemini AI** to automatically group your messy tabs and name your windows, so you can focus on what matters.
+
+---
+
+## 💿 How to Install (Quick Start)
+
+**You do not need to be a developer to use this!** Follow these simple steps:
+
+1.  **Download**: 
+    - Click the green **Code** button at the top of this GitHub page.
+    - Select **Download ZIP**.
+    - Unzip (extract) the downloaded file somewhere on your computer.
+
+2.  **Open Extensions in Chrome**:
+    - Open Google Chrome.
+    - In the address bar, type `chrome://extensions` and press **Enter**.
+
+3.  **Enable Developer Mode**:
+    - Look at the top right corner of the Extensions page.
+    - Click the toggle switch next to **Developer mode** to turn it **ON**.
+
+4.  **Load the Extension**:
+    - Three new buttons will appear at the top left. Click **Load unpacked**.
+    - A file picker will open. Navigate to the folder you just unzipped.
+    - **Crucial Step**: Select the folder named **`dist`** inside the project folder.
+    - Click **Select Folder** (or Open).
+
+5.  **Done!** 
+    - TabMaster AI is now installed. 
+    - Click the puzzle piece icon 🧩 in your Chrome toolbar to pin it and start organizing!
 
 ---
 
@@ -14,7 +43,6 @@
 
 ### ⚡ Navigation & Management
 - **Global Search**: Find any tab instantly by title or URL across all windows.
-- **Drag & Drop**: (Coming soon) currently supported via "Merge Windows" and "Move" buttons.
 - **Bulk Actions**: Select multiple tabs or windows to close, move, or merge them.
 - **Keyboard Support**: Full keyboard navigation (Arrows to move, Enter to switch).
 
@@ -47,26 +75,20 @@
 
 ---
 
-## 👨‍💻 Developer Setup
+## 👨‍💻 For Developers (Building from Source)
 
-This project is built with React, Vite, TailwindCSS, and the Google GenAI SDK.
+If you want to modify the code or build it yourself:
 
-### Installation
-1.  Clone the repository.
-2.  Install dependencies:
+1.  **Install**:
     ```bash
     npm install
     ```
-3.  Run development server:
+2.  **Run Development Server**:
     ```bash
     npm run dev
     ```
-
-### Building for Chrome Extension
-1.  Run the build command:
+3.  **Build**:
     ```bash
     npm run build
     ```
-2.  Open Chrome and navigate to `chrome://extensions`.
-3.  Enable **Developer Mode** (top right).
-4.  Click **Load Unpacked** and select the `dist` folder created by the build.
+    This generates the `dist` folder used in the installation steps above.

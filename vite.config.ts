@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     // Crucial for Chrome Extensions: use relative paths for assets
-    base: './', 
+    base: './',
     define: {
       // Polyfill process.env for the Google GenAI SDK and App code
       // Use fallback to empty string to ensure variable exists even if not set in .env
