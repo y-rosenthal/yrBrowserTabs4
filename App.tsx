@@ -4,7 +4,7 @@ import { Sidebar } from './components/Sidebar';
 import { DEMO_NOTICE } from './constants';
 import { ViewMode, WindowData, Tab, TabGroup, OnboardingStep } from './types';
 import { Search, Info, ExternalLink, RefreshCw, AlertCircle, Maximize2, Download, Table, FileText, Eye, EyeOff, FolderPlus, HelpCircle, BookOpen, Sun, Moon, Key } from 'lucide-react';
-import { organizeTabsWithAI } from './services/geminiService';
+import { organizeTabsWithAI, generateWindowNamesWithAI } from './services/geminiService';
 import { getWindows, activateTab, closeTab, getPlatformInfo, moveTabs, createWindowWithTabs, focusOrOpenExtensionTab, subscribeToUpdates } from './services/tabService';
 import { saveCustomWindowName, getStorageData, setOnboardingSeen, saveTheme, saveApiKey } from './services/storageService';
 import { TabListView, SortField, SortDirection } from './components/TabListView';
@@ -69,7 +69,15 @@ const App: React.FC = () => {
   const [activeWindowId, setActiveWindowId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [tabGroups, setTabGroups] = useState<TabGroup[]>([]);
+  
+  // AI States
   const [isOrganizing, setIsOrganizing] = useState(false);
+  const [lastOrganizedTabsSignature, setLastOrganizedTabsSignature] = useState<string>('');
+
+  // Renaming AI States
+  const [isRenamingWindows, setIsRenamingWindows] = useState(false);
+  const [previousWindowNameMap, setPreviousWindowNameMap] = useState<Record<string, string> | null>(null);
+
   const [isLoading, setIsLoading] = useState(true);
   const [notification, setNotification] = useState<{msg: string, type: 'success' | 'info'} | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
@@ -341,10 +349,21 @@ const App: React.FC = () => {
   };
 
   const handleOrganizeTabs = async () => {
+    // 1. Check for caching (Avoid re-running if tabs are identical)
+    // Create a simple signature of the current tabs state (ID + URL)
+    const currentSignature = JSON.stringify(allTabs.map(t => t.id + t.url).sort());
+    
+    if (tabGroups.length > 0 && currentSignature === lastOrganizedTabsSignature) {
+      setViewMode(ViewMode.AI_GROUPED);
+      showNotification("Showing cached groups", 'info');
+      return;
+    }
+
     setIsOrganizing(true);
     try {
       const groups = await organizeTabsWithAI(allTabs);
       setTabGroups(groups);
+      setLastOrganizedTabsSignature(currentSignature);
       setViewMode(ViewMode.AI_GROUPED);
       showNotification("Tabs organized by Gemini!", 'success');
     } catch (error: any) { 
@@ -356,6 +375,51 @@ const App: React.FC = () => {
     } finally { 
       setIsOrganizing(false); 
     }
+  };
+
+  const handleAutoRenameWindows = async () => {
+    setIsRenamingWindows(true);
+    try {
+      // 1. Backup current names if not already backed up
+      if (!previousWindowNameMap) {
+        setPreviousWindowNameMap({ ...windowNameMap });
+      }
+
+      // 2. Generate new names
+      const newNames = await generateWindowNamesWithAI(windows);
+      
+      // 3. Update State & Storage
+      const updatedMap = { ...windowNameMap, ...newNames };
+      setWindowNameMap(updatedMap);
+      
+      // Save all to storage (parallel)
+      await Promise.all(Object.entries(newNames).map(([id, name]) => saveCustomWindowName(id, name)));
+      
+      showNotification("Windows renamed by Gemini!", 'success');
+
+    } catch (error: any) {
+      if (error.message === "NO_API_KEY" || error.message === "INVALID_API_KEY") {
+        setShowApiKeyModal(true);
+      } else {
+        console.error(error);
+        showNotification("Failed to rename windows", 'info');
+      }
+    } finally {
+      setIsRenamingWindows(false);
+    }
+  };
+
+  const handleRevertWindowNames = async () => {
+    if (!previousWindowNameMap) return;
+    
+    // Restore state
+    setWindowNameMap(previousWindowNameMap);
+    
+    // Restore storage
+    await Promise.all(Object.entries(previousWindowNameMap).map(([id, name]) => saveCustomWindowName(id, name)));
+    
+    setPreviousWindowNameMap(null);
+    showNotification("Window names reverted", 'info');
   };
 
   const handleMoveTabsToNewWindow = async () => {
@@ -462,6 +526,10 @@ const App: React.FC = () => {
         focusedArea={focusedArea}
         sidebarFocusIndex={sidebarFocusIndex}
         onRenameWindow={handleRenameWindow}
+        onAutoRenameWindows={handleAutoRenameWindows}
+        onRevertWindowNames={handleRevertWindowNames}
+        isRenamingWindows={isRenamingWindows}
+        hasPreviousNames={!!previousWindowNameMap}
       />
 
       <div className={`flex-1 flex flex-col h-full min-w-0 transition-all duration-200 ${focusedArea === 'tabs' ? 'ring-1 ring-inset ring-slate-200 dark:ring-slate-800' : 'opacity-90'}`}>

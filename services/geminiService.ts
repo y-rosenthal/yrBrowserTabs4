@@ -1,27 +1,25 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { Tab, TabGroup } from "../types";
+import { Tab, TabGroup, WindowData } from "../types";
 import { getStorageData } from "./storageService";
 
-export const organizeTabsWithAI = async (tabs: Tab[]): Promise<TabGroup[]> => {
-  // 1. Fetch Key from Storage (Primary for Extensions)
+const getApiKey = async () => {
   const storage = await getStorageData();
   let apiKey = storage.apiKey;
-
-  // 2. Fallback to Env (Dev/Demo)
   if (!apiKey || apiKey.trim() === '') {
     apiKey = process.env.API_KEY;
   }
-
   if (!apiKey || apiKey.trim() === '') {
-    // Throwing error allows the UI to catch it and show the modal
     throw new Error("NO_API_KEY");
   }
+  return apiKey;
+};
 
-  // Initialize client only when needed
+export const organizeTabsWithAI = async (tabs: Tab[]): Promise<TabGroup[]> => {
+  const apiKey = await getApiKey();
   const ai = new GoogleGenAI({ apiKey });
 
-  // Prepare simple input for the model (Minimize token usage)
+  // Prepare simple input for the model
   const tabsInput = tabs.map(t => ({
     id: t.id,
     title: t.title,
@@ -69,6 +67,68 @@ export const organizeTabsWithAI = async (tabs: Tab[]): Promise<TabGroup[]> => {
     return result.groups || [];
   } catch (error: any) {
     console.error("Error organizing tabs with Gemini:", error);
+    if (error.message.includes('API_KEY')) {
+       throw new Error("INVALID_API_KEY");
+    }
+    throw error;
+  }
+};
+
+export const generateWindowNamesWithAI = async (windows: WindowData[]): Promise<Record<string, string>> => {
+  const apiKey = await getApiKey();
+  const ai = new GoogleGenAI({ apiKey });
+
+  // Simplify input: Window ID and list of tab titles
+  const windowsInput = windows.map(w => ({
+    id: w.id,
+    tabs: w.tabs.map(t => t.title || t.url).slice(0, 15) // Limit to 15 tabs per window to save tokens
+  }));
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: `You are a browser window organizer. I will provide a list of windows and their tab titles.
+      For each window, generate a short, descriptive name (max 4 words) based on the content of its tabs.
+      Examples: "Development Docs", "Social Media", "Shopping Research", "General Browsing".
+      
+      Input Data:
+      ${JSON.stringify(windowsInput)}`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            renamedWindows: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  windowId: { type: Type.STRING },
+                  name: { type: Type.STRING }
+                },
+                required: ["windowId", "name"]
+              }
+            }
+          }
+        }
+      }
+    });
+
+    const result = JSON.parse(response.text || '{ "renamedWindows": [] }');
+    
+    // Convert array to map
+    const nameMap: Record<string, string> = {};
+    if (result.renamedWindows && Array.isArray(result.renamedWindows)) {
+      result.renamedWindows.forEach((item: any) => {
+        if (item.windowId && item.name) {
+          nameMap[item.windowId] = item.name;
+        }
+      });
+    }
+    return nameMap;
+
+  } catch (error: any) {
+    console.error("Error renaming windows with Gemini:", error);
     if (error.message.includes('API_KEY')) {
        throw new Error("INVALID_API_KEY");
     }
