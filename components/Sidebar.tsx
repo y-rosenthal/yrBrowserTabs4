@@ -1,6 +1,6 @@
 
-import React, { useState, useMemo } from 'react';
-import { Layout, Sparkles, Layers, CopyPlus, Edit2, ArrowUp, ArrowDown, ArrowUpDown, Wand2, Undo2 } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Layout, Sparkles, Layers, CopyPlus, Edit2, ArrowUp, ArrowDown, ArrowUpDown, Wand2, Undo2, Redo2, GripVertical, CheckSquare, Square } from 'lucide-react';
 import { ViewMode, WindowData } from '../types';
 
 interface SidebarProps {
@@ -19,9 +19,21 @@ interface SidebarProps {
   sidebarFocusIndex: number;
   onRenameWindow: (id: string, newName: string) => void;
   onAutoRenameWindows: () => void;
-  onRevertWindowNames: () => void;
   isRenamingWindows: boolean;
-  hasPreviousNames: boolean;
+  
+  // Undo/Redo
+  onUndo: () => void;
+  onRedo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+
+  // Resizing
+  width: number;
+  setWidth: (w: number) => void;
+
+  // Selection
+  onSelectAll: () => void;
+  onDeselectAll: () => void;
 }
 
 type WindowSortField = 'name' | 'count';
@@ -43,9 +55,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   sidebarFocusIndex,
   onRenameWindow,
   onAutoRenameWindows,
-  onRevertWindowNames,
   isRenamingWindows,
-  hasPreviousNames
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
+  width,
+  setWidth,
+  onSelectAll,
+  onDeselectAll
 }) => {
   const totalTabs = windows.reduce((acc, win) => acc + win.tabs.length, 0);
   
@@ -56,6 +74,41 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Sorting State
   const [sortField, setSortField] = useState<WindowSortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  // Resizing State
+  const [isResizing, setIsResizing] = useState(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      // Constrain width between 200px and 600px
+      const newWidth = Math.max(200, Math.min(600, e.clientX));
+      setWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.body.style.cursor = 'default';
+      document.body.style.userSelect = 'auto';
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, setWidth]);
+
+  const handleMouseDownResize = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none'; // Prevent text selection while dragging
+  };
 
   const handleSort = (field: WindowSortField) => {
     if (sortField === field) {
@@ -128,9 +181,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <div className={`w-64 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col h-full shrink-0 transition-colors duration-200 ${
-       focusedArea === 'sidebar' ? 'border-r-indigo-500/50' : ''
-    }`}>
+    <div 
+      ref={sidebarRef}
+      className={`relative bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col h-full shrink-0 transition-colors duration-200 ${
+         focusedArea === 'sidebar' ? 'border-r-indigo-500/50' : ''
+      }`}
+      style={{ width }}
+    >
       <div className="p-4 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold text-xl">
           <Layout className="w-6 h-6" />
@@ -154,19 +211,77 @@ export const Sidebar: React.FC<SidebarProps> = ({
             All Tabs
           </button>
 
+          {/* Combined Organize Button */}
           <button
-            onClick={() => { setViewMode(ViewMode.AI_GROUPED); setActiveWindowId(null); }}
-            className={getButtonStyle(1, viewMode === ViewMode.AI_GROUPED)}
+            onClick={onOrganize}
+            disabled={isOrganizing}
+            className={`${getButtonStyle(1, viewMode === ViewMode.AI_GROUPED)} ${isOrganizing ? 'bg-indigo-50 dark:bg-indigo-900/30 ring-1 ring-indigo-500/50' : ''}`}
+            title="Group tabs using Gemini AI"
           >
-            <Sparkles size={18} />
-            AI Organized
+            {isOrganizing ? (
+              <>
+                 <div className="w-4.5 h-4.5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin shrink-0" />
+                 <span className="truncate text-indigo-600 dark:text-indigo-300 font-semibold animate-pulse">Analyzing Tabs...</span>
+              </>
+            ) : (
+              <>
+                <Sparkles size={18} className="shrink-0" />
+                <span className="truncate">Organize with AI</span>
+              </>
+            )}
           </button>
+        </div>
+
+        {/* Window Management Controls */}
+        <div className="px-3 mb-2">
+           <p className="px-3 text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider mb-2">Window Controls</p>
+           <div className="flex gap-1.5">
+             <button
+              onClick={onAutoRenameWindows}
+              disabled={isRenamingWindows}
+              className="flex-1 flex items-center justify-center gap-2 px-2 py-1.5 bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 border border-slate-300 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-800 rounded-md text-xs font-medium transition-all shadow-sm disabled:opacity-50"
+              title={selectedWindowIds.length > 0 ? "Auto-name selected windows" : "Auto-name all windows"}
+            >
+              {isRenamingWindows ? (
+                 <div className="w-3 h-3 border-2 border-slate-500/30 border-t-slate-500 rounded-full animate-spin" />
+              ) : (
+                <Wand2 size={13} />
+              )}
+              <span>Auto Name</span>
+            </button>
+
+            <button
+              onClick={onUndo}
+              disabled={!canUndo}
+              className="flex items-center justify-center p-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-300 dark:border-slate-700 rounded-md transition-all shadow-sm disabled:opacity-40 disabled:hover:bg-white disabled:dark:hover:bg-slate-800 disabled:cursor-not-allowed"
+              title="Undo name change"
+            >
+              <Undo2 size={14} />
+            </button>
+            
+            <button
+              onClick={onRedo}
+              disabled={!canRedo}
+              className="flex items-center justify-center p-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-300 dark:border-slate-700 rounded-md transition-all shadow-sm disabled:opacity-40 disabled:hover:bg-white disabled:dark:hover:bg-slate-800 disabled:cursor-not-allowed"
+              title="Redo name change"
+            >
+              <Redo2 size={14} />
+            </button>
+           </div>
         </div>
 
         {/* Windows List */}
         <div className="px-3 space-y-1">
           {/* Header with Sort Controls */}
-          <div className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 py-2 border-b border-transparent flex items-center justify-between px-3 mb-2 text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider select-none shadow-sm">
+          <div className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 py-2 border-b border-transparent flex items-center justify-between px-3 mb-1 text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider select-none shadow-sm">
+             <div className="flex items-center gap-2">
+                <button onClick={onSelectAll} className="hover:text-indigo-600 dark:hover:text-indigo-400" title="Check All">
+                  <CheckSquare size={14} />
+                </button>
+                <button onClick={onDeselectAll} className="hover:text-indigo-600 dark:hover:text-indigo-400" title="Uncheck All">
+                  <Square size={14} />
+                </button>
+             </div>
             <button 
               onClick={() => handleSort('name')}
               className="flex items-center gap-1 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors group"
@@ -247,64 +362,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })}
         </div>
 
-        {/* Actions - Now inline instead of footer */}
-        <div className="px-3 mt-6 pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
-          <p className="px-3 text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider mb-2">Actions</p>
-          
-          <button
-            onClick={onOrganize}
-            disabled={isOrganizing}
-            className="w-full flex items-center justify-start gap-3 px-3 py-2 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-md text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed text-left"
-          >
-            {isOrganizing ? (
-              <>
-                <div className="w-4 h-4 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin shrink-0" />
-                <span>Organizing...</span>
-              </>
-            ) : (
-              <>
-                <Sparkles size={18} className="shrink-0" />
-                <span>Group tabs with AI</span>
-              </>
-            )}
-          </button>
-
-          <div className="flex gap-2">
-            <button
-              onClick={onAutoRenameWindows}
-              disabled={isRenamingWindows}
-              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-md text-xs font-medium transition-all disabled:opacity-50"
-              title="Update window names with AI"
-            >
-              {isRenamingWindows ? (
-                 <div className="w-3 h-3 border-2 border-slate-500/30 border-t-slate-500 rounded-full animate-spin" />
-              ) : (
-                <Wand2 size={14} />
-              )}
-              <span>Auto-Name</span>
-            </button>
-
-             {hasPreviousNames && (
-              <button
-                onClick={onRevertWindowNames}
-                className="flex items-center justify-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-600 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400 border border-slate-300 dark:border-slate-700 hover:border-red-300 dark:hover:border-red-800 rounded-md text-xs font-medium transition-all"
-                title="Revert to previous window names"
-              >
-                <Undo2 size={14} />
-              </button>
-            )}
-          </div>
-
-          {selectedWindowIds.length > 1 && (
+        {/* Merge Button Only if needed */}
+        {selectedWindowIds.length > 1 && (
+          <div className="px-3 mt-4 pt-4 border-t border-slate-200 dark:border-slate-800 animate-in slide-in-from-left-2 fade-in duration-300">
             <button
               onClick={onMergeSelected}
-              className="w-full flex items-center justify-start gap-3 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-md text-sm font-medium transition-all animate-in slide-in-from-left-2 fade-in duration-300 text-left"
+              className="w-full flex items-center justify-start gap-3 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-md text-sm font-medium transition-all text-left"
             >
               <CopyPlus size={18} />
               <span>Merge ({selectedWindowIds.length}) Windows</span>
             </button>
-          )}
-        </div>
+          </div>
+        )}
+      </div>
+
+      {/* Resize Handle */}
+      <div 
+        className="absolute top-0 right-0 w-1.5 h-full cursor-col-resize hover:bg-indigo-500/50 active:bg-indigo-500 transition-colors z-20 flex flex-col justify-center items-center group opacity-0 hover:opacity-100 active:opacity-100"
+        onMouseDown={handleMouseDownResize}
+      >
+        <GripVertical size={12} className="text-white opacity-50" />
       </div>
     </div>
   );

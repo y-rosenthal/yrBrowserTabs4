@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { DEMO_NOTICE } from './constants';
 import { ViewMode, WindowData, Tab, TabGroup, OnboardingStep } from './types';
-import { Search, Info, ExternalLink, RefreshCw, AlertCircle, Maximize2, Download, Table, FileText, Eye, EyeOff, FolderPlus, HelpCircle, BookOpen, Sun, Moon, Key } from 'lucide-react';
+import { Search, Info, ExternalLink, RefreshCw, AlertCircle, Maximize2, Download, Table, FileText, Eye, EyeOff, FolderPlus, HelpCircle, BookOpen, Sun, Moon, Key, GripVertical } from 'lucide-react';
 import { organizeTabsWithAI, generateWindowNamesWithAI } from './services/geminiService';
 import { getWindows, activateTab, closeTab, getPlatformInfo, moveTabs, createWindowWithTabs, focusOrOpenExtensionTab, subscribeToUpdates } from './services/tabService';
 import { saveCustomWindowName, getStorageData, setOnboardingSeen, saveTheme, saveApiKey } from './services/storageService';
@@ -27,7 +27,7 @@ const FULL_TOUR_STEPS: OnboardingStep[] = [
     target: 'sidebar',
     position: 'left',
     title: 'Navigate & Rename',
-    content: 'Use the sidebar to filter by window. Double-click any window name to rename it (e.g., "Work Project", "Shopping"). Select checkboxes to filter views or merge windows.'
+    content: 'Use the sidebar to filter by window. Double-click any window name to rename it. Use "Auto Name" above the list to let AI name them for you.'
   },
   {
     target: 'top-bar',
@@ -36,10 +36,10 @@ const FULL_TOUR_STEPS: OnboardingStep[] = [
     content: 'Use the search bar here to find any tab instantly by title or URL across all your open windows.'
   },
   {
-    target: 'ai-btn',
-    position: 'bottom-left',
+    target: 'sidebar',
+    position: 'left',
     title: 'AI Organization',
-    content: 'Click "Group with Gemini" at the bottom left to let AI automatically categorize your tabs into logical groups.'
+    content: 'Click "Organize with AI" in the sidebar to let Gemini automatically categorize your tabs into logical groups.'
   },
   {
     target: 'tabs',
@@ -63,7 +63,11 @@ const FIRST_RUN_STEP: OnboardingStep[] = [
 const App: React.FC = () => {
   // --- STATE ---
   const [windows, setWindows] = useState<WindowData[]>([]);
+  
+  // Window Name History State
   const [windowNameMap, setWindowNameMap] = useState<Record<string, string>>({});
+  const [nameHistory, setNameHistory] = useState<Array<Record<string, string>>>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
   
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.ALL);
   const [activeWindowId, setActiveWindowId] = useState<string | null>(null);
@@ -76,7 +80,6 @@ const App: React.FC = () => {
 
   // Renaming AI States
   const [isRenamingWindows, setIsRenamingWindows] = useState(false);
-  const [previousWindowNameMap, setPreviousWindowNameMap] = useState<Record<string, string> | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [notification, setNotification] = useState<{msg: string, type: 'success' | 'info'} | null>(null);
@@ -85,11 +88,17 @@ const App: React.FC = () => {
   // Selection & Features
   const [selectedTabId, setSelectedTabId] = useState<string | null>(null); // For Preview/Active
   const [checkedTabIds, setCheckedTabIds] = useState<string[]>([]); // For Multi-select Actions
-  const [showPreview, setShowPreview] = useState(true);
+  const [showPreview, setShowPreview] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showUserGuide, setShowUserGuide] = useState(false);
   const [showHelpMenu, setShowHelpMenu] = useState(false);
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+
+  // Layout State
+  const [sidebarWidth, setSidebarWidth] = useState(256);
+  const [previewWidth, setPreviewWidth] = useState(384);
+  const [isPreviewResizing, setIsPreviewResizing] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
 
   // Onboarding
   const [onboardingIndex, setOnboardingIndex] = useState<number>(-1); // -1 means inactive
@@ -128,7 +137,44 @@ const App: React.FC = () => {
         document.documentElement.classList.remove('dark');
       }
     });
+
+    // 3. Click outside handler for export menu
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+        setShowExportMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Preview Resize Handler
+  useEffect(() => {
+    if (!isPreviewResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      // Width is calculated from the right edge of the screen
+      const newWidth = window.innerWidth - e.clientX;
+      // Constrain width
+      const clamped = Math.max(250, Math.min(800, newWidth));
+      setPreviewWidth(clamped);
+    };
+
+    const handleMouseUp = () => {
+      setIsPreviewResizing(false);
+      document.body.style.cursor = 'default';
+      document.body.style.userSelect = 'auto';
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isPreviewResizing]);
 
   const toggleTheme = async () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
@@ -145,6 +191,14 @@ const App: React.FC = () => {
   const showNotification = (msg: string, type: 'success' | 'info' = 'info') => {
     setNotification({ msg, type });
     setTimeout(() => setNotification(null), 3000);
+  };
+
+  const pushNameHistory = (newMap: Record<string, string>) => {
+    const newHistory = nameHistory.slice(0, historyIndex + 1);
+    newHistory.push(newMap);
+    setNameHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+    setWindowNameMap(newMap);
   };
 
   const loadTabs = useCallback(async () => {
@@ -167,7 +221,17 @@ const App: React.FC = () => {
         }
       });
       
-      setWindowNameMap(mergedNames);
+      // Initialize history if first load
+      if (historyIndex === -1) {
+        setWindowNameMap(mergedNames);
+        setNameHistory([mergedNames]);
+        setHistoryIndex(0);
+      } else {
+        // If reloading tabs but keeping names, just update state to ensure consistency
+        // (e.g. if new window appeared, it needs a name)
+        const currentMap = { ...mergedNames, ...windowNameMap };
+        setWindowNameMap(currentMap);
+      }
       
       // Onboarding check - First Run Logic
       if (!storage.hasSeenOnboarding && onboardingIndex === -1) {
@@ -188,7 +252,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [windows.length, onboardingIndex]);
+  }, [windows.length, onboardingIndex, historyIndex, windowNameMap]);
 
   useEffect(() => {
     loadTabs();
@@ -255,9 +319,25 @@ const App: React.FC = () => {
 
   const currentDisplayedTabs = useMemo(() => getSortedTabs(filteredTabs), [filteredTabs, getSortedTabs]);
 
+  // Navigation Tabs: Flattened list for keyboard navigation that matches the visual order
+  const navigationTabs = useMemo(() => {
+    // If in AI Grouped mode AND not searching AND no specific windows selected,
+    // the UI renders groups, so we need a flattened list of grouped tabs.
+    if (viewMode === ViewMode.AI_GROUPED && !searchQuery && sidebarSelectedWindowIds.length === 0) {
+      return tabGroups.flatMap(g => 
+        g.tabIds
+          .map(id => allTabs.find(t => t.id === id))
+          .filter((t): t is Tab => !!t)
+      );
+    }
+    // Otherwise, it renders the standard sorted list
+    return currentDisplayedTabs;
+  }, [viewMode, searchQuery, sidebarSelectedWindowIds, tabGroups, allTabs, currentDisplayedTabs]);
+
   // --- ACTIONS ---
   const handleRenameWindow = async (windowId: string, newName: string) => {
-    setWindowNameMap(prev => ({ ...prev, [windowId]: newName }));
+    const newMap = { ...windowNameMap, [windowId]: newName };
+    pushNameHistory(newMap);
     await saveCustomWindowName(windowId, newName);
     showNotification("Window renamed", 'success');
   };
@@ -303,7 +383,7 @@ const App: React.FC = () => {
           setSidebarFocusIndex(prev => Math.max(prev - 1, 0));
         } else if (e.key === 'Enter') {
           if (sidebarFocusIndex === 0) { setViewMode(ViewMode.ALL); setActiveWindowId(null); }
-          else if (sidebarFocusIndex === 1) { setViewMode(ViewMode.AI_GROUPED); setActiveWindowId(null); }
+          else if (sidebarFocusIndex === 1) { handleOrganizeTabs(); } // "Organize with AI" button logic
           else {
             const winIdx = sidebarFocusIndex - 2;
             if (windows[winIdx]) { setViewMode(ViewMode.BY_WINDOW); setActiveWindowId(windows[winIdx].id); }
@@ -312,22 +392,25 @@ const App: React.FC = () => {
       } else if (focusedArea === 'tabs') {
         if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
           e.preventDefault();
-          if (currentDisplayedTabs.length === 0) return;
-          const currentIndex = currentDisplayedTabs.findIndex(t => t.id === selectedTabId);
+          if (navigationTabs.length === 0) return;
+          
+          const currentIndex = navigationTabs.findIndex(t => t.id === selectedTabId);
           let nextIndex = 0;
+          
           if (currentIndex === -1) nextIndex = 0;
-          else if (e.key === 'ArrowDown') nextIndex = Math.min(currentIndex + 1, currentDisplayedTabs.length - 1);
+          else if (e.key === 'ArrowDown') nextIndex = Math.min(currentIndex + 1, navigationTabs.length - 1);
           else nextIndex = Math.max(currentIndex - 1, 0);
-          setSelectedTabId(currentDisplayedTabs[nextIndex].id);
+          
+          setSelectedTabId(navigationTabs[nextIndex].id);
         } else if (e.key === 'Enter' && selectedTabId) {
-          const tab = currentDisplayedTabs.find(t => t.id === selectedTabId);
+          const tab = navigationTabs.find(t => t.id === selectedTabId);
           if (tab) handleActivateTab(tab);
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentDisplayedTabs, selectedTabId, focusedArea, sidebarFocusIndex, windows, onboardingIndex]);
+  }, [navigationTabs, selectedTabId, focusedArea, sidebarFocusIndex, windows, onboardingIndex]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
@@ -349,13 +432,13 @@ const App: React.FC = () => {
   };
 
   const handleOrganizeTabs = async () => {
-    // 1. Check for caching (Avoid re-running if tabs are identical)
-    // Create a simple signature of the current tabs state (ID + URL)
     const currentSignature = JSON.stringify(allTabs.map(t => t.id + t.url).sort());
     
     if (tabGroups.length > 0 && currentSignature === lastOrganizedTabsSignature) {
-      setViewMode(ViewMode.AI_GROUPED);
-      showNotification("Showing cached groups", 'info');
+      if (viewMode !== ViewMode.AI_GROUPED) {
+        setViewMode(ViewMode.AI_GROUPED);
+        showNotification("Showing cached groups", 'info');
+      }
       return;
     }
 
@@ -380,22 +463,27 @@ const App: React.FC = () => {
   const handleAutoRenameWindows = async () => {
     setIsRenamingWindows(true);
     try {
-      // 1. Backup current names if not already backed up
-      if (!previousWindowNameMap) {
-        setPreviousWindowNameMap({ ...windowNameMap });
-      }
+      // Filter targets if selection exists
+      const targetWindows = sidebarSelectedWindowIds.length > 0
+        ? windows.filter(w => sidebarSelectedWindowIds.includes(w.id))
+        : windows;
 
-      // 2. Generate new names
-      const newNames = await generateWindowNamesWithAI(windows);
+      // 1. Generate new names
+      const newNames = await generateWindowNamesWithAI(targetWindows);
       
-      // 3. Update State & Storage
+      // 2. Update History & State
       const updatedMap = { ...windowNameMap, ...newNames };
-      setWindowNameMap(updatedMap);
+      pushNameHistory(updatedMap);
       
-      // Save all to storage (parallel)
+      // 3. Save all to storage (parallel)
       await Promise.all(Object.entries(newNames).map(([id, name]) => saveCustomWindowName(id, name)));
       
-      showNotification("Windows renamed by Gemini!", 'success');
+      showNotification(
+        sidebarSelectedWindowIds.length > 0 
+          ? `Renamed ${sidebarSelectedWindowIds.length} checked windows` 
+          : "All windows renamed", 
+        'success'
+      );
 
     } catch (error: any) {
       if (error.message === "NO_API_KEY" || error.message === "INVALID_API_KEY") {
@@ -409,17 +497,26 @@ const App: React.FC = () => {
     }
   };
 
-  const handleRevertWindowNames = async () => {
-    if (!previousWindowNameMap) return;
-    
-    // Restore state
-    setWindowNameMap(previousWindowNameMap);
-    
-    // Restore storage
-    await Promise.all(Object.entries(previousWindowNameMap).map(([id, name]) => saveCustomWindowName(id, name)));
-    
-    setPreviousWindowNameMap(null);
-    showNotification("Window names reverted", 'info');
+  const handleUndoNameChange = async () => {
+    if (historyIndex > 0) {
+      const prevIndex = historyIndex - 1;
+      const prevMap = nameHistory[prevIndex];
+      setHistoryIndex(prevIndex);
+      setWindowNameMap(prevMap);
+      await Promise.all(Object.entries(prevMap).map(([id, name]) => saveCustomWindowName(id, name)));
+      showNotification("Undo successful", 'info');
+    }
+  };
+
+  const handleRedoNameChange = async () => {
+    if (historyIndex < nameHistory.length - 1) {
+      const nextIndex = historyIndex + 1;
+      const nextMap = nameHistory[nextIndex];
+      setHistoryIndex(nextIndex);
+      setWindowNameMap(nextMap);
+      await Promise.all(Object.entries(nextMap).map(([id, name]) => saveCustomWindowName(id, name)));
+      showNotification("Redo successful", 'info');
+    }
   };
 
   const handleMoveTabsToNewWindow = async () => {
@@ -436,8 +533,6 @@ const App: React.FC = () => {
   const handleMerge = async (sourceIds: string[], targetId: string) => {
     setIsMergeProcessing(true);
     try {
-      // 1. Determine Source Windows and Target Window
-      // sourceIds are the windows to be emptied. targetId is the destination.
       for (const src of sourceIds) {
         const win = windows.find(w => w.id === src);
         if (!win || win.tabs.length === 0) continue;
@@ -456,10 +551,15 @@ const App: React.FC = () => {
     else setCheckedTabIds(prev => prev.filter(id => !ids.includes(id)));
   };
 
+  const handleMouseDownPreviewResize = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsPreviewResizing(true);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  };
+
   const handleExport = (type: 'csv' | 'md') => {
     let content = '';
-    
-    // Construct local filename: tabmaster-export-YYYY-MM-DD_HH-MM
     const now = new Date();
     const YYYY = now.getFullYear();
     const MM = String(now.getMonth() + 1).padStart(2, '0');
@@ -469,31 +569,21 @@ const App: React.FC = () => {
     const filename = `tabmaster-export-${YYYY}-${MM}-${DD}_${HH}-${MIN}`;
 
     if (type === 'csv') {
-      // Order: Window, Last Accessed, Domain, Full URL, Title
       content = 'Window,Last Accessed,Domain,Full URL,Title\n';
-      
       allTabs.forEach(t => {
         const winName = (windowNameMap[t.windowId] || 'Unknown').replace(/"/g, '""');
         const lastAccessed = new Date(t.lastAccessed).toLocaleString().replace(/"/g, '""');
         let domain = '';
-        try {
-          domain = new URL(t.url).hostname;
-        } catch (e) {
-          domain = 'local';
-        }
+        try { domain = new URL(t.url).hostname; } catch (e) { domain = 'local'; }
         const url = t.url.replace(/"/g, '""');
         const title = t.title.replace(/"/g, '""');
-
         content += `"${winName}","${lastAccessed}","${domain}","${url}","${title}"\n`;
       });
     } else {
-      // Markdown Format with blank lines between bullets
       windows.forEach(w => {
         const winName = windowNameMap[w.id] || w.name;
         content += `### ${winName} (${w.tabs.length} tabs)\n\n`;
-        w.tabs.forEach(t => {
-          content += `- [${t.title}](${t.url})\n\n`;
-        });
+        w.tabs.forEach(t => { content += `- [${t.title}](${t.url})\n\n`; });
         content += '\n';
       });
     }
@@ -527,9 +617,15 @@ const App: React.FC = () => {
         sidebarFocusIndex={sidebarFocusIndex}
         onRenameWindow={handleRenameWindow}
         onAutoRenameWindows={handleAutoRenameWindows}
-        onRevertWindowNames={handleRevertWindowNames}
         isRenamingWindows={isRenamingWindows}
-        hasPreviousNames={!!previousWindowNameMap}
+        onUndo={handleUndoNameChange}
+        onRedo={handleRedoNameChange}
+        canUndo={historyIndex > 0}
+        canRedo={historyIndex < nameHistory.length - 1}
+        width={sidebarWidth}
+        setWidth={setSidebarWidth}
+        onSelectAll={() => setSidebarSelectedWindowIds(windows.map(w => w.id))}
+        onDeselectAll={() => setSidebarSelectedWindowIds([])}
       />
 
       <div className={`flex-1 flex flex-col h-full min-w-0 transition-all duration-200 ${focusedArea === 'tabs' ? 'ring-1 ring-inset ring-slate-200 dark:ring-slate-800' : 'opacity-90'}`}>
@@ -606,7 +702,7 @@ const App: React.FC = () => {
                 )}
               </div>
 
-              <div className="relative">
+              <div className="relative" ref={exportMenuRef}>
                 <button 
                   onClick={() => setShowExportMenu(!showExportMenu)}
                   className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors"
@@ -690,7 +786,7 @@ const App: React.FC = () => {
               </div>
             ) : viewMode === ViewMode.AI_GROUPED && !searchQuery && sidebarSelectedWindowIds.length === 0 ? (
                <div className="space-y-8 pb-10">
-                 {tabGroups.length === 0 && <div className="flex flex-col items-center justify-center h-40 text-slate-500"><p>No groups. Click "Group with Gemini".</p></div>}
+                 {tabGroups.length === 0 && <div className="flex flex-col items-center justify-center h-40 text-slate-500"><p>No groups. Click "Organize with AI".</p></div>}
                  {tabGroups.map((group, idx) => {
                    const groupTabs = group.tabIds.map(id => allTabs.find(t => t.id === id)).filter((t): t is Tab => t !== undefined);
                    return (
@@ -737,14 +833,24 @@ const App: React.FC = () => {
           </main>
           
           {showPreview && (
-            <PreviewPanel 
-              tab={selectedTab} 
-              windows={windows} 
-              windowNames={windowNameMap}
-              onActivate={handleActivateTab} 
-              onClose={handleCloseTab}
-              onClosePanel={() => setShowPreview(false)}
-            />
+            <div className="relative flex h-full shrink-0 shadow-xl z-30" style={{ width: previewWidth }}>
+              {/* Resize Handle */}
+              <div 
+                className="absolute top-0 left-0 w-1.5 h-full cursor-col-resize hover:bg-indigo-500/50 active:bg-indigo-500 transition-colors z-20 flex flex-col justify-center items-center group"
+                onMouseDown={handleMouseDownPreviewResize}
+              >
+                 <div className="h-full w-full bg-slate-200 dark:bg-slate-700 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+
+              <PreviewPanel 
+                tab={selectedTab} 
+                windows={windows} 
+                windowNames={windowNameMap}
+                onActivate={handleActivateTab} 
+                onClose={handleCloseTab}
+                onClosePanel={() => setShowPreview(false)}
+              />
+            </div>
           )}
         </div>
         
