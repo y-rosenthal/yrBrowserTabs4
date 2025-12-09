@@ -1,3 +1,4 @@
+
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve, dirname } from 'path';
@@ -17,7 +18,8 @@ export default defineConfig(({ mode }) => {
     base: './', 
     define: {
       // Polyfill process.env for the Google GenAI SDK and App code
-      'process.env.API_KEY': JSON.stringify(env.API_KEY),
+      // Use fallback to empty string to ensure variable exists even if not set in .env
+      'process.env.API_KEY': JSON.stringify(env.API_KEY || ''),
       // Define global process to avoid "process is not defined" error in some libs
       'process.env': {} 
     },

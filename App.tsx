@@ -14,6 +14,7 @@ import { UserGuideModal } from './components/UserGuideModal';
 import { OnboardingTour } from './components/OnboardingTour';
 import { ApiKeyModal } from './components/ApiKeyModal';
 import { ConfirmModal } from './components/ConfirmModal';
+import { ErrorModal } from './components/ErrorModal';
 import { generateWindowNames } from './services/nameGenerator';
 
 // Full Tour
@@ -88,6 +89,7 @@ const App: React.FC = () => {
 
   const [isLoading, setIsLoading] = useState(true);
   const [notification, setNotification] = useState<{msg: string, type: 'success' | 'info'} | null>(null);
+  const [errorModalState, setErrorModalState] = useState<{title: string, message: string, details?: string} | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   
   // Selection & Features
@@ -219,6 +221,17 @@ const App: React.FC = () => {
     setTimeout(() => setNotification(null), 3000);
   };
 
+  const handleError = (title: string, userMessage: string, error?: any) => {
+    console.error(error);
+    let details = '';
+    if (error) {
+       if (typeof error === 'string') details = error;
+       else if (error instanceof Error) details = error.message + (error.stack ? `\n\n${error.stack}` : '');
+       else details = JSON.stringify(error, null, 2);
+    }
+    setErrorModalState({ title, message: userMessage, details });
+  };
+
   const pushNameHistory = (newMap: Record<string, string>) => {
     const newHistory = nameHistory.slice(0, historyIndex + 1);
     newHistory.push(newMap);
@@ -273,8 +286,7 @@ const App: React.FC = () => {
       });
       
     } catch (e) {
-      console.error(e);
-      showNotification("Error loading tabs", 'info');
+      handleError("Error Loading Tabs", "We encountered an issue while trying to access your browser tabs.", e);
     } finally {
       setIsLoading(false);
     }
@@ -497,11 +509,17 @@ const App: React.FC = () => {
       if (selectedTabId === tabId) setSelectedTabId(null);
       setCheckedTabIds(prev => prev.filter(id => id !== tabId));
       showNotification("Tab closed", 'info');
-    } catch (error) { showNotification("Failed to close tab", 'info'); }
+    } catch (error) { 
+      // Keep silent/toast for minor interaction errors to avoid disruption
+      showNotification("Failed to close tab", 'info'); 
+    }
   };
 
   const handleActivateTab = async (tab: Tab) => {
-    try { await activateTab(tab); } catch (error) { showNotification("Failed to switch tab", 'info'); }
+    try { await activateTab(tab); } 
+    catch (error) { 
+      showNotification("Failed to switch tab", 'info'); 
+    }
   };
 
   const handleOrganizeTabs = async () => {
@@ -527,7 +545,7 @@ const App: React.FC = () => {
         setPendingAction('ORGANIZE');
         setShowApiKeyModal(true);
       } else {
-        showNotification("Failed to organize tabs", 'info'); 
+        handleError("Organization Failed", "We couldn't analyze your tabs. This often happens due to network issues or API limits.", error); 
       }
     } finally { 
       setIsOrganizing(false); 
@@ -564,8 +582,7 @@ const App: React.FC = () => {
         setPendingAction('AUTO_RENAME');
         setShowApiKeyModal(true);
       } else {
-        console.error(error);
-        showNotification("Failed to rename windows", 'info');
+        handleError("Rename Failed", "We couldn't generate new names for your windows. Please check your API key or network.", error);
       }
     } finally {
       setIsRenamingWindows(false);
@@ -604,22 +621,8 @@ const App: React.FC = () => {
           await saveCustomWindowName(targetWindowId, group.categoryName);
         } else {
           // Create new window
-          // We can't synchronously get the ID of the new window easily without more complex logic in create
-          // For now, simpler: Create window with first tab
           if (group.tabIds.length === 0) continue;
-          // Note: moveTabs logic in services handles creation if we implemented it, 
-          // but here we manually create.
-          // Since create is async and returns ID, we need to adapt `createWindowWithTabs` to return ID?
-          // Current service `createWindowWithTabs` is void. 
-          // Implementation constraint: We will recycle as many as possible. If we run out, we create new.
-          // Since we can't easily get the ID from void function, we will skip creation logic for now
-          // OR better: Just create a window for the group.
-          
-          // Let's rely on moveTabs to target existing windows. 
-          // For new windows, we must split tabs out.
           await createWindowWithTabs(group.tabIds);
-          // We can't rename the new window immediately because we don't have its ID yet 
-          // without changing service. That's fine.
           continue; 
         }
 
@@ -634,8 +637,7 @@ const App: React.FC = () => {
       setViewMode(ViewMode.ALL); // Switch back to see results
 
     } catch (e) {
-      console.error(e);
-      showNotification("Reorganization failed", 'info');
+      handleError("Reorganization Failed", "Something went wrong while moving your tabs. Changes may be partial.", e);
     } finally {
       setIsMergeProcessing(false);
     }
@@ -683,8 +685,7 @@ const App: React.FC = () => {
       showNotification("Undo successful", 'success');
 
     } catch (e) {
-      console.error(e);
-      showNotification("Undo failed", 'info');
+      handleError("Undo Failed", "We couldn't restore the previous layout.", e);
     } finally {
       setIsMergeProcessing(false);
     }
@@ -720,7 +721,11 @@ const App: React.FC = () => {
       setCheckedTabIds([]);
       showNotification(`${checkedTabIds.length} tabs moved`, 'success');
       if (!platformInfo.isExtension) await loadTabs();
-    } catch (e) { showNotification("Failed to move tabs", 'info'); } finally { setIsLoading(false); }
+    } catch (e) { 
+      handleError("Move Failed", "Could not move tabs to a new window.", e);
+    } finally { 
+      setIsLoading(false); 
+    }
   };
 
   const handleMerge = async (sourceIds: string[], targetId: string) => {
@@ -735,7 +740,11 @@ const App: React.FC = () => {
       setSidebarSelectedWindowIds([]);
       await loadTabs();
       setShowMergeModal(false);
-    } catch (e) { showNotification("Failed to merge", 'info'); } finally { setIsMergeProcessing(false); }
+    } catch (e) { 
+      handleError("Merge Failed", "Could not merge the selected windows.", e);
+    } finally { 
+      setIsMergeProcessing(false); 
+    }
   };
 
   const toggleTabCheck = (id: string) => setCheckedTabIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -1142,6 +1151,15 @@ const App: React.FC = () => {
         
         {showApiKeyModal && (
           <ApiKeyModal onClose={() => setShowApiKeyModal(false)} onSave={handleSaveApiKey} />
+        )}
+        
+        {errorModalState && (
+          <ErrorModal 
+            title={errorModalState.title}
+            message={errorModalState.message}
+            technicalDetails={errorModalState.details}
+            onClose={() => setErrorModalState(null)}
+          />
         )}
 
         {onboardingIndex >= 0 && (
