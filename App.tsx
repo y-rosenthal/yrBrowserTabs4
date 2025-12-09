@@ -583,7 +583,11 @@ const App: React.FC = () => {
 
         {/* Content */}
         <div className="flex flex-1 overflow-hidden" onClick={() => setFocusedArea('tabs')}>
-          <main className="flex-1 overflow-y-auto p-6 scroll-smooth">
+          {/* Main Container: Removed top padding to fix sticky header gap issue */}
+          <main className="flex-1 overflow-y-auto px-6 pb-6 pt-0 scroll-smooth">
+            {/* Visual Spacer to replace padding-top, scrolls away so sticky header hits the top edge */}
+            <div className="h-6"></div> 
+            
             {isLoading && windows.length === 0 ? (
                <div className="flex flex-col items-center justify-center h-full text-slate-500">
                 <div className="w-8 h-8 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mb-4" />
