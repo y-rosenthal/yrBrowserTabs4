@@ -1,22 +1,27 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { Tab, TabGroup } from "../types";
+import { getStorageData } from "./storageService";
 
 export const organizeTabsWithAI = async (tabs: Tab[]): Promise<TabGroup[]> => {
-  // Check for API Key inside the function, not at module level
-  const apiKey = process.env.API_KEY;
+  // 1. Fetch Key from Storage (Primary for Extensions)
+  const storage = await getStorageData();
+  let apiKey = storage.apiKey;
 
-  if (!apiKey) {
-    console.warn("No API Key found for Gemini Service");
-    // Return a dummy grouping if no key is present for demo resilience
-    return [
-      { categoryName: "No API Key (Demo)", tabIds: tabs.map(t => t.id) }
-    ];
+  // 2. Fallback to Env (Dev/Demo)
+  if (!apiKey || apiKey.trim() === '') {
+    apiKey = process.env.API_KEY;
+  }
+
+  if (!apiKey || apiKey.trim() === '') {
+    // Throwing error allows the UI to catch it and show the modal
+    throw new Error("NO_API_KEY");
   }
 
   // Initialize client only when needed
   const ai = new GoogleGenAI({ apiKey });
 
-  // Prepare simple input for the model
+  // Prepare simple input for the model (Minimize token usage)
   const tabsInput = tabs.map(t => ({
     id: t.id,
     title: t.title,
@@ -62,8 +67,11 @@ export const organizeTabsWithAI = async (tabs: Tab[]): Promise<TabGroup[]> => {
 
     const result = JSON.parse(response.text || '{ "groups": [] }');
     return result.groups || [];
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error organizing tabs with Gemini:", error);
+    if (error.message.includes('API_KEY')) {
+       throw new Error("INVALID_API_KEY");
+    }
     throw error;
   }
 };

@@ -3,10 +3,10 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { DEMO_NOTICE } from './constants';
 import { ViewMode, WindowData, Tab, TabGroup, OnboardingStep } from './types';
-import { Search, Info, ExternalLink, RefreshCw, AlertCircle, Maximize2, Download, Table, FileText, Eye, EyeOff, FolderPlus, HelpCircle, BookOpen, Sun, Moon } from 'lucide-react';
+import { Search, Info, ExternalLink, RefreshCw, AlertCircle, Maximize2, Download, Table, FileText, Eye, EyeOff, FolderPlus, HelpCircle, BookOpen, Sun, Moon, Key } from 'lucide-react';
 import { organizeTabsWithAI } from './services/geminiService';
 import { getWindows, activateTab, closeTab, getPlatformInfo, moveTabs, createWindowWithTabs, focusOrOpenExtensionTab, subscribeToUpdates } from './services/tabService';
-import { saveCustomWindowName, getStorageData, setOnboardingSeen, saveTheme } from './services/storageService';
+import { saveCustomWindowName, getStorageData, setOnboardingSeen, saveTheme, saveApiKey } from './services/storageService';
 import { TabListView, SortField, SortDirection } from './components/TabListView';
 import { PreviewPanel } from './components/PreviewPanel';
 import { MergeModal } from './components/MergeModal';
@@ -267,6 +267,12 @@ const App: React.FC = () => {
     }
   };
 
+  const handleSaveApiKey = async (key: string) => {
+    await saveApiKey(key);
+    setShowApiKeyModal(false);
+    showNotification("API Key saved successfully", "success");
+  };
+
   // --- KEYBOARD NAV ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -335,18 +341,21 @@ const App: React.FC = () => {
   };
 
   const handleOrganizeTabs = async () => {
-    if (!process.env.API_KEY) { 
-      setShowApiKeyModal(true);
-      return; 
-    }
-    
     setIsOrganizing(true);
     try {
       const groups = await organizeTabsWithAI(allTabs);
       setTabGroups(groups);
       setViewMode(ViewMode.AI_GROUPED);
       showNotification("Tabs organized by Gemini!", 'success');
-    } catch (error) { showNotification("Failed to organize tabs", 'info'); } finally { setIsOrganizing(false); }
+    } catch (error: any) { 
+      if (error.message === "NO_API_KEY" || error.message === "INVALID_API_KEY") {
+        setShowApiKeyModal(true);
+      } else {
+        showNotification("Failed to organize tabs", 'info'); 
+      }
+    } finally { 
+      setIsOrganizing(false); 
+    }
   };
 
   const handleMoveTabsToNewWindow = async () => {
@@ -521,6 +530,10 @@ const App: React.FC = () => {
                     <button onClick={() => { setShowUserGuide(true); setShowHelpMenu(false); }} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm flex items-center gap-2 text-slate-700 dark:text-slate-200">
                       <BookOpen size={14} /> View User Guide
                     </button>
+                    <div className="h-px bg-slate-100 dark:bg-slate-800 my-1"></div>
+                     <button onClick={() => { setShowApiKeyModal(true); setShowHelpMenu(false); }} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                      <Key size={14} /> Set API Key
+                    </button>
                   </div>
                 )}
               </div>
@@ -684,7 +697,7 @@ const App: React.FC = () => {
         )}
         
         {showApiKeyModal && (
-          <ApiKeyModal onClose={() => setShowApiKeyModal(false)} />
+          <ApiKeyModal onClose={() => setShowApiKeyModal(false)} onSave={handleSaveApiKey} />
         )}
 
         {onboardingIndex >= 0 && (

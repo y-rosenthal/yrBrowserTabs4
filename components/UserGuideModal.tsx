@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { X, Download, BookOpen } from 'lucide-react';
+import { X, Download, BookOpen, Key } from 'lucide-react';
 
 interface UserGuideModalProps {
   onClose: () => void;
@@ -30,10 +30,9 @@ TabMaster AI helps you organize, search, and manage browser tabs across multiple
 ### 3. Organization
 - **AI Grouping**: Click "Group with Gemini" to have AI automatically categorize your tabs based on their content.
   > **Requirement**: This feature requires a valid Gemini API Key.
-  > 1. Get a free key from [Google AI Studio](https://aistudio.google.com/app/apikey).
-  > 2. Create a file named **.env** in the project root.
-  > 3. Add the line: **API_KEY=your_key_here**
-  > 4. Restart your development server.
+  > 1. Click the **Key Icon** in the top-right menu (or wait for the prompt).
+  > 2. Paste your API Key from Google AI Studio.
+  > 3. The key is saved securely in your browser's local storage.
 - **Search**: Use the top search bar to filter tabs by title or URL across all windows.
 
 ### 4. Persistence

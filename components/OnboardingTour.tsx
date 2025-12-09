@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { OnboardingStep } from '../types';
-import { ArrowRight, X, Check, Maximize2, HelpCircle, Sparkles, ExternalLink } from 'lucide-react';
+import { ArrowRight, X, Check, Maximize2, HelpCircle, Sparkles, ExternalLink, Key } from 'lucide-react';
 
 interface OnboardingTourProps {
   stepIndex: number;
@@ -128,10 +128,11 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
              <div className="flex items-start gap-2">
                <Sparkles className="text-indigo-500 mt-0.5 shrink-0" size={14} />
                <div className="text-xs text-slate-600 dark:text-slate-400">
-                 <span className="font-semibold text-slate-800 dark:text-slate-200 block mb-0.5">AI Features Required Setup</span>
-                 The "Group with Gemini" feature requires a Google Gemini API Key. 
+                 <span className="font-semibold text-slate-800 dark:text-slate-200 block mb-0.5">AI Features</span>
+                 The "Group with Gemini" feature requires an API Key. You can set this up later via the 
+                 <strong className="inline-flex items-center gap-1 mx-1 text-slate-800 dark:text-slate-200"><Key size={10} /> Menu</strong>.
                  <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 text-indigo-600 dark:text-indigo-400 hover:underline ml-1 font-medium">
-                   Get a free key here <ExternalLink size={10} />
+                   Get key <ExternalLink size={10} />
                  </a>
                </div>
              </div>

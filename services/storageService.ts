@@ -8,7 +8,8 @@ const isExtension = typeof chrome !== 'undefined' && !!chrome.storage;
 const MOCK_STORAGE: StorageData = {
   customWindowNames: {},
   hasSeenOnboarding: false,
-  theme: 'light' // Default to light mode
+  theme: 'light', // Default to light mode
+  apiKey: ''
 };
 
 // In-memory fallback for demo mode
@@ -17,11 +18,12 @@ let memStorage = { ...MOCK_STORAGE };
 export const getStorageData = async (): Promise<StorageData> => {
   if (isExtension) {
     return new Promise((resolve) => {
-      chrome.storage.local.get(['customWindowNames', 'hasSeenOnboarding', 'theme'], (result: any) => {
+      chrome.storage.local.get(['customWindowNames', 'hasSeenOnboarding', 'theme', 'apiKey'], (result: any) => {
         resolve({
           customWindowNames: result.customWindowNames || {},
           hasSeenOnboarding: result.hasSeenOnboarding || false,
-          theme: result.theme || 'light'
+          theme: result.theme || 'light',
+          apiKey: result.apiKey || ''
         });
       });
     });
@@ -52,5 +54,13 @@ export const saveTheme = async (theme: 'light' | 'dark'): Promise<void> => {
     await chrome.storage.local.set({ theme });
   } else {
     memStorage.theme = theme;
+  }
+};
+
+export const saveApiKey = async (apiKey: string): Promise<void> => {
+  if (isExtension) {
+    await chrome.storage.local.set({ apiKey });
+  } else {
+    memStorage.apiKey = apiKey;
   }
 };

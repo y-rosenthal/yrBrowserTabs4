@@ -38,4 +38,5 @@ export interface StorageData {
   customWindowNames: Record<string, string>; // Map windowId -> Custom Name
   hasSeenOnboarding: boolean;
   theme: 'light' | 'dark';
+  apiKey?: string;
 }
