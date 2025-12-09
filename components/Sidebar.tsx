@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { Layout, Sparkles, Layers, CopyPlus, Edit2 } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Layout, Sparkles, Layers, CopyPlus, Edit2, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { ViewMode, WindowData } from '../types';
 
 interface SidebarProps {
@@ -19,6 +19,9 @@ interface SidebarProps {
   sidebarFocusIndex: number;
   onRenameWindow: (id: string, newName: string) => void;
 }
+
+type WindowSortField = 'name' | 'count';
+type SortDirection = 'asc' | 'desc';
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
   viewMode, 
@@ -41,6 +44,38 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Renaming State
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
+
+  // Sorting State
+  const [sortField, setSortField] = useState<WindowSortField>('name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  const handleSort = (field: WindowSortField) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection(field === 'count' ? 'desc' : 'asc'); // Default count to desc (high to low)
+    }
+  };
+
+  const sortedWindows = useMemo(() => {
+    return [...windows].sort((a, b) => {
+      let valA: string | number = '';
+      let valB: string | number = '';
+
+      if (sortField === 'name') {
+        valA = (windowNames[a.id] || a.name).toLowerCase();
+        valB = (windowNames[b.id] || b.name).toLowerCase();
+      } else {
+        valA = a.tabs.length;
+        valB = b.tabs.length;
+      }
+
+      if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+      if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [windows, windowNames, sortField, sortDirection]);
 
   const startEditing = (id: string, currentName: string) => {
     setEditingId(id);
@@ -77,6 +112,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       base += "ring-1 ring-indigo-400 bg-indigo-50 dark:bg-indigo-600/10 ";
     }
     return base;
+  };
+
+  const SortIcon = ({ field }: { field: WindowSortField }) => {
+    if (sortField !== field) return <ArrowUpDown size={12} className="opacity-0 group-hover:opacity-30" />;
+    return sortDirection === 'asc' ? <ArrowUp size={12} className="text-indigo-600 dark:text-indigo-400" /> : <ArrowDown size={12} className="text-indigo-600 dark:text-indigo-400" />;
   };
 
   return (
@@ -117,8 +157,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Windows List */}
         <div className="px-3 space-y-1">
-          <p className="px-3 text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider mb-2">Windows</p>
-          {windows.map((win, idx) => {
+          {/* Header with Sort Controls */}
+          <div className="flex items-center justify-between px-3 mb-2 text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider select-none">
+            <button 
+              onClick={() => handleSort('name')}
+              className="flex items-center gap-1 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors group"
+            >
+              Windows
+              <SortIcon field="name" />
+            </button>
+            <button 
+               onClick={() => handleSort('count')}
+               className="flex items-center gap-1 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors group"
+               title="Sort by tab count"
+            >
+              #
+              <SortIcon field="count" />
+            </button>
+          </div>
+
+          {sortedWindows.map((win, idx) => {
             const listIndex = idx + 2; 
             const isSelected = selectedWindowIds.includes(win.id);
             const isActive = viewMode === ViewMode.BY_WINDOW && activeWindowId === win.id;
@@ -171,7 +229,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       <Edit2 size={12} />
                     </div>
 
-                    <span className="text-xs bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-500">
+                    <span className="text-xs bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-500 font-mono">
                       {win.tabs.length}
                     </span>
                   </button>

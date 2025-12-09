@@ -70,7 +70,7 @@ export const TabListView: React.FC<TabListViewProps> = ({
 
   const Header = ({ field, label, className = "" }: { field: SortField, label: string, className?: string }) => (
     <th 
-      className={`px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 hover:text-slate-800 dark:hover:text-slate-200 transition-colors select-none ${className}`}
+      className={`sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200 transition-colors select-none shadow-sm ${className}`}
       onClick={() => onSort(field)}
     >
       <div className="flex items-center gap-2">
@@ -85,14 +85,14 @@ export const TabListView: React.FC<TabListViewProps> = ({
   const someVisibleChecked = tabs.some(t => checkedTabIds.includes(t.id));
 
   return (
-    <div className={`w-full overflow-hidden rounded-lg border bg-white dark:bg-slate-900/50 shadow-sm transition-all duration-200 ${
+    <div className={`w-full rounded-lg border bg-white dark:bg-slate-900/50 shadow-sm transition-all duration-200 ${
       focusedArea === 'tabs' ? 'border-indigo-500/50 ring-1 ring-indigo-500/20' : 'border-slate-200 dark:border-slate-800'
     }`}>
-      <div className="overflow-x-auto">
-        <table className="w-full whitespace-nowrap text-left">
+      <div className="overflow-x-auto rounded-lg">
+        <table className="w-full whitespace-nowrap text-left border-collapse">
           <thead>
-            <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
-              <th className="w-10 px-4 py-3">
+            <tr className="bg-slate-50 dark:bg-slate-900">
+              <th className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 w-10 px-4 py-3 shadow-sm">
                 <input 
                   type="checkbox"
                   checked={allVisibleChecked}
@@ -101,12 +101,12 @@ export const TabListView: React.FC<TabListViewProps> = ({
                   className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 bg-white dark:bg-slate-900 border"
                 />
               </th>
-              <th className="w-10 px-4 py-3"></th> {/* Icon column */}
+              <th className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 w-10 px-4 py-3 shadow-sm"></th> {/* Icon column */}
               <Header field="title" label="Tab Name" />
               <Header field="url" label="Domain" />
               <Header field="window" label="Window" />
               <Header field="lastAccessed" label="Last Accessed" className="hidden lg:table-cell" />
-              <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Actions</th>
+              <th className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider shadow-sm">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 dark:divide-slate-800/50">
