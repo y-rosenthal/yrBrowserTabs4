@@ -104,24 +104,6 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Actions Footer */}
-      <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-2 bg-slate-100 dark:bg-slate-900">
-        <button 
-          onClick={() => onActivate(tab)}
-          className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"
-        >
-          <ExternalLink size={16} />
-          Switch to Tab
-        </button>
-        <button 
-          onClick={() => onClose(tab.id)}
-          className="w-full py-2.5 bg-white dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 text-slate-700 dark:text-slate-300 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors border border-slate-200 dark:border-slate-700 hover:border-red-200 dark:hover:border-red-900/50"
-        >
-          <X size={16} />
-          Close Tab
-        </button>
-      </div>
     </div>
   );
 };

@@ -798,9 +798,7 @@ const App: React.FC = () => {
                          windowNames={windowNameMap}
                          onActivate={handleActivateTab}
                          onClose={handleCloseTab}
-                         sortField={sortField}
-                         sortDirection={sortDirection}
-                         onSort={handleSort}
+                         // No global sort props passed = independent local sort
                          selectedTabId={selectedTabId}
                          onSelect={setSelectedTabId}
                          checkedTabIds={checkedTabIds}
@@ -819,6 +817,7 @@ const App: React.FC = () => {
                 windowNames={windowNameMap}
                 onActivate={handleActivateTab}
                 onClose={handleCloseTab}
+                // Pass global sort props for ALL view
                 sortField={sortField}
                 sortDirection={sortDirection}
                 onSort={handleSort}
