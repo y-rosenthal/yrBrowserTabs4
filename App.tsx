@@ -12,6 +12,7 @@ import { PreviewPanel } from './components/PreviewPanel';
 import { MergeModal } from './components/MergeModal';
 import { UserGuideModal } from './components/UserGuideModal';
 import { OnboardingTour } from './components/OnboardingTour';
+import { ApiKeyModal } from './components/ApiKeyModal';
 import { generateWindowNames } from './services/nameGenerator';
 
 // Full Tour
@@ -53,8 +54,9 @@ const FIRST_RUN_STEP: OnboardingStep[] = [
   {
     target: 'help-btn',
     position: 'top-right',
-    title: 'Need Help?',
-    content: 'Click the Help button here anytime to start the interactive tour or read the user guide.'
+    title: 'Welcome to TabMaster!',
+    content: 'Manage all your windows and tabs in one place.',
+    isFirstRun: true
   }
 ];
 
@@ -79,6 +81,7 @@ const App: React.FC = () => {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showUserGuide, setShowUserGuide] = useState(false);
   const [showHelpMenu, setShowHelpMenu] = useState(false);
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
 
   // Onboarding
   const [onboardingIndex, setOnboardingIndex] = useState<number>(-1); // -1 means inactive
@@ -257,9 +260,11 @@ const App: React.FC = () => {
     setShowHelpMenu(false);
   };
 
-  const handleFinishOnboarding = async () => {
+  const handleFinishOnboarding = async (permanent: boolean = true) => {
     setOnboardingIndex(-1);
-    await setOnboardingSeen();
+    if (permanent) {
+      await setOnboardingSeen();
+    }
   };
 
   // --- KEYBOARD NAV ---
@@ -330,7 +335,11 @@ const App: React.FC = () => {
   };
 
   const handleOrganizeTabs = async () => {
-    if (!process.env.API_KEY) { alert("Please provide an API_KEY"); return; }
+    if (!process.env.API_KEY) { 
+      setShowApiKeyModal(true);
+      return; 
+    }
+    
     setIsOrganizing(true);
     try {
       const groups = await organizeTabsWithAI(allTabs);
@@ -673,14 +682,20 @@ const App: React.FC = () => {
         {showUserGuide && (
           <UserGuideModal onClose={() => setShowUserGuide(false)} />
         )}
+        
+        {showApiKeyModal && (
+          <ApiKeyModal onClose={() => setShowApiKeyModal(false)} />
+        )}
 
         {onboardingIndex >= 0 && (
           <OnboardingTour 
             stepIndex={onboardingIndex}
             totalSteps={currentTourSteps.length}
             step={currentTourSteps[onboardingIndex]}
-            onNext={() => onboardingIndex < currentTourSteps.length - 1 ? setOnboardingIndex(i => i + 1) : handleFinishOnboarding()}
-            onSkip={handleFinishOnboarding}
+            onNext={(permanent = true) => onboardingIndex < currentTourSteps.length - 1 ? setOnboardingIndex(i => i + 1) : handleFinishOnboarding(permanent)}
+            onSkip={(permanent = true) => handleFinishOnboarding(permanent)}
+            onMaximize={focusOrOpenExtensionTab}
+            onStartTour={startFullTour}
           />
         )}
         

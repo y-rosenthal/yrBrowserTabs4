@@ -31,6 +31,7 @@ export interface OnboardingStep {
   title: string;
   content: string;
   position: 'center' | 'left' | 'top-left' | 'top-right' | 'bottom-left' | 'top-search';
+  isFirstRun?: boolean;
 }
 
 export interface StorageData {
