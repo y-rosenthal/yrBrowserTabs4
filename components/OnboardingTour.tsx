@@ -18,34 +18,68 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
   onNext, 
   onSkip 
 }) => {
-  // Positioning logic based on the 'position' prop
-  // In a real app we might use popper.js, here we use fixed predefined zones suitable for the layout
-  const getPositionClasses = () => {
+  // Determine card position and arrow styles based on the 'position' prop
+  const getLayoutConfig = () => {
     switch (step.position) {
       case 'center':
-        return 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2';
+        return {
+          container: 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2',
+          arrow: null // No arrow for center modal
+        };
       case 'left':
-        return 'top-1/3 left-64 ml-4'; // Next to sidebar
+        // Targets sidebar: Position to the right of the sidebar
+        return {
+          container: 'top-1/3 left-[270px]', 
+          arrow: 'left-[-8px] top-8 border-r-white dark:border-r-slate-900 border-t-transparent border-b-transparent border-l-transparent border-[8px]'
+        };
       case 'top-left':
-        return 'top-20 left-4';
+        return {
+          container: 'top-20 left-4',
+          arrow: 'top-[-8px] left-4 border-b-white dark:border-b-slate-900 border-l-transparent border-r-transparent border-t-transparent border-[8px]'
+        };
       case 'top-right':
-        return 'top-16 right-4';
+        // Targets Help Button: Position below header, aligned right
+        return {
+          container: 'top-[70px] right-6',
+          arrow: 'top-[-8px] right-6 border-b-white dark:border-b-slate-900 border-l-transparent border-r-transparent border-t-transparent border-[8px]'
+        };
       default:
-        return 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2';
+        return {
+          container: 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2',
+          arrow: null
+        };
     }
   };
 
+  const config = getLayoutConfig();
+
   return (
     <div className="fixed inset-0 z-[70] pointer-events-none">
-      {/* Dark overlay with specific cutout logic would be complex, 
-          so we use a simple localized highlighting effect or just the card on top of a dimmer */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px]" />
-
+      {/* 
+        Transparent container that passes clicks through (pointer-events-none on parent).
+        We removed the blurred background as requested.
+      */}
+      
       {/* The Tooltip Card */}
-      <div className={`pointer-events-auto absolute w-80 bg-white dark:bg-slate-900 border border-indigo-500/50 rounded-xl shadow-[0_0_40px_-10px_rgba(79,70,229,0.3)] p-5 flex flex-col gap-3 transition-all duration-500 ${getPositionClasses()}`}>
+      <div className={`pointer-events-auto absolute w-80 bg-white dark:bg-slate-900 border border-indigo-500/50 rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] p-5 flex flex-col gap-3 transition-all duration-300 animate-in fade-in zoom-in-95 ${config.container}`}>
+        
+        {/* CSS Arrow */}
+        {config.arrow && (
+          <div className={`absolute w-0 h-0 ${config.arrow}`} />
+        )}
+        
+        {/* Arrow Border (for better contrast/outline matching) */}
+        {config.arrow && (
+           <div className={`absolute w-0 h-0 -z-10 ${config.arrow.replace('border-r-white', 'border-r-indigo-500/50').replace('border-b-white', 'border-b-indigo-500/50').replace('dark:border-r-slate-900', 'dark:border-r-indigo-500/50').replace('dark:border-b-slate-900', 'dark:border-b-indigo-500/50')} ${step.position === 'left' ? 'left-[-9px]' : 'top-[-9px]'}`} />
+        )}
+
         <div className="flex justify-between items-start">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white">{step.title}</h3>
-          <button onClick={onSkip} className="text-slate-500 hover:text-slate-900 dark:hover:text-white">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">{step.title}</h3>
+          <button 
+            onClick={onSkip} 
+            className="text-slate-400 hover:text-slate-900 dark:hover:text-white -mr-1 -mt-1 p-1"
+            title="Dismiss"
+          >
             <X size={16} />
           </button>
         </div>
@@ -54,13 +88,13 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
           {step.content}
         </p>
 
-        <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+        <div className="flex items-center justify-between mt-2 pt-3 border-t border-slate-100 dark:border-slate-800">
           <span className="text-xs text-slate-500 font-medium">
             Step {stepIndex + 1} of {totalSteps}
           </span>
           <button 
             onClick={onNext}
-            className="flex items-center gap-2 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold uppercase tracking-wide rounded-full transition-colors"
+            className="flex items-center gap-2 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold uppercase tracking-wide rounded-full transition-colors shadow-sm"
           >
             {stepIndex === totalSteps - 1 ? 'Finish' : 'Next'}
             {stepIndex === totalSteps - 1 ? <Check size={12} /> : <ArrowRight size={12} />}
