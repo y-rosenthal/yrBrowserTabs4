@@ -158,7 +158,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Windows List */}
         <div className="px-3 space-y-1">
           {/* Header with Sort Controls */}
-          <div className="flex items-center justify-between px-3 mb-2 text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider select-none">
+          <div className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 py-2 border-b border-transparent flex items-center justify-between px-3 mb-2 text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider select-none shadow-sm">
             <button 
               onClick={() => handleSort('name')}
               className="flex items-center gap-1 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors group"

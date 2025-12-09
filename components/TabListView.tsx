@@ -88,7 +88,8 @@ export const TabListView: React.FC<TabListViewProps> = ({
     <div className={`w-full rounded-lg border bg-white dark:bg-slate-900/50 shadow-sm transition-all duration-200 ${
       focusedArea === 'tabs' ? 'border-indigo-500/50 ring-1 ring-indigo-500/20' : 'border-slate-200 dark:border-slate-800'
     }`}>
-      <div className="overflow-x-auto rounded-lg">
+      {/* Removed overflow-x-auto to ensure sticky headers work relative to the main page scroll */}
+      <div className="rounded-lg">
         <table className="w-full whitespace-nowrap text-left border-collapse">
           <thead>
             <tr className="bg-slate-50 dark:bg-slate-900">
