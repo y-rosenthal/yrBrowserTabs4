@@ -70,7 +70,7 @@ const App: React.FC = () => {
   const [isOrganizing, setIsOrganizing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [notification, setNotification] = useState<{msg: string, type: 'success' | 'info'} | null>(null);
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
   
   // Selection & Features
   const [selectedTabId, setSelectedTabId] = useState<string | null>(null); // For Preview/Active
@@ -448,7 +448,7 @@ const App: React.FC = () => {
 
       <div className={`flex-1 flex flex-col h-full min-w-0 transition-all duration-200 ${focusedArea === 'tabs' ? 'ring-1 ring-inset ring-slate-200 dark:ring-slate-800' : 'opacity-90'}`}>
         {/* Header */}
-        <header className="h-16 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-md flex items-center justify-between px-6 shrink-0 z-10 relative">
+        <header className="h-16 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-md flex items-center justify-between px-6 shrink-0 z-40 relative">
           <div className="flex items-center gap-4 flex-1">
             <h1 className="text-lg font-semibold text-slate-800 dark:text-slate-100 hidden md:block">
               {sidebarSelectedWindowIds.length > 0 

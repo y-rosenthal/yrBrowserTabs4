@@ -8,7 +8,7 @@ const isExtension = typeof chrome !== 'undefined' && !!chrome.storage;
 const MOCK_STORAGE: StorageData = {
   customWindowNames: {},
   hasSeenOnboarding: false,
-  theme: 'dark' // Default to dark if not set
+  theme: 'light' // Default to light mode
 };
 
 // In-memory fallback for demo mode
@@ -21,7 +21,7 @@ export const getStorageData = async (): Promise<StorageData> => {
         resolve({
           customWindowNames: result.customWindowNames || {},
           hasSeenOnboarding: result.hasSeenOnboarding || false,
-          theme: result.theme || 'dark'
+          theme: result.theme || 'light'
         });
       });
     });
