@@ -30,7 +30,7 @@ export interface OnboardingStep {
   target: string; // Description of position or element
   title: string;
   content: string;
-  position: 'center' | 'left' | 'top-left' | 'top-right';
+  position: 'center' | 'left' | 'top-left' | 'top-right' | 'bottom-left' | 'top-search';
 }
 
 export interface StorageData {

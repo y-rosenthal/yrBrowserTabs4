@@ -27,10 +27,16 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
           arrow: null // No arrow for center modal
         };
       case 'left':
-        // Targets sidebar: Position to the right of the sidebar
+        // Targets sidebar list: Position to the right of the sidebar
         return {
           container: 'top-1/3 left-[270px]', 
           arrow: 'left-[-8px] top-8 border-r-white dark:border-r-slate-900 border-t-transparent border-b-transparent border-l-transparent border-[8px]'
+        };
+      case 'bottom-left':
+        // Targets Sidebar Footer (Gemini Button): Position to the right of the sidebar, at the bottom
+        return {
+          container: 'bottom-8 left-[270px]',
+          arrow: 'left-[-8px] bottom-8 border-r-white dark:border-r-slate-900 border-t-transparent border-b-transparent border-l-transparent border-[8px]'
         };
       case 'top-left':
         return {
@@ -42,6 +48,12 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
         return {
           container: 'top-[70px] right-6',
           arrow: 'top-[-8px] right-6 border-b-white dark:border-b-slate-900 border-l-transparent border-r-transparent border-t-transparent border-[8px]'
+        };
+      case 'top-search':
+        // Targets Search Bar: Position below header, offset to point to the search input area (left of buttons)
+        return {
+          container: 'top-[70px] right-[280px]',
+          arrow: 'top-[-8px] right-8 border-b-white dark:border-b-slate-900 border-l-transparent border-r-transparent border-t-transparent border-[8px]'
         };
       default:
         return {
@@ -57,7 +69,6 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
     <div className="fixed inset-0 z-[70] pointer-events-none">
       {/* 
         Transparent container that passes clicks through (pointer-events-none on parent).
-        We removed the blurred background as requested.
       */}
       
       {/* The Tooltip Card */}
@@ -70,7 +81,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
         
         {/* Arrow Border (for better contrast/outline matching) */}
         {config.arrow && (
-           <div className={`absolute w-0 h-0 -z-10 ${config.arrow.replace('border-r-white', 'border-r-indigo-500/50').replace('border-b-white', 'border-b-indigo-500/50').replace('dark:border-r-slate-900', 'dark:border-r-indigo-500/50').replace('dark:border-b-slate-900', 'dark:border-b-indigo-500/50')} ${step.position === 'left' ? 'left-[-9px]' : 'top-[-9px]'}`} />
+           <div className={`absolute w-0 h-0 -z-10 ${config.arrow.replace('border-r-white', 'border-r-indigo-500/50').replace('border-b-white', 'border-b-indigo-500/50').replace('dark:border-r-slate-900', 'dark:border-r-indigo-500/50').replace('dark:border-b-slate-900', 'dark:border-b-indigo-500/50')} ${step.position.includes('left') ? 'left-[-9px]' : 'top-[-9px]'}`} />
         )}
 
         <div className="flex justify-between items-start">

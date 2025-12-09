@@ -30,9 +30,15 @@ const FULL_TOUR_STEPS: OnboardingStep[] = [
   },
   {
     target: 'top-bar',
-    position: 'top-right',
-    title: 'Search & Organize',
-    content: 'Use the search bar to find any tab instantly. Click "Group with Gemini" to let AI automatically categorize your tabs.'
+    position: 'top-search',
+    title: 'Instant Search',
+    content: 'Use the search bar here to find any tab instantly by title or URL across all your open windows.'
+  },
+  {
+    target: 'ai-btn',
+    position: 'bottom-left',
+    title: 'AI Organization',
+    content: 'Click "Group with Gemini" at the bottom left to let AI automatically categorize your tabs into logical groups.'
   },
   {
     target: 'tabs',
