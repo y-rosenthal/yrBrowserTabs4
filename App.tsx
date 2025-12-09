@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { Sidebar } from './components/Sidebar';
 import { DEMO_NOTICE } from './constants';
 import { ViewMode, WindowData, Tab, TabGroup, OnboardingStep, WindowReorgSnapshot } from './types';
-import { Search, Info, ExternalLink, RefreshCw, AlertCircle, Maximize2, Download, Table, FileText, Eye, EyeOff, FolderPlus, HelpCircle, BookOpen, Sun, Moon, Key, LayoutTemplate, RotateCcw } from 'lucide-react';
+import { Search, Info, ExternalLink, RefreshCw, AlertCircle, Maximize2, Download, Table, FileText, Eye, EyeOff, FolderPlus, HelpCircle, BookOpen, Sun, Moon, Key, LayoutTemplate, RotateCcw, Settings, Sparkles, ListFilter } from 'lucide-react';
 import { organizeTabsWithAI, generateWindowNamesWithAI } from './services/geminiService';
 import { getWindows, activateTab, closeTab, getPlatformInfo, moveTabs, createWindowWithTabs, focusOrOpenExtensionTab, subscribeToUpdates } from './services/tabService';
 import { saveCustomWindowName, getStorageData, setOnboardingSeen, saveTheme, saveApiKey } from './services/storageService';
@@ -97,6 +97,8 @@ const App: React.FC = () => {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showUserGuide, setShowUserGuide] = useState(false);
   const [showHelpMenu, setShowHelpMenu] = useState(false);
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  const [showSortMenu, setShowSortMenu] = useState(false);
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const [showReorgConfirm, setShowReorgConfirm] = useState(false);
 
@@ -104,7 +106,12 @@ const App: React.FC = () => {
   const [sidebarWidth, setSidebarWidth] = useState(256);
   const [previewWidth, setPreviewWidth] = useState(384);
   const [isPreviewResizing, setIsPreviewResizing] = useState(false);
+  
+  // Refs for click outside
   const exportMenuRef = useRef<HTMLDivElement>(null);
+  const helpMenuRef = useRef<HTMLDivElement>(null);
+  const settingsMenuRef = useRef<HTMLDivElement>(null);
+  const sortMenuRef = useRef<HTMLDivElement>(null);
 
   // Onboarding
   const [onboardingIndex, setOnboardingIndex] = useState<number>(-1); // -1 means inactive
@@ -122,6 +129,9 @@ const App: React.FC = () => {
   // Sorting
   const [sortField, setSortField] = useState<SortField>('lastAccessed');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+
+  // AI Global Sort State (Forced sort for all groups)
+  const [globalGroupSort, setGlobalGroupSort] = useState<{ field: SortField; direction: SortDirection; timestamp: number } | undefined>(undefined);
   
   const platformInfo = getPlatformInfo();
 
@@ -144,10 +154,20 @@ const App: React.FC = () => {
       }
     });
 
-    // 3. Click outside handler for export menu
+    // 3. Click outside handler for menus
     const handleClickOutside = (event: MouseEvent) => {
-      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (exportMenuRef.current && !exportMenuRef.current.contains(target)) {
         setShowExportMenu(false);
+      }
+      if (helpMenuRef.current && !helpMenuRef.current.contains(target)) {
+        setShowHelpMenu(false);
+      }
+      if (settingsMenuRef.current && !settingsMenuRef.current.contains(target)) {
+        setShowSettingsMenu(false);
+      }
+      if (sortMenuRef.current && !sortMenuRef.current.contains(target)) {
+        setShowSortMenu(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -282,8 +302,9 @@ const App: React.FC = () => {
       tabs = windows.find(w => w.id === activeWindowId)?.tabs || [];
     }
     
-    // 3. Search Filter
-    if (searchQuery.trim()) {
+    // 3. Search Filter (if not in AI Grouped Mode)
+    // In AI Grouped mode, we filter *inside* the groups logic below to keep structure
+    if (searchQuery.trim() && viewMode !== ViewMode.AI_GROUPED) {
       const q = searchQuery.toLowerCase();
       tabs = tabs.filter(t => 
         t.title.toLowerCase().includes(q) || 
@@ -325,20 +346,43 @@ const App: React.FC = () => {
 
   const currentDisplayedTabs = useMemo(() => getSortedTabs(filteredTabs), [filteredTabs, getSortedTabs]);
 
+  // AI Grouped Tabs with Search Filter
+  const filteredTabGroups = useMemo(() => {
+    if (viewMode !== ViewMode.AI_GROUPED) return [];
+    
+    // If no search, return all
+    if (!searchQuery.trim()) return tabGroups;
+    
+    const q = searchQuery.toLowerCase();
+    
+    // Filter tabs within groups, return groups that are not empty
+    return tabGroups.map(group => {
+      const filteredIds = group.tabIds.filter(id => {
+        const t = allTabs.find(tab => tab.id === id);
+        if (!t) return false;
+        return t.title.toLowerCase().includes(q) || t.url.toLowerCase().includes(q);
+      });
+      return { ...group, tabIds: filteredIds };
+    }).filter(group => group.tabIds.length > 0);
+  }, [viewMode, tabGroups, searchQuery, allTabs]);
+
+
   // Navigation Tabs: Flattened list for keyboard navigation that matches the visual order
   const navigationTabs = useMemo(() => {
-    // If in AI Grouped mode AND not searching AND no specific windows selected,
-    // the UI renders groups, so we need a flattened list of grouped tabs.
-    if (viewMode === ViewMode.AI_GROUPED && !searchQuery && sidebarSelectedWindowIds.length === 0) {
-      return tabGroups.flatMap(g => 
-        g.tabIds
+    // If in AI Grouped mode, flatten the filtered groups
+    if (viewMode === ViewMode.AI_GROUPED && sidebarSelectedWindowIds.length === 0) {
+      return filteredTabGroups.flatMap(g => 
+        // We also need to apply the sort here to match visual order
+        getSortedTabs(
+          g.tabIds
           .map(id => allTabs.find(t => t.id === id))
           .filter((t): t is Tab => !!t)
+        )
       );
     }
     // Otherwise, it renders the standard sorted list
     return currentDisplayedTabs;
-  }, [viewMode, searchQuery, sidebarSelectedWindowIds, tabGroups, allTabs, currentDisplayedTabs]);
+  }, [viewMode, searchQuery, sidebarSelectedWindowIds, filteredTabGroups, allTabs, currentDisplayedTabs, getSortedTabs]);
 
   // --- ACTIONS ---
   const handleRenameWindow = async (windowId: string, newName: string) => {
@@ -350,6 +394,12 @@ const App: React.FC = () => {
 
   const startFullTour = () => {
     setCurrentTourSteps(FULL_TOUR_STEPS);
+    setOnboardingIndex(0);
+    setShowHelpMenu(false);
+  };
+
+  const handleShowIntro = () => {
+    setCurrentTourSteps(FIRST_RUN_STEP);
     setOnboardingIndex(0);
     setShowHelpMenu(false);
   };
@@ -429,6 +479,15 @@ const App: React.FC = () => {
   const handleSort = (field: SortField) => {
     if (sortField === field) setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
     else { setSortField(field); setSortDirection(field === 'lastAccessed' ? 'desc' : 'asc'); }
+  };
+
+  const handleForceGlobalSort = (field: SortField) => {
+    setGlobalGroupSort({
+      field,
+      direction: 'asc', // Default to asc when picking new field
+      timestamp: Date.now()
+    });
+    setShowSortMenu(false);
   };
 
   const handleCloseTab = async (tabId: string) => {
@@ -778,6 +837,26 @@ const App: React.FC = () => {
             {/* AI Reorg Controls */}
             {viewMode === ViewMode.AI_GROUPED && !sidebarSelectedWindowIds.length && (
               <div className="flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+                 {/* Global Sort for AI Groups */}
+                 <div className="relative" ref={sortMenuRef}>
+                   <button 
+                    onClick={() => setShowSortMenu(!showSortMenu)}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                   >
+                     <ListFilter size={14} />
+                     Sort All
+                   </button>
+                   {showSortMenu && (
+                     <div className="absolute top-full left-0 mt-2 w-36 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 py-1">
+                       <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sort All Groups By</div>
+                       <button onClick={() => handleForceGlobalSort('title')} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm">Name</button>
+                       <button onClick={() => handleForceGlobalSort('url')} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm">Domain</button>
+                       <button onClick={() => handleForceGlobalSort('window')} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm">Window</button>
+                       <button onClick={() => handleForceGlobalSort('lastAccessed')} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm">Last Accessed</button>
+                     </div>
+                   )}
+                 </div>
+
                  {reorgHistory.length > 0 && (
                    <button
                     onClick={handleUndoReorg}
@@ -834,17 +913,17 @@ const App: React.FC = () => {
               </button>
 
               {/* Help Trigger */}
-              <div className="relative help-btn-wrapper">
+              <div className="relative help-btn-wrapper" ref={helpMenuRef}>
                 <button 
                   id="help-btn"
                   onClick={() => setShowHelpMenu(!showHelpMenu)}
-                  className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors"
+                  className={`p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors ${showHelpMenu ? 'text-indigo-600 dark:text-white bg-slate-200 dark:bg-slate-800' : ''}`}
                   title="Help & Support"
                 >
                   <HelpCircle size={18} />
                 </button>
                 {showHelpMenu && (
-                   <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 py-1">
+                   <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 py-1 animate-in fade-in zoom-in-95 duration-100">
                     <button onClick={startFullTour} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm flex items-center gap-2 text-slate-700 dark:text-slate-200">
                       <HelpCircle size={14} /> Start Interactive Tour
                     </button>
@@ -852,8 +931,8 @@ const App: React.FC = () => {
                       <BookOpen size={14} /> View User Guide
                     </button>
                     <div className="h-px bg-slate-100 dark:bg-slate-800 my-1"></div>
-                     <button onClick={() => { setShowApiKeyModal(true); setShowHelpMenu(false); }} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm flex items-center gap-2 text-slate-700 dark:text-slate-200">
-                      <Key size={14} /> Set API Key
+                     <button onClick={handleShowIntro} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                      <Sparkles size={14} /> Show Welcome Screen
                     </button>
                   </div>
                 )}
@@ -862,13 +941,13 @@ const App: React.FC = () => {
               <div className="relative" ref={exportMenuRef}>
                 <button 
                   onClick={() => setShowExportMenu(!showExportMenu)}
-                  className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors"
+                  className={`p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors ${showExportMenu ? 'text-indigo-600 dark:text-white bg-slate-200 dark:bg-slate-800' : ''}`}
                   title="Export Data"
                 >
                   <Download size={18} />
                 </button>
                 {showExportMenu && (
-                  <div className="absolute right-0 top-full mt-2 w-40 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 py-1">
+                  <div className="absolute right-0 top-full mt-2 w-40 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 py-1 animate-in fade-in zoom-in-95 duration-100">
                     <button onClick={() => handleExport('csv')} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm flex items-center gap-2 text-slate-700 dark:text-slate-300">
                       <Table size={14} /> CSV
                     </button>
@@ -902,6 +981,24 @@ const App: React.FC = () => {
               >
                 <Maximize2 size={18} />
               </button>
+
+              {/* Settings Trigger - Moved to End */}
+              <div className="relative settings-btn-wrapper" ref={settingsMenuRef}>
+                <button 
+                  onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+                  className={`p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors ${showSettingsMenu ? 'text-indigo-600 dark:text-white bg-slate-200 dark:bg-slate-800' : ''}`}
+                  title="Settings"
+                >
+                  <Settings size={18} />
+                </button>
+                {showSettingsMenu && (
+                   <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 py-1 animate-in fade-in zoom-in-95 duration-100">
+                     <button onClick={() => { setShowApiKeyModal(true); setShowSettingsMenu(false); }} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                      <Key size={14} /> Set API Key
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </header>
@@ -941,10 +1038,10 @@ const App: React.FC = () => {
                 <Search size={48} className="mb-4 opacity-20" />
                 <p>No tabs found</p>
               </div>
-            ) : viewMode === ViewMode.AI_GROUPED && !searchQuery && sidebarSelectedWindowIds.length === 0 ? (
+            ) : viewMode === ViewMode.AI_GROUPED && !sidebarSelectedWindowIds.length ? (
                <div className="space-y-8 pb-10">
-                 {tabGroups.length === 0 && <div className="flex flex-col items-center justify-center h-40 text-slate-500"><p>No groups. Click "Organize with AI".</p></div>}
-                 {tabGroups.map((group, idx) => {
+                 {filteredTabGroups.length === 0 && <div className="flex flex-col items-center justify-center h-40 text-slate-500"><p>{searchQuery ? 'No matching tabs found in groups.' : 'No groups. Click "Organize with AI".'}</p></div>}
+                 {filteredTabGroups.map((group, idx) => {
                    const groupTabs = group.tabIds.map(id => allTabs.find(t => t.id === id)).filter((t): t is Tab => t !== undefined);
                    return (
                      <div key={idx} className="space-y-2">
@@ -955,7 +1052,13 @@ const App: React.FC = () => {
                          windowNames={windowNameMap}
                          onActivate={handleActivateTab}
                          onClose={handleCloseTab}
-                         // No global sort props passed = independent local sort
+                         
+                         // Global Forced Sort
+                         forcedSort={globalGroupSort}
+
+                         // Standard Sort Props (ignored inside component if forcedSort is active for a cycle, but used for local)
+                         // We remove global props from here so local sort works by default
+                         
                          selectedTabId={selectedTabId}
                          onSelect={setSelectedTabId}
                          checkedTabIds={checkedTabIds}

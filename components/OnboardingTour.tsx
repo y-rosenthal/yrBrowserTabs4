@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { OnboardingStep } from '../types';
-import { ArrowRight, X, Check, Maximize2, HelpCircle, Sparkles, ExternalLink, Key } from 'lucide-react';
+import { ArrowRight, X, Check, Maximize2, HelpCircle, Sparkles, ExternalLink, Key, Settings } from 'lucide-react';
 
 interface OnboardingTourProps {
   stepIndex: number;
@@ -22,7 +22,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
   onMaximize,
   onStartTour
 }) => {
-  const [dontShowAgain, setDontShowAgain] = useState(true);
+  const [dontShowAgain, setDontShowAgain] = useState(false);
 
   // Determine card position and arrow styles based on the 'position' prop
   const getLayoutConfig = () => {
@@ -92,9 +92,8 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
             </button>
           </div>
 
-          {/* Quick Actions */}
+          {/* Quick Actions: Maximize Window */}
           <div className="space-y-3">
-             {/* Maximize Button - Moved to first position */}
             <button 
               onClick={onMaximize}
               className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group text-left"
@@ -107,8 +106,25 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
                 <span className="text-xs text-slate-500 dark:text-slate-400">Expand to a full browser tab for better view</span>
               </div>
             </button>
+          </div>
 
-             {/* Help Button - Moved to last position */}
+          {/* API Key Info */}
+          <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 border border-slate-100 dark:border-slate-700">
+             <div className="flex items-start gap-2">
+               <Sparkles className="text-indigo-500 mt-0.5 shrink-0" size={14} />
+               <div className="text-xs text-slate-600 dark:text-slate-400">
+                 <span className="font-semibold text-slate-800 dark:text-slate-200 block mb-0.5">AI Features</span>
+                 The "Group with Gemini" feature requires an API Key. You can set this up later via the 
+                 <strong className="inline-flex items-center gap-1 mx-1 text-slate-800 dark:text-slate-200"><Settings size={10} /> Settings</strong>.
+                 <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 text-indigo-600 dark:text-indigo-400 hover:underline ml-1 font-medium">
+                   Get key <ExternalLink size={10} />
+                 </a>
+               </div>
+             </div>
+          </div>
+
+          {/* Start Interactive Tour Button */}
+          <div>
             <button 
               onClick={() => { onStartTour?.(); }}
               className="w-full flex items-center gap-3 p-3 rounded-xl border border-indigo-200 dark:border-slate-700 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors group text-left"
@@ -121,21 +137,6 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
                 <span className="text-xs text-slate-500 dark:text-slate-400">Learn how to use features in 30 seconds</span>
               </div>
             </button>
-          </div>
-
-          {/* API Key Info */}
-          <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 border border-slate-100 dark:border-slate-700">
-             <div className="flex items-start gap-2">
-               <Sparkles className="text-indigo-500 mt-0.5 shrink-0" size={14} />
-               <div className="text-xs text-slate-600 dark:text-slate-400">
-                 <span className="font-semibold text-slate-800 dark:text-slate-200 block mb-0.5">AI Features</span>
-                 The "Group with Gemini" feature requires an API Key. You can set this up later via the 
-                 <strong className="inline-flex items-center gap-1 mx-1 text-slate-800 dark:text-slate-200"><Key size={10} /> Menu</strong>.
-                 <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 text-indigo-600 dark:text-indigo-400 hover:underline ml-1 font-medium">
-                   Get key <ExternalLink size={10} />
-                 </a>
-               </div>
-             </div>
           </div>
 
           {/* Footer with Checkbox */}

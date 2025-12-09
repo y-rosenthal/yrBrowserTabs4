@@ -1,3 +1,4 @@
+
 import { WindowData, Tab } from '../types';
 import { MOCK_WINDOWS } from '../constants';
 
@@ -106,18 +107,32 @@ export const focusOrOpenExtensionTab = async () => {
   if (isExtension) {
     const extensionUrl = chrome.runtime.getURL('index.html');
     
-    // Find existing tab
-    const tabs = await chrome.tabs.query({ url: extensionUrl });
+    // Get current window first to ensure we stay in context of where the user is looking.
+    // In a popup, chrome.windows.getCurrent returns the browser window the popup is attached to.
+    let currentWindowId: number | undefined;
+    try {
+      const currentWin = await chrome.windows.getCurrent();
+      currentWindowId = currentWin.id;
+    } catch (e) {
+      console.warn("Could not get current window", e);
+    }
     
-    if (tabs.length > 0) {
-      // Focus the first found existing tab
-      const existingTab = tabs[0];
-      await chrome.windows.update(existingTab.windowId, { focused: true });
-      await chrome.tabs.update(existingTab.id, { active: true });
-      // Close the current popup if relevant (though window focus usually handles UX)
+    if (currentWindowId) {
+      // Check if tab exists in THIS window
+      const tabs = await chrome.tabs.query({ url: extensionUrl, windowId: currentWindowId });
+      
+      if (tabs.length > 0) {
+        const existingTab = tabs[0];
+        // Focus window just in case (though we are likely in it)
+        await chrome.windows.update(currentWindowId, { focused: true });
+        await chrome.tabs.update(existingTab.id, { active: true });
+      } else {
+        // Create in current window
+        await chrome.tabs.create({ url: extensionUrl, windowId: currentWindowId });
+      }
     } else {
-      // Create new
-      await chrome.tabs.create({ url: extensionUrl });
+      // Fallback if window ID extraction failed: just create
+       await chrome.tabs.create({ url: extensionUrl });
     }
   } else {
     window.open(window.location.href, '_blank');

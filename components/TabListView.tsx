@@ -13,10 +13,18 @@ interface TabListViewProps {
   onActivate: (tab: Tab) => void;
   onClose: (tabId: string) => void;
   
-  // Sorting props are now optional to support uncontrolled (local) sorting
+  // Optional: Controlled Sort Props
   sortField?: SortField;
   sortDirection?: SortDirection;
   onSort?: (field: SortField) => void;
+
+  // Optional: If provided, this forces the table to sort in a specific way.
+  // We use a timestamp object to detect "fresh" sort requests from the parent (Global Sort).
+  forcedSort?: {
+    field: SortField;
+    direction: SortDirection;
+    timestamp: number;
+  };
 
   selectedTabId: string | null;
   onSelect: (tabId: string) => void;
@@ -32,9 +40,10 @@ export const TabListView: React.FC<TabListViewProps> = ({
   windowNames,
   onActivate,
   onClose,
-  sortField,
-  sortDirection,
+  sortField: externalSortField,
+  sortDirection: externalSortDirection,
   onSort,
+  forcedSort,
   selectedTabId,
   onSelect,
   checkedTabIds,
@@ -44,23 +53,31 @@ export const TabListView: React.FC<TabListViewProps> = ({
 }) => {
   const rowRefs = useRef<{ [key: string]: HTMLTableRowElement | null }>({});
 
-  // Local Sort State for Independent Groups
-  const [localSortField, setLocalSortField] = useState<SortField>('lastAccessed');
-  const [localSortDirection, setLocalSortDirection] = useState<SortDirection>('desc');
+  // Local Sort State (used when props are not provided)
+  const [internalSortField, setInternalSortField] = useState<SortField>('lastAccessed');
+  const [internalSortDirection, setInternalSortDirection] = useState<SortDirection>('desc');
 
-  // Determine effective sort values
-  const activeSortField = onSort ? sortField : localSortField;
-  const activeSortDirection = onSort ? sortDirection : localSortDirection;
+  // Determine active sort state (External props take precedence)
+  const sortField = externalSortField ?? internalSortField;
+  const sortDirection = externalSortDirection ?? internalSortDirection;
+
+  // React to Global Sort updates (forcedSort) for uncontrolled mode
+  useEffect(() => {
+    if (forcedSort && !onSort) {
+      setInternalSortField(forcedSort.field);
+      setInternalSortDirection(forcedSort.direction);
+    }
+  }, [forcedSort, onSort]);
 
   const handleSort = (field: SortField) => {
     if (onSort) {
       onSort(field);
     } else {
-      if (localSortField === field) {
-        setLocalSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+      if (internalSortField === field) {
+        setInternalSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
       } else {
-        setLocalSortField(field);
-        setLocalSortDirection(field === 'lastAccessed' ? 'desc' : 'asc');
+        setInternalSortField(field);
+        setInternalSortDirection(field === 'lastAccessed' ? 'desc' : 'asc');
       }
     }
   };
@@ -87,15 +104,18 @@ export const TabListView: React.FC<TabListViewProps> = ({
     }
   };
 
-  // Sort tabs locally if not controlled by parent
   const displayedTabs = useMemo(() => {
-    if (onSort) return tabs; // Assume parent sorted it
-
+    // If controlled (onSort provided), we assume the parent handles data sorting 
+    // BUT App.tsx logic suggests it passes pre-sorted data via currentDisplayedTabs.
+    // However, TabListView still sorts here. 
+    // If sortField/sortDirection match what the parent used to sort, this is a stable sort (no-op or same order).
+    // If we skip sorting here when controlled, we rely entirely on 'tabs' order.
+    
     return [...tabs].sort((a, b) => {
       let valA: string | number = '';
       let valB: string | number = '';
 
-      switch (activeSortField) {
+      switch (sortField) {
         case 'title':
           valA = a.title.toLowerCase();
           valB = b.title.toLowerCase();
@@ -116,15 +136,15 @@ export const TabListView: React.FC<TabListViewProps> = ({
           return 0;
       }
 
-      if (valA < valB) return activeSortDirection === 'asc' ? -1 : 1;
-      if (valA > valB) return activeSortDirection === 'asc' ? 1 : -1;
+      if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+      if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [tabs, activeSortField, activeSortDirection, onSort, windowNames]);
+  }, [tabs, sortField, sortDirection, windowNames]);
 
   const SortIcon = ({ field }: { field: SortField }) => {
-    if (activeSortField !== field) return <ArrowUpDown size={14} className="opacity-30" />;
-    return activeSortDirection === 'asc' ? <ArrowUp size={14} className="text-indigo-500 dark:text-indigo-400" /> : <ArrowDown size={14} className="text-indigo-500 dark:text-indigo-400" />;
+    if (sortField !== field) return <ArrowUpDown size={14} className="opacity-30" />;
+    return sortDirection === 'asc' ? <ArrowUp size={14} className="text-indigo-500 dark:text-indigo-400" /> : <ArrowDown size={14} className="text-indigo-500 dark:text-indigo-400" />;
   };
 
   const Header = ({ field, label, className = "" }: { field: SortField, label: string, className?: string }) => (
