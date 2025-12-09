@@ -40,3 +40,12 @@ export interface StorageData {
   theme: 'light' | 'dark';
   apiKey?: string;
 }
+
+export interface WindowReorgSnapshot {
+  timestamp: number;
+  windows: {
+    id: string;
+    name: string;
+    tabIds: string[];
+  }[];
+}

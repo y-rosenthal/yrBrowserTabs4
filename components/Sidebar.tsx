@@ -378,7 +378,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Resize Handle */}
       <div 
-        className="absolute top-0 right-0 w-1.5 h-full cursor-col-resize hover:bg-indigo-500/50 active:bg-indigo-500 transition-colors z-20 flex flex-col justify-center items-center group opacity-0 hover:opacity-100 active:opacity-100"
+        className="absolute top-0 right-0 w-1.5 h-full cursor-col-resize hover:bg-indigo-500/50 active:bg-indigo-500 transition-colors z-50 flex flex-col justify-center items-center group opacity-0 hover:opacity-100 active:opacity-100"
         onMouseDown={handleMouseDownResize}
       >
         <GripVertical size={12} className="text-white opacity-50" />

@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { DEMO_NOTICE } from './constants';
-import { ViewMode, WindowData, Tab, TabGroup, OnboardingStep } from './types';
-import { Search, Info, ExternalLink, RefreshCw, AlertCircle, Maximize2, Download, Table, FileText, Eye, EyeOff, FolderPlus, HelpCircle, BookOpen, Sun, Moon, Key, GripVertical } from 'lucide-react';
+import { ViewMode, WindowData, Tab, TabGroup, OnboardingStep, WindowReorgSnapshot } from './types';
+import { Search, Info, ExternalLink, RefreshCw, AlertCircle, Maximize2, Download, Table, FileText, Eye, EyeOff, FolderPlus, HelpCircle, BookOpen, Sun, Moon, Key, LayoutTemplate, RotateCcw } from 'lucide-react';
 import { organizeTabsWithAI, generateWindowNamesWithAI } from './services/geminiService';
 import { getWindows, activateTab, closeTab, getPlatformInfo, moveTabs, createWindowWithTabs, focusOrOpenExtensionTab, subscribeToUpdates } from './services/tabService';
 import { saveCustomWindowName, getStorageData, setOnboardingSeen, saveTheme, saveApiKey } from './services/storageService';
@@ -13,6 +13,7 @@ import { MergeModal } from './components/MergeModal';
 import { UserGuideModal } from './components/UserGuideModal';
 import { OnboardingTour } from './components/OnboardingTour';
 import { ApiKeyModal } from './components/ApiKeyModal';
+import { ConfirmModal } from './components/ConfirmModal';
 import { generateWindowNames } from './services/nameGenerator';
 
 // Full Tour
@@ -68,6 +69,9 @@ const App: React.FC = () => {
   const [windowNameMap, setWindowNameMap] = useState<Record<string, string>>({});
   const [nameHistory, setNameHistory] = useState<Array<Record<string, string>>>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+
+  // Window Reorganization History
+  const [reorgHistory, setReorgHistory] = useState<WindowReorgSnapshot[]>([]);
   
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.ALL);
   const [activeWindowId, setActiveWindowId] = useState<string | null>(null);
@@ -80,6 +84,7 @@ const App: React.FC = () => {
 
   // Renaming AI States
   const [isRenamingWindows, setIsRenamingWindows] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'ORGANIZE' | 'AUTO_RENAME' | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [notification, setNotification] = useState<{msg: string, type: 'success' | 'info'} | null>(null);
@@ -93,6 +98,7 @@ const App: React.FC = () => {
   const [showUserGuide, setShowUserGuide] = useState(false);
   const [showHelpMenu, setShowHelpMenu] = useState(false);
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [showReorgConfirm, setShowReorgConfirm] = useState(false);
 
   // Layout State
   const [sidebarWidth, setSidebarWidth] = useState(256);
@@ -359,6 +365,14 @@ const App: React.FC = () => {
     await saveApiKey(key);
     setShowApiKeyModal(false);
     showNotification("API Key saved successfully", "success");
+    
+    // Resume interrupted action
+    if (pendingAction === 'ORGANIZE') {
+      handleOrganizeTabs();
+    } else if (pendingAction === 'AUTO_RENAME') {
+      handleAutoRenameWindows();
+    }
+    setPendingAction(null);
   };
 
   // --- KEYBOARD NAV ---
@@ -451,6 +465,7 @@ const App: React.FC = () => {
       showNotification("Tabs organized by Gemini!", 'success');
     } catch (error: any) { 
       if (error.message === "NO_API_KEY" || error.message === "INVALID_API_KEY") {
+        setPendingAction('ORGANIZE');
         setShowApiKeyModal(true);
       } else {
         showNotification("Failed to organize tabs", 'info'); 
@@ -487,6 +502,7 @@ const App: React.FC = () => {
 
     } catch (error: any) {
       if (error.message === "NO_API_KEY" || error.message === "INVALID_API_KEY") {
+        setPendingAction('AUTO_RENAME');
         setShowApiKeyModal(true);
       } else {
         console.error(error);
@@ -494,6 +510,124 @@ const App: React.FC = () => {
       }
     } finally {
       setIsRenamingWindows(false);
+    }
+  };
+
+  const handleApplyAiOrganization = async () => {
+    setIsMergeProcessing(true);
+    try {
+      // 1. Snapshot current state for undo
+      const snapshot: WindowReorgSnapshot = {
+        timestamp: Date.now(),
+        windows: windows.map(w => ({
+          id: w.id,
+          name: windowNameMap[w.id] || w.name,
+          tabIds: w.tabs.map(t => t.id)
+        }))
+      };
+      setReorgHistory(prev => [...prev, snapshot]);
+
+      // 2. Execute Moves
+      const sortedWindows = [...windows].sort((a, b) => a.id.localeCompare(b.id)); // Stable order to recycle
+      
+      const newNameMap = { ...windowNameMap };
+
+      for (let i = 0; i < tabGroups.length; i++) {
+        const group = tabGroups[i];
+        
+        let targetWindowId: string;
+
+        if (i < sortedWindows.length) {
+          // Recycle existing window
+          targetWindowId = sortedWindows[i].id;
+          // Rename it
+          newNameMap[targetWindowId] = group.categoryName;
+          await saveCustomWindowName(targetWindowId, group.categoryName);
+        } else {
+          // Create new window
+          // We can't synchronously get the ID of the new window easily without more complex logic in create
+          // For now, simpler: Create window with first tab
+          if (group.tabIds.length === 0) continue;
+          // Note: moveTabs logic in services handles creation if we implemented it, 
+          // but here we manually create.
+          // Since create is async and returns ID, we need to adapt `createWindowWithTabs` to return ID?
+          // Current service `createWindowWithTabs` is void. 
+          // Implementation constraint: We will recycle as many as possible. If we run out, we create new.
+          // Since we can't easily get the ID from void function, we will skip creation logic for now
+          // OR better: Just create a window for the group.
+          
+          // Let's rely on moveTabs to target existing windows. 
+          // For new windows, we must split tabs out.
+          await createWindowWithTabs(group.tabIds);
+          // We can't rename the new window immediately because we don't have its ID yet 
+          // without changing service. That's fine.
+          continue; 
+        }
+
+        // Move tabs to recycled window
+        await moveTabs(group.tabIds, targetWindowId);
+      }
+
+      pushNameHistory(newNameMap);
+      await loadTabs();
+      showNotification("Tabs reorganized into windows!", 'success');
+      setShowReorgConfirm(false);
+      setViewMode(ViewMode.ALL); // Switch back to see results
+
+    } catch (e) {
+      console.error(e);
+      showNotification("Reorganization failed", 'info');
+    } finally {
+      setIsMergeProcessing(false);
+    }
+  };
+
+  const handleUndoReorg = async () => {
+    if (reorgHistory.length === 0) return;
+    
+    setIsMergeProcessing(true);
+    const snapshot = reorgHistory[reorgHistory.length - 1];
+    
+    try {
+      // Restore logic
+      // We iterate through snapshot windows and try to reconstruct them
+      
+      // 1. Get current available windows
+      await loadTabs(); 
+      // Note: `windows` state might be stale inside async function unless we re-fetch or use ref, 
+      // but we called loadTabs above. Since state updates are async, we should use getWindows() directly.
+      const currentWindows = await getWindows();
+      const currentWindowIds = new Set(currentWindows.map(w => w.id));
+
+      const restoredNameMap = { ...windowNameMap };
+
+      for (const snapWin of snapshot.windows) {
+         if (currentWindowIds.has(snapWin.id)) {
+           // Window still exists, move tabs back
+           if (snapWin.tabIds.length > 0) {
+             await moveTabs(snapWin.tabIds, snapWin.id);
+           }
+           restoredNameMap[snapWin.id] = snapWin.name;
+           await saveCustomWindowName(snapWin.id, snapWin.name);
+         } else {
+           // Window is gone, create new one with these tabs
+           if (snapWin.tabIds.length > 0) {
+              await createWindowWithTabs(snapWin.tabIds);
+              // Name is lost for new ID unless we track it, simplification for now.
+           }
+         }
+      }
+
+      setReorgHistory(prev => prev.slice(0, -1));
+      pushNameHistory(restoredNameMap);
+      await loadTabs();
+      showNotification("Undo successful", 'success');
+
+    } catch (e) {
+      console.error(e);
+      showNotification("Undo failed", 'info');
+    } finally {
+      setIsMergeProcessing(false);
     }
   };
 
@@ -640,6 +774,29 @@ const App: React.FC = () => {
                 : (windowNameMap[activeWindowId || ''] || 'Current Window')
               }
             </h1>
+
+            {/* AI Reorg Controls */}
+            {viewMode === ViewMode.AI_GROUPED && !sidebarSelectedWindowIds.length && (
+              <div className="flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+                 {reorgHistory.length > 0 && (
+                   <button
+                    onClick={handleUndoReorg}
+                    disabled={isMergeProcessing}
+                    className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                  >
+                    <RotateCcw size={14} />
+                    Undo Reorg
+                  </button>
+                 )}
+                 <button
+                   onClick={() => setShowReorgConfirm(true)}
+                   className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg shadow-sm transition-colors"
+                 >
+                   <LayoutTemplate size={14} />
+                   Apply to Windows
+                 </button>
+              </div>
+            )}
             
             <div className="relative max-w-md w-full ml-auto sm:ml-4">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
@@ -863,6 +1020,17 @@ const App: React.FC = () => {
             onClose={() => setShowMergeModal(false)}
             isProcessing={isMergeProcessing}
           />
+        )}
+
+        {showReorgConfirm && (
+           <ConfirmModal
+             title="Reorganize Windows?"
+             message="This will move your tabs into new windows based on the AI categories. Existing window names will be updated. You can undo this action."
+             confirmText="Yes, Reorganize"
+             onConfirm={handleApplyAiOrganization}
+             onClose={() => setShowReorgConfirm(false)}
+             isProcessing={isMergeProcessing}
+           />
         )}
 
         {showUserGuide && (

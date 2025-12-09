@@ -94,21 +94,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
 
           {/* Quick Actions */}
           <div className="space-y-3">
-             {/* Help Button */}
-            <button 
-              onClick={() => { onStartTour?.(); }}
-              className="w-full flex items-center gap-3 p-3 rounded-xl border border-indigo-200 dark:border-slate-700 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors group text-left"
-            >
-              <div className="bg-indigo-100 dark:bg-indigo-800 p-2 rounded-lg text-indigo-600 dark:text-indigo-300 group-hover:scale-110 transition-transform">
-                <HelpCircle size={20} />
-              </div>
-              <div>
-                <span className="block font-semibold text-slate-900 dark:text-slate-100">Start Interactive Tour</span>
-                <span className="text-xs text-slate-500 dark:text-slate-400">Learn how to use features in 30 seconds</span>
-              </div>
-            </button>
-
-            {/* Maximize Button */}
+             {/* Maximize Button - Moved to first position */}
             <button 
               onClick={onMaximize}
               className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group text-left"
@@ -119,6 +105,20 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
               <div>
                 <span className="block font-semibold text-slate-900 dark:text-slate-100">Maximize Window</span>
                 <span className="text-xs text-slate-500 dark:text-slate-400">Expand to a full browser tab for better view</span>
+              </div>
+            </button>
+
+             {/* Help Button - Moved to last position */}
+            <button 
+              onClick={() => { onStartTour?.(); }}
+              className="w-full flex items-center gap-3 p-3 rounded-xl border border-indigo-200 dark:border-slate-700 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors group text-left"
+            >
+              <div className="bg-indigo-100 dark:bg-indigo-800 p-2 rounded-lg text-indigo-600 dark:text-indigo-300 group-hover:scale-110 transition-transform">
+                <HelpCircle size={20} />
+              </div>
+              <div>
+                <span className="block font-semibold text-slate-900 dark:text-slate-100">Start Interactive Tour</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">Learn how to use features in 30 seconds</span>
               </div>
             </button>
           </div>
