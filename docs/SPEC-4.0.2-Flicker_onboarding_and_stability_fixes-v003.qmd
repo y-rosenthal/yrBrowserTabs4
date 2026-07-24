@@ -1,0 +1,177 @@
+# SPEC 4.0.2 — Flicker, Onboarding & Stability Fixes (v003) {.unnumbered}
+
+| | |
+|---|---|
+| **Software version** | 4.0.2 |
+| **Spec revision** | v003 (supersedes v002) |
+| **Date** | 2026-07-22 |
+| **Status** | Implemented |
+
+This revision extends v002 with a second round of issues: the flickering icon
+column, the reappearing Welcome dialog, and two latent state bugs uncovered
+while diagnosing them. Root causes were verified by a multi-agent
+investigation (three independent analysis lenses, each claim adversarially
+re-checked against the code).
+
+## The "Actions" column, explained
+
+The first table column after the checkbox holds two per-row buttons — **↗
+Switch to Tab** and **× Close Tab**. They are rendered with `opacity: 0` and
+only become visible when the row is hovered or selected, which is why the
+column usually looks empty. The icon users see flickering is **not** in the
+Actions column: it is the favicon column, the narrow unlabeled column between
+Actions and Tab Name.
+
+## Issue 5 — Continuous icon flicker while idle
+
+**Primary cause (confirmed).** Rows whose favicon could not load fell back to
+`https://via.placeholder.com/16?text=?` via an `onError` handler that
+re-assigned `img.src`. That domain is dead (TLS connections fail). Per the
+HTML spec, assigning `src` — even the same value — restarts image fetching,
+so each failure re-fired `onError`, which re-assigned `src`, forever: an
+infinite error/retry loop repainting the 16 px icon (blank ↔ broken-glyph)
+several times a second, on every affected row at once, with a continuous
+stream of doomed network requests. With 174 tabs, several rows were always
+looping. The same defect existed in `PreviewPanel` and the (unused)
+`TabCard`.
+
+**Amplifier (confirmed).** The dashboard subscribes to eight `chrome.tabs`/
+`chrome.windows` events with a 200 ms debounce and reloads the full window
+snapshot on each. Background tabs (Gmail unread counts, YouTube, Memory
+Saver discards) fire these continuously, so the table re-rendered every few
+hundred milliseconds even when idle. React only commits real DOM changes for
+rows whose data changed — but the events themselves supply such changes
+(title strings, tabs cycling through reload transiently reporting **no**
+favicon), so icons flipped between image and fallback as tabs slept and woke.
+
+**Fixes.**
+
+- New `components/Favicon.tsx`: renders the tab icon with a **local** Globe
+  glyph fallback (no network). A `failed` flag latches on error and resets
+  only when the URL actually changes — a loop is structurally impossible.
+  Fixed 16 px box, so no width wobble. Replaces the broken `<img onError>`
+  pattern in `TabListView` and `PreviewPanel`; the unused `TabCard.tsx`
+  (same defect) was deleted.
+- `services/tabService.ts` keeps a `lastKnownFavicons` map (tab id → last
+  non-empty `favIconUrl`), so tabs mid-reload keep their icon instead of
+  flashing the fallback.
+- `loadTabs` now computes a JSON signature of the fresh window snapshot and
+  **skips all state updates when nothing changed**, so display-irrelevant
+  events (audible/muted/loading churn) no longer re-render 174 rows.
+
+## Issue 6 — Welcome dialog reappears after being dismissed
+
+**Cause (confirmed).** The **X** button and "Got it" both close the dialog
+passing the "Don't show this again" checkbox state (default *unchecked*), so
+plain dismissal never persists `hasSeenOnboarding`. The first-run check ran
+inside `loadTabs`, which re-runs on **every** chrome tab event — and
+browsing previews generates a stream of them (waking/reloading a discarded
+tab fires `onUpdated` several times). Result: dismiss with X, wake a few
+tabs, dialog pops up again.
+
+**Fix.** A session-scoped guard (`hasAutoShownWelcome` ref): the dialog
+auto-shows **at most once per app session**, no matter how it is dismissed.
+Semantics now:
+
+- Fresh profile, first launch → dialog shows once.
+- Dismissed with X or "Got it" (checkbox unchecked) → stays closed for the
+  rest of the session; will show once again next session.
+- "Don't show this again" checked → never auto-shows again.
+- Help menu → "Show Welcome Screen" still opens it manually at any time.
+
+## Issue 7 (latent) — Stale subscription closure resetting undo history
+
+Found during the flicker investigation. The mount-time effect captured the
+first-render `loadTabs` closure permanently (`[]` deps), so every chrome
+event ran with `windows=[]`, `historyIndex=-1`: it blinked the toolbar
+refresh spinner, and — worse — took the "first load" branch, **resetting the
+window-rename undo/redo history on every event** and rebuilding the name map
+(un-persisted in-session names could be reverted).
+
+**Fix.** The subscription now calls the latest `loadTabs` through a ref
+(`loadTabsRef`), so event-driven reloads see current state and take the
+normal update path. Undo history survives background events.
+
+## Issue 8 (latent) — Unstable `lastAccessed` fallback
+
+`getWindows` mapped `lastAccessed: t.lastAccessed || Date.now()` — tabs
+lacking the field were re-stamped with a fresh time on every reload,
+churning the default "Last Accessed" sort order. Now falls back to a stable
+`0`, displayed as "—" in the table.
+
+## Issue 9 — Adversarial review findings (hardening round)
+
+After the fixes above, an adversarial multi-agent review of the full diff
+(three lenses, 21 agents, every finding re-verified against the code)
+confirmed nine further defects, all fixed:
+
+1. **Popup layout**: preview-pane-open-by-default would squeeze the ~800 px
+   extension *popup* to an unusably narrow table. The pane now defaults open
+   only when the viewport is wider than 800 px (full-tab dashboard) and stays
+   closed in the popup.
+2. **Snapshot-skip side effects**: the manual Refresh button silently did
+   nothing when the snapshot was unchanged, and relative "Last Accessed"
+   times froze during quiet periods. Refresh now forces a reload
+   (`loadTabs(true)`), and the table re-renders once a minute so times keep
+   ticking.
+3. **Duplicate window names**: after closing a window, the stale in-memory
+   name map shadowed the recomputed defaults, yielding two "window2" and no
+   "window1". Since every rename path (manual, AI, undo/redo) persists to
+   storage, the recomputed defaults + stored customs are now authoritative
+   on reload; closed windows are pruned from the map.
+4. **Stale favicon after navigation**: the last-known-favicon cache is now
+   scoped to the page *origin*, so a tab that navigates from github.com to a
+   site with no favicon stops showing GitHub's icon (the mid-reload
+   flicker protection, where the origin is unchanged, still works).
+5. **Wake button on the wrong tab**: switching tabs while a (up to 15 s)
+   wake was in flight let its completion clear the *new* tab's UI, and a
+   previous tab's "asleep" flag could briefly mislabel the next tab. Per-tab
+   flags are reset on every fetch, and wake completion is keyed to the tab
+   it started for.
+6. **Crash on URL-less tabs**: `new URL('')` for a tab still pending its
+   first navigation threw during render, white-screening the app (no error
+   boundary). The PreviewPanel now guards hostname parsing like the table
+   already did.
+7. **CSV export** printed 12/31/1969 for tabs with the new stable
+   `lastAccessed: 0` fallback; it now exports an empty cell.
+8. **Restricted-page detection** missed Chrome's "Cannot access …" error
+   phrasings, so `chrome://` tabs showed the generic sleep message instead
+   of the security explanation; the match now covers that family.
+9. **Missing events**: `tabs.onActivated` and `windows.onFocusChanged` were
+   not subscribed, so active-tab highlights and `lastAccessed` went stale
+   until an unrelated event fired. Both added (the debounce + snapshot-skip
+   absorb the extra firings).
+
+## Affected files
+
+- `components/Favicon.tsx` — new.
+- `components/TabCard.tsx` — deleted (unused, contained the same bug).
+- `components/TabListView.tsx` — uses `Favicon`; "—" for unknown times;
+  once-a-minute clock tick.
+- `components/PreviewPanel.tsx` — uses `Favicon`; per-tab wake/sleep state;
+  guarded hostname parsing.
+- `services/tabService.ts` — origin-scoped favicon cache; stable
+  `lastAccessed` fallback; broader restricted-page detection; subscribes to
+  `onActivated`/`onFocusChanged`.
+- `App.tsx` — onboarding session guard; `loadTabsRef` stale-closure fix;
+  snapshot-signature skip with `force` for manual refresh; authoritative
+  name-map recompute; viewport-aware preview default; CSV export guard.
+
+## Verified non-causes
+
+For the record, the investigation explicitly ruled out: a feedback loop from
+`loadTabs` itself; unstable React row keys; React resetting the DOM-mutated
+`img.src` (React 18 diffs against its own previous vdom, not the live DOM);
+CSP blocking favicons; `scrollIntoView` or CSS transitions replaying on
+re-render; and sticky-header repaints.
+
+## Out of scope
+
+- Filtering which `chrome.tabs.onUpdated` payloads trigger a reload (the
+  snapshot-signature skip makes this mostly moot).
+- Persisting "welcome dismissed" across sessions on plain X-dismissal (the
+  existing checkbox already provides permanence; see Issue 6 semantics).
+- `table-fixed` column layout: considered as insurance against width
+  redistribution, but measurement showed text columns are hard-capped by
+  `truncate`, and fixed widths risk clipping. Revisit only if any residual
+  jitter is observed after these fixes.

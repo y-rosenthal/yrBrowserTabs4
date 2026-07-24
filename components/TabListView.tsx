@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Tab, WindowData } from '../types';
 import { X, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Favicon } from './Favicon';
 
 export type SortField = 'title' | 'window' | 'url' | 'lastAccessed';
 export type SortDirection = 'asc' | 'desc';
@@ -52,6 +53,15 @@ export const TabListView: React.FC<TabListViewProps> = ({
   focusedArea
 }) => {
   const rowRefs = useRef<{ [key: string]: HTMLTableRowElement | null }>({});
+
+  // Re-render once a minute so the relative "Last Accessed" times keep
+  // ticking — the snapshot-skip in loadTabs means quiet periods no longer
+  // re-render the table as a side effect.
+  const [, setClockTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setClockTick(t => t + 1), 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Local Sort State (used when props are not provided)
   const [internalSortField, setInternalSortField] = useState<SortField>('lastAccessed');
@@ -241,12 +251,7 @@ export const TabListView: React.FC<TabListViewProps> = ({
 
                   {/* Favicon */}
                   <td className="px-4 py-3 text-center">
-                     <img 
-                      src={tab.favIconUrl} 
-                      alt="" 
-                      className="w-4 h-4 rounded-sm mx-auto"
-                      onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/16?text=?'; }}
-                    />
+                     <Favicon src={tab.favIconUrl} size={16} className="mx-auto" />
                   </td>
 
                   {/* Tab Name */}
@@ -275,6 +280,7 @@ export const TabListView: React.FC<TabListViewProps> = ({
                   {/* Last Accessed */}
                   <td className="px-4 py-3 hidden lg:table-cell text-sm text-slate-500 dark:text-slate-500">
                      {(() => {
+                        if (!tab.lastAccessed) return '—';
                         const diff = Date.now() - tab.lastAccessed;
                         if (diff < 60000) return 'Just now';
                         const mins = Math.floor(diff/60000);

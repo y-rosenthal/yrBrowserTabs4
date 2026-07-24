@@ -42,7 +42,7 @@ export default defineConfig(({ mode }) => {
       },
       rollupOptions: {
         input: {
-          main: resolve(__dirname, 'index.html'),
+          main: resolve(__dirname, 'app.html'),
           background: resolve(__dirname, 'background.js'),
         },
         output: {

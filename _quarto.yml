@@ -1,0 +1,25 @@
+project:
+  type: book
+  output-dir: _book
+
+book:
+  title: "TabMaster AI — Documentation"
+  author: "YR"
+  chapters:
+    - index.qmd
+    - README.md
+    - part: "Specifications"
+      chapters:
+        - docs/spec-conventions.qmd
+        # Add new spec files here, newest first:
+        - docs/SPEC-4.0.2-Flicker_onboarding_and_stability_fixes-v003.qmd
+        - docs/SPEC-4.0.2-Sequential_default_window_names-v002.qmd
+        - docs/SPEC-4.0.2-Sequential_default_window_names-v001.qmd
+
+format:
+  html:
+    theme:
+      light: cosmo
+      dark: darkly
+    toc: true
+    number-sections: false

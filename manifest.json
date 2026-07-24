@@ -2,18 +2,19 @@
 {
   "manifest_version": 3,
   "name": "TabMaster AI",
-  "version": "1.0",
+  "version": "4.0.2",
   "description": "AI-powered tab manager for Chrome",
   "permissions": [
     "tabs",
     "windows",
-    "storage"
+    "storage",
+    "scripting"
   ],
   "host_permissions": [
     "<all_urls>"
   ],
   "action": {
-    "default_popup": "index.html",
+    "default_popup": "app.html",
     "default_title": "TabMaster AI"
   },
   "background": {

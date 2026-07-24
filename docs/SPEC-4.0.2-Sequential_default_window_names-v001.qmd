@@ -1,0 +1,60 @@
+# SPEC 4.0.2 — Sequential Default Window Names (v001) {.unnumbered}
+
+| | |
+|---|---|
+| **Software version** | 4.0.2 |
+| **Spec revision** | v001 |
+| **Date** | 2026-07-22 |
+| **Status** | Implemented |
+
+## Problem
+
+When TabMaster AI loads, every browser window gets a default display name
+generated from alphabetical adjective/noun word lists: "Able Ant", "Blue Bear",
+"Calm Cat", and so on (A, B, C… ordering, cycling through five words per
+letter).
+
+These names are whimsical but unhelpful: they carry no information about a
+window's position or identity, and users must mentally map arbitrary word pairs
+to windows. Sequential names are easier to scan and to talk about ("close
+window3").
+
+## Change
+
+Default window names become sequential: `window1`, `window2`, `window3`, …
+assigned in the order windows are reported by the browser (the same index
+ordering the old scheme used).
+
+### Behavior details
+
+- `generateWindowName(index)` returns `window{index + 1}` (1-based, no
+  padding, no space).
+- `generateWindowNames(windowIds)` is unchanged in shape: it maps each window
+  ID to its generated name by input order.
+- **Custom names still win.** Names the user typed, and names produced by the
+  AI "Auto Name" feature, are stored as `customWindowNames` and continue to
+  override the generated defaults at merge time in `App.tsx` (`loadTabs`).
+  This spec changes only the fallback default.
+- Windows are not renamed at the browser level; as before, this is a display
+  name inside the extension.
+
+### Code cleanup
+
+`services/nameGenerator.ts` shrinks from ~97 lines to ~18: the `ADJECTIVES`
+and `NOUNS` word tables (52 lists, 260 words) and the alphabet-cycling logic
+are deleted. No other module imported them.
+
+## Affected files
+
+- `services/nameGenerator.ts` — rewritten (word lists removed, sequential
+  logic added).
+
+Call sites in `App.tsx` are untouched; the function signatures are preserved.
+
+## Out of scope
+
+- AI-generated window naming (`generateWindowNamesWithAI` in
+  `services/geminiService.ts`) is unchanged.
+- Renumbering after windows close (e.g. gaps like window1, window3) follows
+  the same rule as the old scheme: defaults are recomputed from current window
+  order on each load, so numbers stay contiguous.

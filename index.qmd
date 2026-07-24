@@ -1,0 +1,17 @@
+# Welcome {.unnumbered}
+
+This book collects the documentation for **TabMaster AI**, a Chrome extension
+that uses Google's Gemini AI to organize browser tabs and windows.
+
+It contains:
+
+- The project **README** — installation instructions and feature overview.
+- **Specifications** — versioned design/spec documents from the `docs/` folder,
+  describing changes made at each software version. Older spec revisions are
+  kept in the book so the history of design decisions remains browsable.
+
+See [Spec Conventions](docs/spec-conventions.qmd) for how spec files are named
+and versioned.
+
+To rebuild this book, run `quarto render` in the repository root. The rendered
+HTML is written to `_book/`.

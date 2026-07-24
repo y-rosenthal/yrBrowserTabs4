@@ -95,7 +95,9 @@ const App: React.FC = () => {
   // Selection & Features
   const [selectedTabId, setSelectedTabId] = useState<string | null>(null); // For Preview/Active
   const [checkedTabIds, setCheckedTabIds] = useState<string[]>([]); // For Multi-select Actions
-  const [showPreview, setShowPreview] = useState(false);
+  // Default open in the full-tab dashboard, but closed in the ~800px action
+  // popup, where a 384px pane would leave almost no room for the table.
+  const [showPreview, setShowPreview] = useState(() => window.innerWidth > 800);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showUserGuide, setShowUserGuide] = useState(false);
   const [showHelpMenu, setShowHelpMenu] = useState(false);
@@ -117,6 +119,9 @@ const App: React.FC = () => {
 
   // Onboarding
   const [onboardingIndex, setOnboardingIndex] = useState<number>(-1); // -1 means inactive
+  const hasAutoShownWelcome = useRef(false); // first-run dialog auto-shows at most once per session
+  const loadTabsRef = useRef<() => Promise<void>>(async () => {});
+  const lastSnapshotSig = useRef<string>('');
   const [currentTourSteps, setCurrentTourSteps] = useState<OnboardingStep[]>(FULL_TOUR_STEPS);
   
   // Merge State
@@ -184,8 +189,8 @@ const App: React.FC = () => {
     const handleMouseMove = (e: MouseEvent) => {
       // Width is calculated from the right edge of the screen
       const newWidth = window.innerWidth - e.clientX;
-      // Constrain width
-      const clamped = Math.max(250, Math.min(800, newWidth));
+      // Constrain width (never wider than 70% of the viewport)
+      const clamped = Math.max(250, Math.min(800, window.innerWidth * 0.7, newWidth));
       setPreviewWidth(clamped);
     };
 
@@ -240,12 +245,22 @@ const App: React.FC = () => {
     setWindowNameMap(newMap);
   };
 
-  const loadTabs = useCallback(async () => {
+  const loadTabs = useCallback(async (force = false) => {
     if (windows.length === 0) setIsLoading(true);
-    
+
     try {
       const data = await getWindows();
       const storage = await getStorageData();
+
+      // Skip the whole update when nothing visible changed — chrome fires
+      // events (audible/muted/loading) that carry no display-relevant data,
+      // and each no-op setWindows re-renders all rows. The manual Refresh
+      // button passes force=true to bypass the skip.
+      const signature = JSON.stringify(data);
+      if (!force && signature === lastSnapshotSig.current && historyIndex !== -1) {
+        return;
+      }
+      lastSnapshotSig.current = signature;
 
       setWindows(data);
       
@@ -266,14 +281,19 @@ const App: React.FC = () => {
         setNameHistory([mergedNames]);
         setHistoryIndex(0);
       } else {
-        // If reloading tabs but keeping names, just update state to ensure consistency
-        // (e.g. if new window appeared, it needs a name)
-        const currentMap = { ...mergedNames, ...windowNameMap };
-        setWindowNameMap(currentMap);
+        // Recomputed defaults + stored custom names are authoritative: every
+        // rename path (manual, AI, undo/redo) persists to storage, so letting
+        // the stale in-memory map win produced duplicate defaults (two
+        // "window2") after windows closed. This also prunes closed windows.
+        setWindowNameMap(mergedNames);
       }
       
       // Onboarding check - First Run Logic
-      if (!storage.hasSeenOnboarding && onboardingIndex === -1) {
+      // Auto-show at most once per session: loadTabs re-runs on every tab
+      // event (including tabs woken for previews), and re-opening a dialog
+      // the user already dismissed with X is wrong.
+      if (!storage.hasSeenOnboarding && onboardingIndex === -1 && !hasAutoShownWelcome.current) {
+        hasAutoShownWelcome.current = true;
         setCurrentTourSteps(FIRST_RUN_STEP);
         setOnboardingIndex(0);
       }
@@ -292,11 +312,18 @@ const App: React.FC = () => {
     }
   }, [windows.length, onboardingIndex, historyIndex, windowNameMap]);
 
+  // The subscription lives for the app's lifetime, so it must call the
+  // LATEST loadTabs. Capturing loadTabs directly in the []-deps effect froze
+  // its first-render closure (windows=[], historyIndex=-1), which re-ran the
+  // "first load" branch on every chrome event — resetting the rename-undo
+  // history and blinking the loading state.
+  useEffect(() => { loadTabsRef.current = loadTabs; }, [loadTabs]);
+
   useEffect(() => {
-    loadTabs();
-    const unsubscribe = subscribeToUpdates(() => loadTabs());
+    loadTabsRef.current();
+    const unsubscribe = subscribeToUpdates(() => loadTabsRef.current());
     return unsubscribe;
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // --- COMPUTED DATA ---
   const allTabs = useMemo(() => windows.flatMap(w => w.tabs), [windows]);
@@ -774,7 +801,7 @@ const App: React.FC = () => {
       content = 'Window,Last Accessed,Domain,Full URL,Title\n';
       allTabs.forEach(t => {
         const winName = (windowNameMap[t.windowId] || 'Unknown').replace(/"/g, '""');
-        const lastAccessed = new Date(t.lastAccessed).toLocaleString().replace(/"/g, '""');
+        const lastAccessed = t.lastAccessed ? new Date(t.lastAccessed).toLocaleString().replace(/"/g, '""') : '';
         let domain = '';
         try { domain = new URL(t.url).hostname; } catch (e) { domain = 'local'; }
         const url = t.url.replace(/"/g, '""');
@@ -976,7 +1003,7 @@ const App: React.FC = () => {
               </button>
 
               <button 
-                onClick={() => loadTabs()}
+                onClick={() => loadTabs(true)}
                 className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors"
                 title="Refresh Tabs"
               >
@@ -1033,7 +1060,7 @@ const App: React.FC = () => {
         {/* Content */}
         <div className="flex flex-1 overflow-hidden" onClick={() => setFocusedArea('tabs')}>
           {/* Main Container: Removed top padding to fix sticky header gap issue */}
-          <main className="flex-1 overflow-y-auto px-6 pb-6 pt-0 scroll-smooth">
+          <main className="flex-1 min-w-0 overflow-y-auto px-6 pb-6 pt-0 scroll-smooth">
             {/* Visual Spacer to replace padding-top, scrolls away so sticky header hits the top edge */}
             <div className="h-6"></div> 
             
@@ -1101,7 +1128,7 @@ const App: React.FC = () => {
           </main>
           
           {showPreview && (
-            <div className="relative flex h-full shrink-0 shadow-xl z-30" style={{ width: previewWidth }}>
+            <div className="relative flex h-full shrink-0 shadow-xl z-30" style={{ width: previewWidth, maxWidth: '70vw' }}>
               {/* Resize Handle */}
               <div 
                 className="absolute top-0 left-0 w-1.5 h-full cursor-col-resize hover:bg-indigo-500/50 active:bg-indigo-500 transition-colors z-20 flex flex-col justify-center items-center group"

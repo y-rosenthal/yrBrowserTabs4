@@ -1,0 +1,106 @@
+# SPEC 4.0.2 — Window Names, Preview & Layout Fixes (v002) {.unnumbered}
+
+| | |
+|---|---|
+| **Software version** | 4.0.2 |
+| **Spec revision** | v002 (supersedes v001) |
+| **Date** | 2026-07-22 |
+| **Status** | Implemented |
+
+This revision extends v001 (sequential window names) with three further
+issues reported against the same release, plus a source-tree reconciliation
+that investigation of those issues uncovered.
+
+## Issue 1 — Sequential default window names
+
+Unchanged from v001: default window names are `window1`, `window2`, … in
+window order instead of adjective/noun pairs ("Able Ant", "Blue Bear").
+`services/nameGenerator.ts` shrank from ~97 lines to 18; custom names and AI
+"Auto Name" results still override defaults. See v001 for full details.
+
+## Issue 2 — Right-hand side breaks when resizing the browser window
+
+**Problem.** Shrinking the browser window sometimes clipped or garbled the
+right side of the layout (tab table columns disappearing under the preview
+pane, pane pushed off-screen).
+
+**Cause.** Two compounding flex-layout defects:
+
+- The tab table uses `whitespace-nowrap`, giving `<main>` a large intrinsic
+  width. `<main>` had no `min-width: 0`, and a flex item's default
+  `min-width: auto` prevents it from shrinking below its content — so the row
+  overflowed its `overflow-hidden` container.
+- The preview pane has a fixed pixel width (250–800 px, `shrink-0`) that was
+  only clamped during drag-resize, never against the viewport. On a small
+  window the pane could claim more room than exists.
+
+**Fix** (`App.tsx`):
+
+- `min-w-0` added to `<main>` so it shrinks properly (its content scrolls
+  within it instead of overflowing the row).
+- The preview pane gets `max-width: 70vw`, and the drag-resize clamp now also
+  caps at 70% of the viewport width.
+
+## Issue 3 — Preview pane hidden by default
+
+**Problem.** The preview pane started hidden; users had to find the eye
+toggle in the toolbar to enable it.
+
+**Fix.** `showPreview` initial state changed from `false` to `true` in
+`App.tsx`. The toolbar eye toggle and the pane's close button still hide it.
+
+## Issue 4 — Some tabs show "Preview Unavailable"; wake-up support
+
+**Why previews fail.** The content preview injects a script into the target
+tab (`chrome.scripting.executeScript`) and renders the captured HTML in a
+sandboxed iframe. Capture fails for:
+
+1. **Discarded ("sleeping") tabs** — Chrome's Memory Saver unloads tabs not
+   visited recently; there is no page to script. This is per-tab, not
+   per-window, which made the failures look random across windows.
+2. **Restricted pages** — `chrome://` pages, the Chrome Web Store, other
+   extensions' pages. Browser policy; not fixable.
+
+**New behavior.** When capture fails and `chrome.tabs.get(...).discarded` is
+true, the error panel explains the tab is asleep and offers a
+**"Wake up & preview"** button. Clicking it:
+
+1. Calls `chrome.tabs.reload(tabId)` — reloads the tab in the background
+   without stealing focus from the dashboard.
+2. Waits for the tab's `onUpdated` event to report `status: 'complete'`
+   (15 s timeout).
+3. Retries the content capture automatically.
+
+An explicit button was chosen over auto-waking on click: waking a tab spends
+the memory/network Chrome was saving and can re-trigger session refreshes, so
+the user stays in control. Restricted pages keep the existing explanation and
+"Go to Tab" fallback.
+
+## Source-tree reconciliation
+
+Investigating issue 4 revealed that the installed extension was built from
+`~/Downloads/tabmaster10`, a divergent copy containing the content-preview
+feature (`getTabContent`, iframe preview panel, `scripting` permission) that
+this repository lacked. That feature has now been merged into this repo,
+which is again the single source of truth:
+
+- `services/tabService.ts` — `getTabContent` copied in; new `isTabDiscarded`
+  and `wakeTab` helpers added.
+- `components/PreviewPanel.tsx` — replaced with the content-preview version,
+  extended with the sleeping-tab detection and wake-up flow.
+- `manifest.json` — `scripting` permission added.
+
+## Affected files
+
+- `App.tsx` — preview default on; `min-w-0` on `<main>`; viewport clamps on
+  the preview pane width.
+- `components/PreviewPanel.tsx` — content preview + wake-up flow.
+- `services/tabService.ts` — `getTabContent`, `isTabDiscarded`, `wakeTab`.
+- `services/nameGenerator.ts` — (from v001) sequential names.
+- `manifest.json` — `scripting` permission.
+
+## Out of scope
+
+- Persisting the preview pane's visibility/width across sessions.
+- Bulk-waking all tabs in a window.
+- Any preview for restricted pages.

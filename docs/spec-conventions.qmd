@@ -1,0 +1,41 @@
+# Spec Conventions {.unnumbered}
+
+## File naming
+
+Specification documents live in the `docs/` folder and are Quarto `.qmd` files
+named as follows:
+
+```
+SPEC-<software-version>-<Description_of_changes>-v<NNN>.qmd
+```
+
+For example:
+
+```
+SPEC-4.0.2-Fix_tab_grouping_bugs-v001.qmd
+```
+
+Where:
+
+- `<software-version>` — the version of TabMaster AI the spec targets
+  (kept in sync with `version` in `package.json` / `manifest.json`).
+- `<Description_of_changes>` — a short underscore-separated summary of what
+  the spec covers.
+- `v<NNN>` — the revision of the *spec document itself*, starting at `v001`.
+
+## Revising a spec
+
+When a spec needs to be rewritten, **do not edit the old file**. Instead, copy
+it to a new file with the revision number incremented (`-v001` → `-v002`) and
+make the changes there. The old revision stays in the repository and in the
+rendered book, so earlier design details remain viewable.
+
+## Adding a spec to the book
+
+New spec files must be added to the `Specifications` part in `_quarto.yml`
+(Quarto books require chapters to be listed explicitly). List newest revisions
+first. Then re-render the book:
+
+```bash
+quarto render
+```
