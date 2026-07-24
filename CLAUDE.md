@@ -1,9 +1,5 @@
 # Project instructions
 
-## Bash commands
-
-Whenever you propose a Bash command to run, break it down piece by piece in a
-comment/explanation the reader can follow. The user is knowledgeable about
-general Bash but not every command or every option/flag, so explain the base
-command, notable flags, pipes, and any less-common options — covering the
-non-obvious parts especially.
+The agent instructions for this repo live in [`AGENTS.md`](./AGENTS.md).
+Read and follow that file — it is the single source of truth for all AI
+coding agents (Claude Code, Codex, Cursor, etc.).
