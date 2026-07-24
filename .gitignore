@@ -30,3 +30,14 @@ yarn-error.log*
 *.njsproj
 *.sln
 *.sw?
+
+/.quarto/
+
+# Quarto build output
+_book/
+
+# Vite cache
+.vite/
+
+# Misc local overrides
+*.local
