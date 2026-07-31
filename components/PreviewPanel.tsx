@@ -12,13 +12,16 @@ interface PreviewPanelProps {
   onActivate: (tab: Tab) => void;
   onClose: (tabId: string) => void;
   onClosePanel: () => void;
+  // Bumped by App when a sleeping tab was auto-woken, so the capture retries.
+  refreshSignal?: number;
 }
 
 export const PreviewPanel: React.FC<PreviewPanelProps> = ({
   tab,
   windowNames,
   onActivate,
-  onClosePanel
+  onClosePanel,
+  refreshSignal
 }) => {
   const [htmlContent, setHtmlContent] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
@@ -88,7 +91,7 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [tab?.id, tab?.url, fetchAttempt]); // Re-run when tab changes or a retry is requested
+  }, [tab?.id, tab?.url, fetchAttempt, refreshSignal]); // Re-run when tab changes, a retry is requested, or an auto-wake finished
 
   const handleWake = async () => {
     if (!tab) return;

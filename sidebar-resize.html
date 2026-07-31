@@ -1,0 +1,92 @@
+<script>
+// Drag-to-resize for the book's navigation sidebar.
+// Quarto lays the page out as a CSS grid; the sidebar spans the tracks
+// between the [page-start] and [body-start] grid lines. Dragging rescales
+// exactly those tracks (read from the live computed style, so every
+// layout/media-query variant works) and pins the result as an inline
+// style. The width persists in localStorage; double-click resets.
+(function () {
+  const KEY = "yr-sidebar-width";
+  const MIN = 180, MAX = 600;
+
+  function ready(fn) {
+    if (document.readyState !== "loading") fn();
+    else document.addEventListener("DOMContentLoaded", fn);
+  }
+
+  ready(function () {
+    const sidebar = document.getElementById("quarto-sidebar");
+    const content = document.getElementById("quarto-content");
+    if (!sidebar || !content) return;
+
+    function applyWidth(target) {
+      content.style.gridTemplateColumns = ""; // fall back to stylesheet…
+      if (!target) return;                    // …which is all a reset needs
+      const computed = getComputedStyle(content).gridTemplateColumns;
+      const tokens = computed.match(/\[[^\]]+\]|\S+/g) || [];
+      let start = -1, end = -1;
+      tokens.forEach(function (t, i) {
+        if (t[0] === "[") {
+          const names = t.slice(1, -1).split(/\s+/);
+          if (start === -1 && names.indexOf("page-start") !== -1) start = i;
+          if (end === -1 && names.indexOf("body-start") !== -1) end = i;
+        }
+      });
+      if (start === -1 || end === -1 || end <= start) return;
+      let sum = 0;
+      for (let i = start + 1; i < end; i++) {
+        if (tokens[i][0] !== "[") sum += parseFloat(tokens[i]) || 0;
+      }
+      if (sum <= 0) return; // sidebar not in the grid (offcanvas/mobile)
+      const scale = target / sum;
+      for (let i = start + 1; i < end; i++) {
+        if (tokens[i][0] !== "[") {
+          tokens[i] = (parseFloat(tokens[i]) * scale).toFixed(1) + "px";
+        }
+      }
+      content.style.gridTemplateColumns = tokens.join(" ");
+    }
+
+    const handle = document.createElement("div");
+    handle.id = "yr-sidebar-drag";
+    handle.title = "Drag to resize sidebar • double-click to reset";
+    sidebar.appendChild(handle);
+
+    let dragging = false;
+    handle.addEventListener("mousedown", function (e) {
+      e.preventDefault();
+      dragging = true;
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+    });
+    window.addEventListener("mousemove", function (e) {
+      if (!dragging) return;
+      const left = sidebar.getBoundingClientRect().left;
+      const w = Math.max(MIN, Math.min(MAX, e.clientX - left));
+      localStorage.setItem(KEY, String(w));
+      applyWidth(w);
+    });
+    window.addEventListener("mouseup", function () {
+      if (!dragging) return;
+      dragging = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    });
+    handle.addEventListener("dblclick", function () {
+      localStorage.removeItem(KEY);
+      applyWidth(null);
+    });
+
+    function restore() {
+      const saved = parseFloat(localStorage.getItem(KEY) || "");
+      if (saved) applyWidth(saved);
+    }
+    let timer;
+    window.addEventListener("resize", function () {
+      clearTimeout(timer);
+      timer = setTimeout(restore, 150); // media queries swap the template
+    });
+    restore();
+  });
+})();
+</script>

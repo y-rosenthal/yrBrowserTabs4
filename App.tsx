@@ -2,12 +2,16 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { DEMO_NOTICE } from './constants';
-import { ViewMode, WindowData, Tab, TabGroup, OnboardingStep, WindowReorgSnapshot } from './types';
-import { Search, Info, ExternalLink, RefreshCw, AlertCircle, Maximize2, Download, Table, FileText, Eye, EyeOff, FolderPlus, HelpCircle, BookOpen, Sun, Moon, Key, LayoutTemplate, RotateCcw, Settings, Sparkles, ListFilter } from 'lucide-react';
+import { ViewMode, WindowData, Tab, TabGroup, OnboardingStep, WindowReorgSnapshot, CardMetadataSetting, CardMetadataField } from './types';
+import { Search, Info, ExternalLink, RefreshCw, AlertCircle, Maximize2, Download, Table, FileText, Eye, EyeOff, FolderPlus, HelpCircle, BookOpen, Sun, Moon, Key, LayoutTemplate, RotateCcw, Settings, Sparkles, ListFilter, List, LayoutGrid, Minus, Plus, Copy, FolderInput, Edit2, Trash2, CheckSquare, Undo2, Redo2, Wand2, ChevronUp, ChevronDown } from 'lucide-react';
 import { organizeTabsWithAI, generateWindowNamesWithAI } from './services/geminiService';
-import { getWindows, activateTab, closeTab, getPlatformInfo, moveTabs, createWindowWithTabs, focusOrOpenExtensionTab, subscribeToUpdates } from './services/tabService';
-import { saveCustomWindowName, getStorageData, setOnboardingSeen, saveTheme, saveApiKey } from './services/storageService';
+import { getWindows, activateTab, closeTab, getPlatformInfo, moveTabs, createWindowWithTabs, focusOrOpenExtensionTab, subscribeToUpdates, focusWindow, closeWindow, wakeTab } from './services/tabService';
+import { saveCustomWindowName, getStorageData, setOnboardingSeen, saveTheme, saveApiKey, saveViewSettings, DEFAULT_CARD_METADATA } from './services/storageService';
+import { compareWindowNames } from './services/sortUtils';
 import { TabListView, SortField, SortDirection } from './components/TabListView';
+import { TabCardView } from './components/TabCardView';
+import { ContextMenu, ContextMenuItem } from './components/ContextMenu';
+import { PromptModal } from './components/PromptModal';
 import { PreviewPanel } from './components/PreviewPanel';
 import { MergeModal } from './components/MergeModal';
 import { UserGuideModal } from './components/UserGuideModal';
@@ -47,9 +51,17 @@ const FULL_TOUR_STEPS: OnboardingStep[] = [
     target: 'tabs',
     position: 'center',
     title: 'Keyboard Navigation',
-    content: 'Power user? Use Up/Down arrows to move through lists, and Left/Right arrows to switch between the sidebar and tab list.'
+    content: 'Power user? Use the arrow keys to move through tabs (all four directions in card view), Ctrl+Left/Right to switch between the sidebar and tab list, and Enter or double-click to jump to a tab.'
   }
 ];
+
+const METADATA_LABELS: Record<CardMetadataField, string> = {
+  icon: 'Icon',
+  lastAccessed: 'Last Accessed',
+  title: 'Tab Name',
+  domain: 'Domain',
+  window: 'Window'
+};
 
 // Single First Run Step
 const FIRST_RUN_STEP: OnboardingStep[] = [
@@ -137,6 +149,26 @@ const App: React.FC = () => {
   const [sortField, setSortField] = useState<SortField>('lastAccessed');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
+  // Card view state (persisted via saveViewSettings)
+  const [tabDisplayMode, setTabDisplayMode] = useState<'detail' | 'card'>('detail');
+  const [cardGrouping, setCardGrouping] = useState<'tab' | 'window'>('tab');
+  const [cardWidth, setCardWidth] = useState(240);
+  const [cardMetadata, setCardMetadata] = useState<CardMetadataSetting[]>(DEFAULT_CARD_METADATA!);
+  const [cardColumns, setCardColumns] = useState(1);
+  const [showCardSortMenu, setShowCardSortMenu] = useState(false);
+  const cardSortMenuRef = useRef<HTMLDivElement>(null);
+
+  // Context menus & rename modals
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
+  const [promptModal, setPromptModal] = useState<{ title: string; message?: string; initialValue?: string; submitText?: string; onSubmit: (value: string) => void } | null>(null);
+  const [confirmCloseWindowId, setConfirmCloseWindowId] = useState<string | null>(null);
+
+  // Bumped after a sleeping tab is auto-woken so the preview retries.
+  const [wakeSignal, setWakeSignal] = useState(0);
+
+  // Launch preference: open the popup straight into the full-tab dashboard.
+  const [openMaximized, setOpenMaximized] = useState(true);
+
   // AI Global Sort State (Forced sort for all groups)
   const [globalGroupSort, setGlobalGroupSort] = useState<{ field: SortField; direction: SortDirection; timestamp: number } | undefined>(undefined);
   
@@ -144,20 +176,24 @@ const App: React.FC = () => {
 
   // --- INITIALIZATION ---
   useEffect(() => {
-    // 1. Auto-jump to full screen if extension popup
-    if (platformInfo.isExtension) {
-      if (window.innerWidth < 800) { 
-        focusOrOpenExtensionTab();
-      }
-    }
-
-    // 2. Load Theme
+    // 1. Load Theme + view/launch preferences, then auto-jump to the
+    // full-tab dashboard only if the persisted "Open Maximized" setting
+    // allows it (it defaults to on).
     getStorageData().then(data => {
       setTheme(data.theme);
       if (data.theme === 'dark') {
         document.documentElement.classList.add('dark');
       } else {
         document.documentElement.classList.remove('dark');
+      }
+      if (data.tabViewMode) setTabDisplayMode(data.tabViewMode);
+      if (data.cardGrouping) setCardGrouping(data.cardGrouping);
+      if (data.cardWidth) setCardWidth(data.cardWidth);
+      if (data.cardMetadata) setCardMetadata(data.cardMetadata);
+      const shouldMaximize = data.openMaximized !== false;
+      setOpenMaximized(shouldMaximize);
+      if (platformInfo.isExtension && window.innerWidth < 800 && shouldMaximize) {
+        focusOrOpenExtensionTab();
       }
     });
 
@@ -175,6 +211,9 @@ const App: React.FC = () => {
       }
       if (sortMenuRef.current && !sortMenuRef.current.contains(target)) {
         setShowSortMenu(false);
+      }
+      if (cardSortMenuRef.current && !cardSortMenuRef.current.contains(target)) {
+        setShowCardSortMenu(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -363,10 +402,11 @@ const App: React.FC = () => {
           valA = a.title.toLowerCase();
           valB = b.title.toLowerCase();
           break;
-        case 'window':
-          valA = windowNameMap[a.windowId] || '';
-          valB = windowNameMap[b.windowId] || '';
-          break;
+        case 'window': {
+          // Natural sort so window10 follows window9, not window1.
+          const cmp = compareWindowNames(windowNameMap[a.windowId] || '', windowNameMap[b.windowId] || '');
+          return sortDirection === 'asc' ? cmp : -cmp;
+        }
         case 'url':
           valA = a.url.toLowerCase();
           valB = b.url.toLowerCase();
@@ -470,13 +510,25 @@ const App: React.FC = () => {
       if ((e.target as HTMLElement).tagName === 'INPUT') return;
       if (onboardingIndex !== -1) return; 
 
-      if (e.key === 'ArrowLeft') {
-        if (focusedArea === 'tabs') setFocusedArea('sidebar');
+      // Area switching lives on Ctrl+Arrow so plain arrows can navigate the
+      // card grid in two dimensions.
+      if (e.ctrlKey && e.key === 'ArrowLeft') {
+        e.preventDefault();
+        setFocusedArea('sidebar');
+        return;
       }
-      else if (e.key === 'ArrowRight') {
-        if (focusedArea === 'sidebar') setFocusedArea('tabs');
+      if (e.ctrlKey && e.key === 'ArrowRight') {
+        e.preventDefault();
+        setFocusedArea('tabs');
+        return;
       }
-      else if (focusedArea === 'sidebar') {
+      // Card size hotkeys: [ shrinks, ] grows (card view only).
+      if (tabDisplayMode === 'card' && !e.ctrlKey && !e.metaKey && !e.altKey && (e.key === '[' || e.key === ']')) {
+        e.preventDefault();
+        applyCardWidth(cardWidth + (e.key === ']' ? 40 : -40));
+        return;
+      }
+      if (focusedArea === 'sidebar') {
         const totalItems = 2 + windows.length;
         if (e.key === 'ArrowDown') {
           e.preventDefault();
@@ -493,17 +545,30 @@ const App: React.FC = () => {
           }
         }
       } else if (focusedArea === 'tabs') {
-        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        const isArrow = e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'ArrowRight';
+        if (isArrow) {
+          // Detail view: Up/Down step through rows (Left/Right unused).
+          // Card view: all four arrows move through the grid; Up/Down jump
+          // by one visual row using the current column count.
+          let step = 0;
+          if (tabDisplayMode === 'card') {
+            if (e.key === 'ArrowDown') step = cardColumns;
+            else if (e.key === 'ArrowUp') step = -cardColumns;
+            else if (e.key === 'ArrowRight') step = 1;
+            else step = -1;
+          } else {
+            if (e.key === 'ArrowDown') step = 1;
+            else if (e.key === 'ArrowUp') step = -1;
+            else return;
+          }
           e.preventDefault();
           if (navigationTabs.length === 0) return;
-          
+
           const currentIndex = navigationTabs.findIndex(t => t.id === selectedTabId);
-          let nextIndex = 0;
-          
-          if (currentIndex === -1) nextIndex = 0;
-          else if (e.key === 'ArrowDown') nextIndex = Math.min(currentIndex + 1, navigationTabs.length - 1);
-          else nextIndex = Math.max(currentIndex - 1, 0);
-          
+          const nextIndex = currentIndex === -1
+            ? 0
+            : Math.min(Math.max(currentIndex + step, 0), navigationTabs.length - 1);
+
           setSelectedTabId(navigationTabs[nextIndex].id);
         } else if (e.key === 'Enter' && selectedTabId) {
           const tab = navigationTabs.find(t => t.id === selectedTabId);
@@ -513,7 +578,7 @@ const App: React.FC = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [navigationTabs, selectedTabId, focusedArea, sidebarFocusIndex, windows, onboardingIndex]);
+  }, [navigationTabs, selectedTabId, focusedArea, sidebarFocusIndex, windows, onboardingIndex, tabDisplayMode, cardColumns, cardWidth]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
@@ -543,10 +608,245 @@ const App: React.FC = () => {
   };
 
   const handleActivateTab = async (tab: Tab) => {
-    try { await activateTab(tab); } 
-    catch (error) { 
-      showNotification("Failed to switch tab", 'info'); 
+    try { await activateTab(tab); }
+    catch (error) {
+      showNotification("Failed to switch tab", 'info');
     }
+  };
+
+  // --- CARD VIEW SETTINGS ---
+  const setDisplayMode = (mode: 'detail' | 'card') => {
+    setTabDisplayMode(mode);
+    saveViewSettings({ tabViewMode: mode });
+  };
+
+  const setGrouping = (grouping: 'tab' | 'window') => {
+    setCardGrouping(grouping);
+    saveViewSettings({ cardGrouping: grouping });
+  };
+
+  const applyCardWidth = (width: number) => {
+    const clamped = Math.max(160, Math.min(480, width));
+    setCardWidth(clamped);
+    saveViewSettings({ cardWidth: clamped });
+  };
+
+  const toggleMetadataField = (field: CardMetadataField) => {
+    setCardMetadata(prev => {
+      const next = prev.map(m => m.field === field ? { ...m, visible: !m.visible } : m);
+      saveViewSettings({ cardMetadata: next });
+      return next;
+    });
+  };
+
+  const moveMetadataField = (index: number, dir: -1 | 1) => {
+    setCardMetadata(prev => {
+      const j = index + dir;
+      if (j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[j]] = [next[j], next[index]];
+      saveViewSettings({ cardMetadata: next });
+      return next;
+    });
+  };
+
+  // --- AUTO-WAKE (settled selection) ---
+  // A sleeping tab wakes automatically once it has stayed selected for
+  // 400ms — a deliberate click feels instant, but arrow-keying through a
+  // list of mostly-sleeping tabs can't fire dozens of reloads.
+  const selectedDiscardedTabId = useMemo(() => {
+    const tab = allTabs.find(t => t.id === selectedTabId);
+    return tab?.discarded ? tab.id : null;
+  }, [allTabs, selectedTabId]);
+
+  useEffect(() => {
+    if (!selectedDiscardedTabId) return;
+    const timer = setTimeout(async () => {
+      const ok = await wakeTab(selectedDiscardedTabId);
+      if (ok) {
+        setWakeSignal(s => s + 1);
+        loadTabsRef.current();
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [selectedDiscardedTabId]);
+
+  // --- SINGLE-WINDOW AI NAMING ---
+  const handleAutoNameSingleWindow = async (windowId: string) => {
+    const win = windows.find(w => w.id === windowId);
+    if (!win) return;
+    setIsRenamingWindows(true);
+    try {
+      const newNames = await generateWindowNamesWithAI([win]);
+      const updatedMap = { ...windowNameMap, ...newNames };
+      pushNameHistory(updatedMap);
+      await Promise.all(Object.entries(newNames).map(([id, name]) => saveCustomWindowName(id, name)));
+      showNotification("Window renamed", 'success');
+    } catch (error: any) {
+      if (error.message === "NO_API_KEY" || error.message === "INVALID_API_KEY") {
+        setShowApiKeyModal(true);
+      } else {
+        handleError("Rename Failed", "We couldn't generate a name for this window.", error);
+      }
+    } finally {
+      setIsRenamingWindows(false);
+    }
+  };
+
+  // --- BATCH RENAME (base name + sequential numbering) ---
+  const applyBatchRename = async (base: string) => {
+    const targets = [...sidebarSelectedWindowIds].sort((a, b) =>
+      compareWindowNames(windowNameMap[a] || '', windowNameMap[b] || ''));
+    const newMap = { ...windowNameMap };
+    targets.forEach((id, i) => { newMap[id] = `${base}${i + 1}`; });
+    pushNameHistory(newMap); // single history entry: one Undo reverts the whole batch
+    await Promise.all(targets.map(id => saveCustomWindowName(id, newMap[id])));
+    showNotification(`Renamed ${targets.length} windows`, 'success');
+  };
+
+  // --- CONTEXT MENUS ---
+  const openTabContextMenu = (e: React.MouseEvent, tab: Tab) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Right-clicking a checked tab acts on all checked tabs.
+    const multi = checkedTabIds.length > 1 && checkedTabIds.includes(tab.id);
+    const targetIds = multi ? checkedTabIds : [tab.id];
+    const countLabel = multi ? `${targetIds.length} Tabs` : 'Tab';
+    const sortedWins = [...windows].sort((a, b) =>
+      compareWindowNames(windowNameMap[a.id] || a.name, windowNameMap[b.id] || b.name));
+    const items: ContextMenuItem[] = [
+      {
+        label: 'Switch to Tab',
+        icon: <ExternalLink size={14} />,
+        onClick: () => handleActivateTab(tab)
+      },
+      {
+        label: `Move ${countLabel} to Window`,
+        icon: <FolderInput size={14} />,
+        submenu: sortedWins.map(w => ({
+          label: `${windowNameMap[w.id] || w.name} (${w.tabs.length})`,
+          disabled: !multi && w.id === tab.windowId,
+          onClick: async () => {
+            try {
+              await moveTabs(targetIds, w.id);
+              await loadTabs(true);
+              showNotification(multi ? `${targetIds.length} tabs moved` : 'Tab moved', 'success');
+            } catch (err) { handleError("Move Failed", "Could not move to that window.", err); }
+          }
+        }))
+      },
+      {
+        label: `Move ${countLabel} to New Window`,
+        icon: <FolderPlus size={14} />,
+        onClick: async () => {
+          try { await createWindowWithTabs(targetIds); await loadTabs(true); }
+          catch (err) { handleError("Move Failed", "Could not move to a new window.", err); }
+        }
+      },
+      {
+        label: multi ? `Copy ${targetIds.length} URLs` : 'Copy URL',
+        icon: <Copy size={14} />,
+        separatorAbove: true,
+        onClick: () => {
+          const urls = targetIds
+            .map(id => allTabs.find(t => t.id === id)?.url)
+            .filter(Boolean)
+            .join('\n');
+          navigator.clipboard.writeText(urls);
+          showNotification(multi ? 'URLs copied' : 'URL copied', 'success');
+        }
+      }
+    ];
+    setContextMenu({ x: e.clientX, y: e.clientY, items });
+  };
+
+  const openWindowContextMenu = (e: React.MouseEvent, windowId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const win = windows.find(w => w.id === windowId);
+    if (!win) return;
+    const name = windowNameMap[windowId] || win.name;
+    const batch = sidebarSelectedWindowIds.length > 1 && sidebarSelectedWindowIds.includes(windowId);
+    const items: ContextMenuItem[] = [
+      {
+        label: batch ? `Rename ${sidebarSelectedWindowIds.length} Checked Windows…` : 'Rename…',
+        icon: <Edit2 size={14} />,
+        onClick: () => {
+          if (batch) {
+            setPromptModal({
+              title: 'Rename Checked Windows',
+              message: `Enter a base name; the ${sidebarSelectedWindowIds.length} checked windows will be numbered name1, name2, …`,
+              submitText: 'Rename All',
+              onSubmit: applyBatchRename
+            });
+          } else {
+            setPromptModal({
+              title: 'Rename Window',
+              initialValue: name,
+              onSubmit: (value) => handleRenameWindow(windowId, value)
+            });
+          }
+        }
+      },
+      { label: 'Undo Name Change', icon: <Undo2 size={14} />, disabled: !(historyIndex > 0), onClick: handleUndoNameChange },
+      { label: 'Redo Name Change', icon: <Redo2 size={14} />, disabled: !(historyIndex < nameHistory.length - 1), onClick: handleRedoNameChange },
+      { label: 'Focus Window in Chrome', icon: <ExternalLink size={14} />, separatorAbove: true, onClick: () => focusWindow(windowId) },
+      { label: 'Auto-Name with AI', icon: <Wand2 size={14} />, onClick: () => handleAutoNameSingleWindow(windowId) }
+    ];
+    if (sidebarSelectedWindowIds.length >= 2) {
+      const sources = sidebarSelectedWindowIds.filter(id => id !== windowId);
+      items.push({
+        label: `Merge ${sources.length} Checked Window${sources.length > 1 ? 's' : ''} Here`,
+        icon: <FolderInput size={14} />,
+        separatorAbove: true,
+        onClick: () => handleMerge(sources, windowId)
+      });
+    }
+    if (checkedTabIds.length > 0) {
+      items.push({
+        label: `Move ${checkedTabIds.length} Checked Tab${checkedTabIds.length > 1 ? 's' : ''} Here`,
+        icon: <FolderInput size={14} />,
+        onClick: async () => {
+          try {
+            await moveTabs(checkedTabIds, windowId);
+            setCheckedTabIds([]);
+            await loadTabs(true);
+            showNotification('Tabs moved', 'success');
+          } catch (err) { handleError("Move Failed", "Could not move the checked tabs.", err); }
+        }
+      });
+    }
+    items.push({
+      label: 'Close Window…',
+      icon: <Trash2 size={14} />,
+      danger: true,
+      separatorAbove: true,
+      onClick: () => setConfirmCloseWindowId(windowId)
+    });
+    setContextMenu({ x: e.clientX, y: e.clientY, items });
+  };
+
+  const openGroupContextMenu = (e: React.MouseEvent, group: TabGroup) => {
+    e.preventDefault();
+    const items: ContextMenuItem[] = [
+      {
+        label: `Check All Tabs in Group (${group.tabIds.length})`,
+        icon: <CheckSquare size={14} />,
+        onClick: () => toggleAllChecks(group.tabIds, true)
+      },
+      {
+        label: 'Move Group to New Window',
+        icon: <FolderPlus size={14} />,
+        onClick: async () => {
+          try {
+            await createWindowWithTabs(group.tabIds);
+            await loadTabs(true);
+            showNotification('Group moved to new window', 'success');
+          } catch (err) { handleError("Move Failed", "Could not move the group.", err); }
+        }
+      }
+    ];
+    setContextMenu({ x: e.clientX, y: e.clientY, items });
   };
 
   const handleOrganizeTabs = async () => {
@@ -828,6 +1128,43 @@ const App: React.FC = () => {
 
   const selectedTab = useMemo(() => allTabs.find(t => t.id === selectedTabId) || null, [allTabs, selectedTabId]);
 
+  // Window-grouped cards only make sense in All-Tabs-style views; AI groups
+  // and By Window mode are not window-shaped collections.
+  const groupingLocked = viewMode !== ViewMode.ALL;
+  const effectiveGrouping: 'tab' | 'window' = groupingLocked ? 'tab' : cardGrouping;
+
+  const cardWindows = useMemo(
+    () => sidebarSelectedWindowIds.length > 0
+      ? windows.filter(w => sidebarSelectedWindowIds.includes(w.id))
+      : windows,
+    [windows, sidebarSelectedWindowIds]
+  );
+
+  const renderCardView = (tabsForView: Tab[], grouping: 'tab' | 'window') => (
+    <TabCardView
+      grouping={grouping}
+      tabs={tabsForView}
+      windows={cardWindows}
+      windowNames={windowNameMap}
+      cardWidth={cardWidth}
+      metadata={cardMetadata}
+      selectedTabId={selectedTabId}
+      checkedTabIds={checkedTabIds}
+      selectedWindowIds={sidebarSelectedWindowIds}
+      focusedArea={focusedArea}
+      onSelect={setSelectedTabId}
+      onActivate={handleActivateTab}
+      onClose={handleCloseTab}
+      onToggleTabCheck={toggleTabCheck}
+      onToggleWindowSelection={(id) => setSidebarSelectedWindowIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+      onTabContextMenu={openTabContextMenu}
+      onWindowContextMenu={openWindowContextMenu}
+      onDrillIntoWindow={(id) => { setViewMode(ViewMode.BY_WINDOW); setActiveWindowId(id); }}
+      onFocusWindow={focusWindow}
+      onColumnsChange={setCardColumns}
+    />
+  );
+
   return (
     <div className="flex h-full overflow-hidden bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-200 font-sans transition-colors duration-200">
       <Sidebar 
@@ -855,6 +1192,7 @@ const App: React.FC = () => {
         setWidth={setSidebarWidth}
         onSelectAll={() => setSidebarSelectedWindowIds(windows.map(w => w.id))}
         onDeselectAll={() => setSidebarSelectedWindowIds([])}
+        onWindowContextMenu={openWindowContextMenu}
       />
 
       <div className={`flex-1 flex flex-col h-full min-w-0 transition-all duration-200 ${focusedArea === 'tabs' ? 'ring-1 ring-inset ring-slate-200 dark:ring-slate-800' : 'opacity-90'}`}>
@@ -939,8 +1277,102 @@ const App: React.FC = () => {
                 </button>
               )}
 
+              {/* Detail / Card view toggle */}
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-full p-0.5 mr-1">
+                <button
+                  onClick={() => setDisplayMode('detail')}
+                  className={`p-1.5 rounded-full transition-colors ${tabDisplayMode === 'detail' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                  title="Detail view"
+                >
+                  <List size={15} />
+                </button>
+                <button
+                  onClick={() => setDisplayMode('card')}
+                  className={`p-1.5 rounded-full transition-colors ${tabDisplayMode === 'card' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                  title="Card view"
+                >
+                  <LayoutGrid size={15} />
+                </button>
+              </div>
+
+              {tabDisplayMode === 'card' && (
+                <div className="flex items-center gap-1 mr-1 animate-in fade-in duration-200">
+                  {/* Tab cards vs Window cards */}
+                  <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-full p-0.5 text-[11px] font-medium">
+                    <button
+                      onClick={() => setGrouping('tab')}
+                      className={`px-2 py-1 rounded-full transition-colors ${effectiveGrouping === 'tab' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                      title="One card per tab"
+                    >
+                      Tabs
+                    </button>
+                    <button
+                      onClick={() => setGrouping('window')}
+                      disabled={groupingLocked}
+                      className={`px-2 py-1 rounded-full transition-colors disabled:opacity-40 ${effectiveGrouping === 'window' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                      title={groupingLocked ? 'Window cards are available in the All Tabs view' : 'One card per window'}
+                    >
+                      Windows
+                    </button>
+                  </div>
+
+                  {/* Card size */}
+                  <button
+                    onClick={() => applyCardWidth(cardWidth - 40)}
+                    className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400"
+                    title="Smaller cards  ( [ )"
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <input
+                    type="range"
+                    min={160}
+                    max={480}
+                    step={20}
+                    value={cardWidth}
+                    onChange={(e) => applyCardWidth(parseInt(e.target.value, 10))}
+                    onDoubleClick={() => applyCardWidth(240)}
+                    className="w-20 accent-indigo-600 cursor-pointer"
+                    title="Card size — double-click to reset"
+                  />
+                  <button
+                    onClick={() => applyCardWidth(cardWidth + 40)}
+                    className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400"
+                    title="Larger cards  ( ] )"
+                  >
+                    <Plus size={14} />
+                  </button>
+
+                  {/* Card sort (no column headers to click in card view) */}
+                  <div className="relative" ref={cardSortMenuRef}>
+                    <button
+                      onClick={() => setShowCardSortMenu(!showCardSortMenu)}
+                      className={`p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 ${showCardSortMenu ? 'bg-slate-200 dark:bg-slate-800' : ''}`}
+                      title="Sort cards"
+                    >
+                      <ListFilter size={15} />
+                    </button>
+                    {showCardSortMenu && (
+                      <div className="absolute right-0 top-full mt-2 w-44 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 py-1 animate-in fade-in zoom-in-95 duration-100">
+                        <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sort Cards By</div>
+                        {([['title', 'Name'], ['url', 'Domain'], ['window', 'Window'], ['lastAccessed', 'Last Accessed']] as [SortField, string][]).map(([field, label]) => (
+                          <button
+                            key={field}
+                            onClick={() => handleSort(field)}
+                            className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm flex items-center justify-between text-slate-700 dark:text-slate-200"
+                          >
+                            {label}
+                            {sortField === field && <span className="text-indigo-500">{sortDirection === 'asc' ? '↑' : '↓'}</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Theme Toggle */}
-              <button 
+              <button
                   onClick={toggleTheme}
                   className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors"
                   title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
@@ -1028,10 +1460,59 @@ const App: React.FC = () => {
                   <Settings size={18} />
                 </button>
                 {showSettingsMenu && (
-                   <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 py-1 animate-in fade-in zoom-in-95 duration-100">
+                   <div className="absolute right-0 top-full mt-2 w-60 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 py-1 animate-in fade-in zoom-in-95 duration-100">
                      <button onClick={() => { setShowApiKeyModal(true); setShowSettingsMenu(false); }} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm flex items-center gap-2 text-slate-700 dark:text-slate-200">
                       <Key size={14} /> Set API Key
                     </button>
+                    <div className="h-px bg-slate-100 dark:bg-slate-800 my-1"></div>
+                    {/* Launch behavior: remembered across sessions */}
+                    <label className="w-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+                      <Maximize2 size={14} className="shrink-0" />
+                      <span className="flex-1">Open Maximized</span>
+                      <input
+                        type="checkbox"
+                        checked={openMaximized}
+                        onChange={() => {
+                          const next = !openMaximized;
+                          setOpenMaximized(next);
+                          saveViewSettings({ openMaximized: next });
+                          showNotification(next ? "Extension will open maximized" : "Extension will open as a popup", 'info');
+                        }}
+                        className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 bg-white dark:bg-slate-900 border cursor-pointer"
+                      />
+                    </label>
+                    <div className="h-px bg-slate-100 dark:bg-slate-800 my-1"></div>
+                    {/* Card view metadata: what shows on each card, in which order */}
+                    <div className="px-4 py-1.5">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Card View Fields</p>
+                      {cardMetadata.map((m, idx) => (
+                        <div key={m.field} className="flex items-center gap-2 py-1">
+                          <input
+                            type="checkbox"
+                            checked={m.visible}
+                            onChange={() => toggleMetadataField(m.field)}
+                            className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 bg-white dark:bg-slate-900 border cursor-pointer"
+                          />
+                          <span className="flex-1 text-sm text-slate-700 dark:text-slate-200">{METADATA_LABELS[m.field]}</span>
+                          <button
+                            onClick={() => moveMetadataField(idx, -1)}
+                            disabled={idx === 0}
+                            className="p-0.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 disabled:opacity-30 disabled:hover:text-slate-400"
+                            title="Move up"
+                          >
+                            <ChevronUp size={13} />
+                          </button>
+                          <button
+                            onClick={() => moveMetadataField(idx, 1)}
+                            disabled={idx === cardMetadata.length - 1}
+                            className="p-0.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 disabled:opacity-30 disabled:hover:text-slate-400"
+                            title="Move down"
+                          >
+                            <ChevronDown size={13} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1050,8 +1531,8 @@ const App: React.FC = () => {
             : <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
           }
           <p className={`text-xs leading-relaxed ${platformInfo.isExtension ? 'text-green-800 dark:text-green-200/80' : 'text-blue-800 dark:text-blue-200/80'}`}>
-            {platformInfo.isExtension 
-              ? "Extension Active. Arrow keys to navigate. Left/Right to switch between Sidebar and Tabs."
+            {platformInfo.isExtension
+              ? "Extension Active. Single-click previews a tab; double-click (or ↗ / Enter) switches to it. Ctrl+Left/Right moves between Sidebar and Tabs."
               : DEMO_NOTICE
             }
           </p>
@@ -1081,33 +1562,46 @@ const App: React.FC = () => {
                    const groupTabs = group.tabIds.map(id => allTabs.find(t => t.id === id)).filter((t): t is Tab => t !== undefined);
                    return (
                      <div key={idx} className="space-y-2">
-                       <h3 className="text-lg font-semibold text-indigo-600 dark:text-indigo-300 border-b border-slate-200 dark:border-slate-800 pb-1 mb-2">{group.categoryName}</h3>
+                       <h3
+                         className="text-lg font-semibold text-indigo-600 dark:text-indigo-300 border-b border-slate-200 dark:border-slate-800 pb-1 mb-2"
+                         onContextMenu={(e) => openGroupContextMenu(e, group)}
+                         title="Right-click for group actions"
+                       >
+                         {group.categoryName}
+                       </h3>
+                       {tabDisplayMode === 'card' ? (
+                         renderCardView(getSortedTabs(groupTabs), 'tab')
+                       ) : (
                        <TabListView
                          tabs={groupTabs}
                          windows={windows}
                          windowNames={windowNameMap}
                          onActivate={handleActivateTab}
                          onClose={handleCloseTab}
-                         
+
                          // Global Forced Sort
                          forcedSort={globalGroupSort}
 
                          // Standard Sort Props (ignored inside component if forcedSort is active for a cycle, but used for local)
                          // We remove global props from here so local sort works by default
-                         
+
                          selectedTabId={selectedTabId}
                          onSelect={setSelectedTabId}
                          checkedTabIds={checkedTabIds}
                          onToggleTabCheck={toggleTabCheck}
                          onToggleAllChecks={toggleAllChecks}
                          focusedArea={focusedArea}
+                         onTabContextMenu={openTabContextMenu}
                        />
+                       )}
                      </div>
                    );
                  })}
                </div>
+            ) : tabDisplayMode === 'card' ? (
+              renderCardView(currentDisplayedTabs, effectiveGrouping)
             ) : (
-              <TabListView 
+              <TabListView
                 tabs={currentDisplayedTabs}
                 windows={windows}
                 windowNames={windowNameMap}
@@ -1123,6 +1617,7 @@ const App: React.FC = () => {
                 onToggleTabCheck={toggleTabCheck}
                 onToggleAllChecks={toggleAllChecks}
                 focusedArea={focusedArea}
+                onTabContextMenu={openTabContextMenu}
               />
             )}
           </main>
@@ -1137,13 +1632,14 @@ const App: React.FC = () => {
                  <div className="h-full w-full bg-slate-200 dark:bg-slate-700 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
 
-              <PreviewPanel 
-                tab={selectedTab} 
-                windows={windows} 
+              <PreviewPanel
+                tab={selectedTab}
+                windows={windows}
                 windowNames={windowNameMap}
-                onActivate={handleActivateTab} 
+                onActivate={handleActivateTab}
                 onClose={handleCloseTab}
                 onClosePanel={() => setShowPreview(false)}
+                refreshSignal={wakeSignal}
               />
             </div>
           )}
@@ -1178,6 +1674,47 @@ const App: React.FC = () => {
         
         {showApiKeyModal && (
           <ApiKeyModal onClose={() => setShowApiKeyModal(false)} onSave={handleSaveApiKey} />
+        )}
+
+        {promptModal && (
+          <PromptModal
+            title={promptModal.title}
+            message={promptModal.message}
+            initialValue={promptModal.initialValue}
+            submitText={promptModal.submitText}
+            onSubmit={promptModal.onSubmit}
+            onClose={() => setPromptModal(null)}
+          />
+        )}
+
+        {confirmCloseWindowId && (
+          <ConfirmModal
+            title="Close Window?"
+            message={`Close "${windowNameMap[confirmCloseWindowId] || 'this window'}" and its ${windows.find(w => w.id === confirmCloseWindowId)?.tabs.length ?? 0} tabs? This cannot be undone.`}
+            confirmText="Close Window"
+            isProcessing={false}
+            onConfirm={async () => {
+              const id = confirmCloseWindowId;
+              setConfirmCloseWindowId(null);
+              try {
+                await closeWindow(id);
+                await loadTabs(true);
+                showNotification("Window closed", 'info');
+              } catch (err) {
+                handleError("Close Failed", "Could not close the window.", err);
+              }
+            }}
+            onClose={() => setConfirmCloseWindowId(null)}
+          />
+        )}
+
+        {contextMenu && (
+          <ContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            items={contextMenu.items}
+            onClose={() => setContextMenu(null)}
+          />
         )}
         
         {errorModalState && (

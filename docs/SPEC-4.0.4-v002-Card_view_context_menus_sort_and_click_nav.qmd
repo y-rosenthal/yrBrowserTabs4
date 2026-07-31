@@ -1,0 +1,454 @@
+---
+title: "SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd"
+subtitle: "SPEC 4.0.4 — Card View, Numeric Window Sort, Rename & Click Navigation (v002)"
+---
+
+| | |
+|---|---|
+| **Software version** | 4.0.4 (targets; the pre-existing code is tagged `v4.0.3`) |
+| **Spec revision** | v002 (supersedes v001) |
+| **Date** | 2026-07-31 |
+| **Status** | Implemented (2026-07-31) |
+
+This revision incorporates the answers to the seven open questions raised in
+v001. The decisions, in brief:
+
+1. **Cards represent both tabs and windows** — a user-selectable grouping
+   toggle (v001 assumed per-tab only).
+2. **Thumbnails are scaled HTML captures** (as proposed), lazy-loaded with a
+   capture queue and cache.
+3. **Rename is triggered by right-click** on a window name (the existing
+   double-click / pencil paths remain unchanged).
+4. **Card sizing hotkeys are `[` (shrink) and `]` (grow)** — not
+   `Ctrl` `+`/`-`, avoiding any conflict with browser zoom.
+5. **The new spec filename format is adopted**
+   (`SPEC-<version>-v<NNN>-<Name>.qmd`); the three 4.0.2 spec files were
+   renamed to match and `spec-conventions.qmd` updated (done alongside this
+   revision).
+6. **Card view gets full 2-D arrow-key navigation**; sidebar↔tabs area
+   switching moves to `Ctrl` `←`/`→`.
+7. **Natural sort confirmed** for window names.
+
+Sections unchanged from v001 are restated here in full so this document
+stands alone.
+
+> **Extended in place (2026-07-31, second Q&A round):** after approval of
+> the above, a review of the whole interface for right-click opportunities
+> was run item-by-item. Its outcomes are Requirements 5 (context menus) and
+> 6 (sleeping-tab auto-wake), plus amendments to Requirement 3 (rename now
+> lives inside the window context menu, with batch numbering) and to the
+> thumbnail fallback notes.
+
+## Requirement 1 — Numeric sorting of window names
+
+### Current behavior and root cause
+
+Window names are compared as plain lowercase strings in three independent
+sort sites, so `window10` sorts between `window1` and `window2`:
+
+- `components/Sidebar.tsx` — `sortedWindows` (the sidebar window list;
+  default sort is by name ascending, so this is where the misordering is
+  most visible).
+- `App.tsx` — `getSortedTabs`, `case 'window'` (the "Window" column sort in
+  the All Tabs table).
+- `components/TabListView.tsx` — `displayedTabs`, `case 'window'` (the same
+  sort duplicated for uncontrolled/AI-group tables).
+
+The name *generator* (`services/nameGenerator.ts`) already produces
+un-padded `window1`, `window2`, … — no change there, and **no zero-padding
+will be introduced**.
+
+### Design (decided: natural sort)
+
+Add a single shared comparator in a small new module
+(`services/sortUtils.ts`) and use it at all three sites:
+
+```ts
+export const compareWindowNames = (a: string, b: string) =>
+  a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+```
+
+`localeCompare` with `numeric: true` is a *natural sort*: any run of digits
+inside a name is compared by numeric value, so
+`window1 < window2 < … < window10 < window11`. Custom/AI names without
+digits sort alphabetically among themselves, and mixed sets interleave
+(`Project 2 < Project 10`; `Research` sorts by its first character against
+`window…`). Confirmed as the desired rule in Q7.
+
+Only the comparator is shared; the three duplicated sort implementations
+stay where they are.
+
+## Requirement 2 — Card view for tabs and windows
+
+### View toggle and grouping (decided: both, user-selectable)
+
+- A **Detail / Card** toggle (list icon / grid icon segmented control) is
+  added to the header toolbar next to the existing preview toggle.
+- When card view is active, a second small control appears beside it:
+  **"Cards: Tabs | Windows"** — the user-selectable grouping from Q1.
+- Both choices persist across sessions (`chrome.storage`, see
+  [Persistence](#persistence-settings-schema)).
+- The toggle applies everywhere the tab list renders: All Tabs, By Window,
+  sidebar-checkbox filtering, and each AI group (each group renders its own
+  grid under its heading; the *Windows* grouping applies only to the
+  All-Tabs-style views, since AI groups and By Window mode are not
+  window-shaped collections — there the control is disabled with a
+  tooltip).
+- Search, sorting, checkbox multi-select, selection/preview, keyboard
+  navigation, and the close action all keep working in card view; sorting
+  controls move into a small sort dropdown in the toolbar when card view is
+  active (there are no column headers to click).
+
+### Grid layout
+
+Cards are laid out with CSS grid:
+`grid-template-columns: repeat(auto-fill, minmax(var(--card-width), 1fr))`
+— they wrap automatically and are responsive to window and pane width.
+
+### Tab cards
+
+Each tab card shows:
+
+- a **thumbnail** of the tab's page content filling the card (see
+  [Thumbnails](#thumbnails)), and
+- a **metadata overlay** hovering above the thumbnail (semi-transparent
+  scrim anchored to the bottom of the card) so the user sees both the page
+  and the data. Default field order matches the requested priority:
+  **icon → last accessed → tab name → domain → window name**.
+
+If the visible metadata does not fit, the overlay itself is scrollable
+(`overflow-y: auto` with a max height). The browser natively scrolls the
+innermost scrollable element under the pointer, so the hover-governed
+behavior falls out for free: wheel over a card's overlay scrolls that
+overlay; wheel anywhere else scrolls the main grid.
+
+The selected card gets the same indigo ring treatment as a selected row;
+checkbox and close (×) sit in the card's top corners (visible on
+hover/selection, like today's row actions).
+
+### Window cards
+
+In the *Windows* grouping, each card represents one browser window:
+
+- **Thumbnail:** the window's active tab's page capture (cheapest honest
+  "view of the window's contents"; a 2×2 mosaic of the first four tabs is a
+  possible later upgrade).
+- **Overlay:** window name, tab count badge, and most-recent
+  `lastAccessed` across the window's tabs.
+- **Interactions:** single-click selects the card; **double-click drills
+  into that window** (switches the dashboard to By Window view for it); a
+  hover **↗** button focuses the actual Chrome window; **right-click opens
+  the window context menu** (see Requirements 3 and 5). Window checkboxes
+  mirror the sidebar's merge-selection checkboxes.
+
+### Card sizing (decided: `[` / `]` hotkeys)
+
+- **GUI control:** a compact slider in the toolbar (visible only in card
+  view) plus `−` / `+` stepper buttons, adjusting card width between
+  ~160 px and ~480 px in steps, with a reset affordance (double-click the
+  slider handle) returning to the default (~240 px).
+- **Hotkeys:** **`[` shrinks, `]` grows** (chosen in Q4 over
+  `Ctrl` `+`/`-` to leave browser page-zoom untouched). Active only while
+  card view is shown and no input field has focus (the existing keydown
+  handler already ignores `INPUT` targets). No modifier needed; no browser
+  shortcut conflicts.
+- The chosen size persists across sessions.
+
+### Thumbnails (decided: scaled HTML captures)
+
+Chrome gives extensions **no way to screenshot a background tab**
+(`chrome.tabs.captureVisibleTab` only captures the active tab of a
+window). Confirmed approach (Q2): reuse the mechanism the Preview Panel
+already uses — `getTabContent` in `services/tabService.ts` captures the
+page's HTML via `chrome.scripting.executeScript` — rendered small:
+
+- Each card renders the captured HTML in a sandboxed `<iframe srcDoc …>`
+  scaled down with `transform: scale(…)` (`pointer-events: none`, same
+  `sandbox="allow-same-origin"` and injected `<base>` tag as the Preview
+  Panel), so the thumbnail is a genuine miniature of the page.
+- **Lazy + bounded:** thumbnails are captured only for cards visible in the
+  viewport (IntersectionObserver), fetched through a small concurrency
+  queue (e.g. 4 at a time), and cached per tab id + URL so re-scrolling and
+  re-renders don't re-inject scripts. Off-screen cards drop back to the
+  cheap placeholder to bound memory.
+- **Fallbacks:** sleeping (discarded) tabs, restricted pages
+  (`chrome://`, Web Store), and capture failures show a placeholder —
+  large favicon + domain on a neutral background, with a moon badge for
+  sleeping tabs. Card view never **mass**-wakes sleeping tabs just to
+  thumbnail them; only the *selected* tab auto-wakes via the settled-
+  selection rule (Requirement 6), and the Preview Panel's "Wake up &
+  preview" button remains as a manual fallback/retry.
+- **Known risk (accepted in Q2):** JS-heavy pages may look imperfect in
+  miniature, and ~170 tabs make performance the riskiest part of this
+  feature. If the lazy/bounded design still proves too heavy in practice,
+  the fallback (a future revision) is placeholder cards with live
+  thumbnails only for the hovered/selected card.
+
+### Metadata configuration (Settings)
+
+- The Settings (gear) menu gains a **"Card view options"** section listing
+  the five fields — icon, last accessed, tab name, domain, window — each
+  with a visibility checkbox (easy on/off) and up/down reorder arrows.
+- The order also controls truncation priority: fields render in order and
+  the overlay scrolls when they overflow, so higher-priority fields are the
+  ones visible without scrolling.
+- Configuration persists across sessions and applies to tab cards (window
+  cards have their own fixed, minimal field set).
+
+### Keyboard navigation (decided: full 2-D arrows)
+
+Per Q6, card view gets true two-dimensional arrow navigation:
+
+- **`←` `→` `↑` `↓`** move the selection through the grid; `↑`/`↓` jump by
+  one visual row (computed from the current column count).
+- **Sidebar↔tabs area switching moves to `Ctrl` `←` / `Ctrl` `→`** in both
+  views, so the binding is consistent app-wide. In detail view, plain
+  `↑`/`↓` keep moving through rows as today (plain `←`/`→` become no-ops
+  there).
+- `Enter` still activates the selected tab; the info banner and tour copy
+  are updated to teach the new bindings.
+
+### Persistence (settings schema)
+
+`StorageData` in `types.ts` (and `services/storageService.ts`) gains:
+
+```ts
+tabViewMode?: 'detail' | 'card';        // default 'detail'
+cardGrouping?: 'tab' | 'window';        // default 'tab'
+cardWidth?: number;                     // px, default 240
+cardMetadata?: { field: 'icon' | 'lastAccessed' | 'title' | 'domain' | 'window';
+                 visible: boolean }[];  // default: all visible, order as above
+```
+
+## Requirement 3 — Manual window rename (decided: right-click menu)
+
+Manual rename already exists (sidebar double-click and hover pencil icon,
+persisting to storage with undo/redo). Per Q3, the intuitive control to add
+is **right-click** — amended in the second Q&A round to open the window
+**context menu** (Requirement 5) with **Rename** as its first item, rather
+than jumping straight into the editor, so right-click behaves uniformly
+across the app:
+
+- **Rename (single window):** choosing Rename opens the same inline editor
+  as today (Enter saves, Escape cancels, `handleRenameWindow` path,
+  undo/redo history).
+- **Rename (multiple windows checked):** when the right-clicked window is
+  one of several checked windows, Rename asks for a **base name** and
+  applies **sequential numbering** — `name1`, `name2`, … — to the checked
+  windows in natural-sorted order. The batch is pushed as a **single**
+  history entry, so one Undo reverts the whole batch.
+- **Undo / Redo** entries appear in the window context menu (same
+  `nameHistory` the sidebar buttons drive; disabled when unavailable).
+- Available wherever a window is a first-class element: **sidebar window
+  rows** and **window cards** in the new card view.
+- The existing double-click and pencil-icon paths stay exactly as they are;
+  the v001 discoverability extras (always-visible pencil, header rename)
+  are dropped as unnecessary.
+
+## Requirement 4 — Single click must not navigate
+
+### Current behavior
+
+In `components/TabListView.tsx` a row click runs
+`onSelect(tab.id); onActivate(tab);` — every single click both selects the
+row *and* switches Chrome to that tab, yanking focus away from the
+dashboard.
+
+### Design
+
+- **Single click** — selects the row/card only (highlights it and shows it
+  in the Preview Panel). No navigation.
+- **Double click** — navigates (activates) the tab. Applies to both detail
+  rows and tab cards. (On window cards, double-click drills into the
+  window instead — see [Window cards](#window-cards).)
+- Unchanged explicit navigation affordances: the **↗ Switch to Tab** hover
+  button on each row/card, the **Enter** key on the keyboard-selected tab,
+  and the ↗ button in the Preview Panel header.
+- Copy that teaches the old behavior gets updated: the extension info
+  banner and tour/user-guide text will say "double-click (or ↗ / Enter) to
+  switch to a tab".
+
+## Requirement 5 — Right-click context menus
+
+Added in the second Q&A round (each candidate item was reviewed
+individually). Three surfaces get a context menu; the preview panel was
+considered and **excluded**.
+
+### Tab menu (detail rows and tab cards)
+
+| Item | Action |
+|---|---|
+| **Switch to Tab** | Navigate Chrome to the tab (same as double-click / ↗ / Enter). |
+| **Move to Window ▸** | Submenu of all windows, natural-sorted, current window disabled; picking one moves the tab there. |
+| **Move to New Window** | Moves the tab into a freshly created window. |
+| **Copy URL** | Copies the tab's URL to the clipboard (first per-tab copy affordance in the app). |
+
+Reviewed and **excluded**: Close Tab (the × hover button suffices), Copy
+as Markdown link, and Wake Tab (superseded by Requirement 6).
+
+**Multi-select semantics:** when the right-clicked tab is one of several
+*checked* tabs, the menu's actions apply to **all checked tabs** and the
+labels show the count ("Move 5 Tabs to Window ▸"). Right-clicking an
+unchecked tab always acts on that tab alone.
+
+### Window menu (sidebar rows and window cards)
+
+| Item | Action |
+|---|---|
+| **Rename** | First item. Single window → inline editor; multiple checked windows → base name + sequential numbering (see Requirement 3). |
+| **Undo / Redo** | The existing window-name history, also reachable here; disabled when unavailable. |
+| **Focus Window in Chrome** | Brings the actual browser window to the front (`chrome.windows.update({focused: true})`) — previously there was no way to jump to a window itself, only to a tab in it. |
+| **Auto-Name with AI** | AI-names just this window (existing Gemini path and history). |
+| **Merge Checked Windows Here** | Shown when 2+ windows are checked: moves all their tabs into the right-clicked window — the merge modal's target-picking step becomes unnecessary. |
+| **Move Checked Tabs Here** | Shown when 1+ tabs are checked: files them into the right-clicked window (the window-side complement of the tab menu's Move to Window ▸). |
+| **Close Window** | Closes the window and all its tabs behind a "Close window and its N tabs?" confirmation (destructive; uses the existing `ConfirmModal`). |
+
+Reviewed and **excluded**: View This Window's Tabs (left-click on the row
+already does it).
+
+### AI group menu (category headings in AI Organized view)
+
+| Item | Action |
+|---|---|
+| **Check All Tabs in Group** | Ticks every tab in the category so toolbar bulk actions can target it. |
+| **Move Group to New Window** | Materializes this one category as a real Chrome window, leaving all other windows untouched (lighter alternative to the all-or-nothing "Apply to Windows"). |
+
+Reviewed and **excluded**: Sort Group by ▸ (column headers and the Sort
+All dropdown already cover sorting).
+
+### Implementation notes
+
+- One shared `components/ContextMenu.tsx` renders all three menus:
+  positioned at the cursor (clamped to the viewport), closes on
+  click-outside / Escape / scroll, supports one submenu level and
+  disabled/hidden items.
+- `contextmenu` is intercepted (`preventDefault()`) **only** on tab rows,
+  tab/window cards, sidebar window rows, and AI group headings — the
+  browser's native right-click menu keeps working everywhere else
+  (search box, preview panel, empty space).
+- Menu items reuse the existing action handlers (`handleActivateTab`,
+  `moveTabs`, `createWindowWithTabs`, `handleMerge`,
+  `handleRenameWindow`, undo/redo) — no new tab-manipulation plumbing.
+
+## Requirement 6 — Sleeping tabs wake automatically on settled selection
+
+Replaces the proposed "Wake Tab" menu item, and answers "shouldn't waking
+happen automatically when the user interacts with the tab?" — yes, with
+one guard. Waking a discarded tab means **reloading the page** (network,
+CPU, and the memory Chrome's Memory Saver had reclaimed), so selection
+*traversal* must not wake tabs en masse: with ~170 tabs, holding `↓`
+through a list of mostly-sleeping tabs would otherwise fire dozens of
+simultaneous reloads.
+
+**Rule:** when a sleeping tab becomes the selected tab — by click or by
+keyboard — and **stays selected for ~400 ms**, it is woken automatically
+(`wakeTab`) and its preview/thumbnail captured. Consequences:
+
+- A deliberate single click feels fully automatic (the dwell is
+  imperceptible).
+- Arrow-keying through the list wakes nothing until the user pauses on a
+  tab.
+- Only the currently selected tab is ever auto-woken — never off-screen
+  cards, never in bulk.
+- The Preview Panel's "Wake up & preview" button remains as a manual
+  fallback/retry; its "asleep" messaging changes to a transient "Waking
+  tab…" state since waking now starts on its own.
+
+## Second-round decisions (2026-07-31)
+
+| # | Question | Decision |
+|---|---|---|
+| 1 | Tab menu: Switch to Tab | **Include** |
+| 2 | Tab menu: Close Tab | Exclude |
+| 3 | Tab menu: Move to Window ▸ | **Include** |
+| 4 | Tab menu: Move to New Window | **Include** |
+| 5 | Tab menu: Copy URL | **Include** |
+| 6 | Tab menu: Copy as Markdown | Exclude |
+| 7 | Wake policy | **Auto-wake on settled selection** (no menu item) |
+| 8 | Tab menu: apply to checked tabs | **Include** |
+| 9 | Window menu: Rename | **Include**, first item; batch = base name + `1..N`; Undo/Redo in menu |
+| 10 | Window menu: View This Window's Tabs | Exclude |
+| 11 | Window menu: Focus Window in Chrome | **Include** |
+| 12 | Window menu: Auto-Name with AI | **Include** |
+| 13 | Window menu: Merge Checked Windows Here | **Include** |
+| 14 | Window menu: Move Checked Tabs Here | **Include** |
+| 15 | Window menu: Close Window | **Include** (with confirm) |
+| 16 | Group menu: Check All Tabs in Group | **Include** |
+| 17 | Group menu: Move Group to New Window | **Include** |
+| 18 | Group menu: Sort Group by ▸ | Exclude |
+| 19 | Preview panel menu | Exclude |
+
+## Resolved questions (from v001)
+
+All seven v001 open questions were answered on 2026-07-31:
+
+| # | Question | Decision |
+|---|---|---|
+| 1 | Card = tab or window? | **Both**, user-selectable grouping toggle |
+| 2 | Thumbnail approach | **Scaled HTML captures**, lazy + bounded |
+| 3 | Rename control | **Right-click** opens inline rename |
+| 4 | Sizing hotkeys | **`[` / `]`** (no browser-zoom conflict) |
+| 5 | Spec filename format | **New format** `SPEC-<ver>-v<NNN>-<Name>`; old files renamed |
+| 6 | Card-grid keyboard nav | **Full 2-D arrows**; area switch on `Ctrl` `←`/`→` |
+| 7 | Sorting custom names | **Natural sort**, interleaved |
+
+## Remaining notes & risks
+
+1. **Thumbnail performance at ~170 tabs** remains the main implementation
+   risk (mitigations specified above; fallback identified if they prove
+   insufficient).
+2. **Window-card double-click semantics** — this spec chose *drill into By
+   Window view* for double-click and a ↗ button for focusing the real
+   Chrome window. Flag during review of the build if you'd prefer
+   double-click to focus the OS window instead.
+3. **`[` / `]` are plain keys**: they are ignored while typing in any input
+   (search box, rename editor), so there is no risk of hijacking text
+   entry; outside inputs they are otherwise unused by the app.
+4. **Tag/version mismatch (informational).** The latest commit (`c72a0a1`)
+   is tagged `v4.0.3`, but `package.json`/`manifest.json` there still say
+   `4.0.2` (no 4.0.3 bump commit was made). The first commit of this work
+   should bump both files straight to `4.0.4`.
+5. **Double-click reachability** — double-click-to-navigate is slower for
+   rapid tab hopping and unfriendly to some accessibility setups, which is
+   why the ↗ button and Enter remain first-class.
+
+## Affected files (planned)
+
+- `services/sortUtils.ts` — **new**: shared natural-sort comparator.
+- `components/ContextMenu.tsx` — **new**: shared context-menu component
+  (cursor positioning, submenu, disabled items, dismissal).
+- `components/Sidebar.tsx` — numeric name sort; window context menu on
+  window rows.
+- `App.tsx` — numeric sort in `getSortedTabs`; view-mode / grouping /
+  card-size / metadata state + persistence; `[`/`]` sizing hotkeys; 2-D
+  arrow navigation + `Ctrl`-arrow area switching; toolbar toggles, slider,
+  and card-view sort dropdown; context-menu state and action wiring
+  (batch rename, merge-here, move-here, close window, group actions);
+  settled-selection auto-wake timer; updated banner copy.
+- `components/TabListView.tsx` — numeric sort; row click = select only,
+  double-click = activate; tab context menu on rows.
+- `components/TabCardView.tsx` — **new**: card grid (tab and window
+  groupings), thumbnail iframes, metadata overlay, lazy capture queue,
+  tab/window context menus on cards.
+- `components/PreviewPanel.tsx` — auto-wake integration ("Waking tab…"
+  state; manual wake button becomes fallback/retry).
+- `components/CardViewOptions.tsx` (or inline in the settings menu) —
+  **new**: field visibility/order editor.
+- `services/tabService.ts` — thumbnail capture reuse (cache + concurrency
+  around `getTabContent`).
+- `services/storageService.ts`, `types.ts` — new persisted settings.
+- `components/OnboardingTour.tsx` / tour copy in `App.tsx`,
+  `components/UserGuideModal.tsx` — updated click/keyboard wording.
+- `_quarto.yml` — this spec added to the book.
+- `docs/spec-conventions.qmd` + three renamed 4.0.2 spec files — new
+  filename convention (already applied alongside this revision).
+- `package.json`, `manifest.json` — version bump to 4.0.4 (see note 4).
+
+## Out of scope
+
+- True pixel screenshots of background tabs (not possible with current
+  Chrome extension APIs without focusing each tab).
+- Auto-waking sleeping tabs to capture thumbnails.
+- 2×2 mosaic thumbnails on window cards (possible later upgrade).
+- Refactoring the three duplicated sort implementations into one (only the
+  comparator is shared).

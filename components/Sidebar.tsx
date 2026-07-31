@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Layout, Sparkles, Layers, CopyPlus, Edit2, ArrowUp, ArrowDown, ArrowUpDown, Wand2, Undo2, Redo2, GripVertical, CheckSquare, Square } from 'lucide-react';
 import { ViewMode, WindowData } from '../types';
+import { compareWindowNames } from '../services/sortUtils';
 
 interface SidebarProps {
   viewMode: ViewMode;
@@ -34,6 +35,9 @@ interface SidebarProps {
   // Selection
   onSelectAll: () => void;
   onDeselectAll: () => void;
+
+  // Context menu
+  onWindowContextMenu?: (e: React.MouseEvent, windowId: string) => void;
 }
 
 type WindowSortField = 'name' | 'count';
@@ -63,7 +67,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   width,
   setWidth,
   onSelectAll,
-  onDeselectAll
+  onDeselectAll,
+  onWindowContextMenu
 }) => {
   const totalTabs = windows.reduce((acc, win) => acc + win.tabs.length, 0);
   
@@ -125,8 +130,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
       let valB: string | number = '';
 
       if (sortField === 'name') {
-        valA = (windowNames[a.id] || a.name).toLowerCase();
-        valB = (windowNames[b.id] || b.name).toLowerCase();
+        // Natural sort so window10 follows window9, not window1.
+        const cmp = compareWindowNames(windowNames[a.id] || a.name, windowNames[b.id] || b.name);
+        return sortDirection === 'asc' ? cmp : -cmp;
       } else {
         valA = a.tabs.length;
         valB = b.tabs.length;
@@ -337,6 +343,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       setActiveWindowId(win.id); 
                     }}
                     onDoubleClick={() => startEditing(win.id, displayName)}
+                    onContextMenu={(e) => onWindowContextMenu?.(e, win.id)}
                     className={getButtonStyle(listIndex, isActive)}
                   >
                     <div className="flex-1 text-left truncate" title={`${displayName} (Double click to rename)`}>

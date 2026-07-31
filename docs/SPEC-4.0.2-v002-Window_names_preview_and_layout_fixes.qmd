@@ -1,4 +1,7 @@
-# SPEC 4.0.2 — Window Names, Preview & Layout Fixes (v002) {.unnumbered}
+---
+title: "SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.qmd"
+subtitle: "SPEC 4.0.2 — Window Names, Preview & Layout Fixes (v002)"
+---
 
 | | |
 |---|---|

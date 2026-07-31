@@ -5,11 +5,24 @@ declare const chrome: any;
 
 const isExtension = typeof chrome !== 'undefined' && !!chrome.storage;
 
+export const DEFAULT_CARD_METADATA: StorageData['cardMetadata'] = [
+  { field: 'icon', visible: true },
+  { field: 'lastAccessed', visible: true },
+  { field: 'title', visible: true },
+  { field: 'domain', visible: true },
+  { field: 'window', visible: true }
+];
+
 const MOCK_STORAGE: StorageData = {
   customWindowNames: {},
   hasSeenOnboarding: false,
   theme: 'light', // Default to light mode
-  apiKey: ''
+  apiKey: '',
+  tabViewMode: 'detail',
+  cardGrouping: 'tab',
+  cardWidth: 240,
+  cardMetadata: DEFAULT_CARD_METADATA,
+  openMaximized: true
 };
 
 // In-memory fallback for demo mode
@@ -18,12 +31,17 @@ let memStorage = { ...MOCK_STORAGE };
 export const getStorageData = async (): Promise<StorageData> => {
   if (isExtension) {
     return new Promise((resolve) => {
-      chrome.storage.local.get(['customWindowNames', 'hasSeenOnboarding', 'theme', 'apiKey'], (result: any) => {
+      chrome.storage.local.get(['customWindowNames', 'hasSeenOnboarding', 'theme', 'apiKey', 'tabViewMode', 'cardGrouping', 'cardWidth', 'cardMetadata', 'openMaximized'], (result: any) => {
         resolve({
           customWindowNames: result.customWindowNames || {},
           hasSeenOnboarding: result.hasSeenOnboarding || false,
           theme: result.theme || 'light',
-          apiKey: result.apiKey || ''
+          apiKey: result.apiKey || '',
+          tabViewMode: result.tabViewMode || 'detail',
+          cardGrouping: result.cardGrouping || 'tab',
+          cardWidth: result.cardWidth || 240,
+          cardMetadata: result.cardMetadata || DEFAULT_CARD_METADATA,
+          openMaximized: result.openMaximized !== undefined ? result.openMaximized : true
         });
       });
     });
@@ -62,5 +80,16 @@ export const saveApiKey = async (apiKey: string): Promise<void> => {
     await chrome.storage.local.set({ apiKey });
   } else {
     memStorage.apiKey = apiKey;
+  }
+};
+
+// Persists any subset of the view/launch preferences.
+export const saveViewSettings = async (
+  patch: Partial<Pick<StorageData, 'tabViewMode' | 'cardGrouping' | 'cardWidth' | 'cardMetadata' | 'openMaximized'>>
+): Promise<void> => {
+  if (isExtension) {
+    await chrome.storage.local.set(patch);
+  } else {
+    memStorage = { ...memStorage, ...patch };
   }
 };

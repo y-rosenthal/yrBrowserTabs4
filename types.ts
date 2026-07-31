@@ -7,6 +7,7 @@ export interface Tab {
   active: boolean;
   windowId: string;
   lastAccessed: number;
+  discarded?: boolean;
 }
 
 export interface WindowData {
@@ -34,11 +35,25 @@ export interface OnboardingStep {
   isFirstRun?: boolean;
 }
 
+export type CardMetadataField = 'icon' | 'lastAccessed' | 'title' | 'domain' | 'window';
+
+export interface CardMetadataSetting {
+  field: CardMetadataField;
+  visible: boolean;
+}
+
 export interface StorageData {
   customWindowNames: Record<string, string>; // Map windowId -> Custom Name
   hasSeenOnboarding: boolean;
   theme: 'light' | 'dark';
   apiKey?: string;
+  tabViewMode?: 'detail' | 'card';
+  cardGrouping?: 'tab' | 'window';
+  cardWidth?: number;
+  cardMetadata?: CardMetadataSetting[];
+  // When true (default), launching the popup jumps straight to the
+  // full-tab dashboard.
+  openMaximized?: boolean;
 }
 
 export interface WindowReorgSnapshot {

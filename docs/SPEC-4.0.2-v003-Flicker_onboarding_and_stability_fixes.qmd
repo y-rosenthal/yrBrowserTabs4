@@ -1,4 +1,7 @@
-# SPEC 4.0.2 — Flicker, Onboarding & Stability Fixes (v003) {.unnumbered}
+---
+title: "SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.qmd"
+subtitle: "SPEC 4.0.2 — Flicker, Onboarding & Stability Fixes (v003)"
+---
 
 | | |
 |---|---|

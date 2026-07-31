@@ -3,6 +3,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Tab, WindowData } from '../types';
 import { X, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { Favicon } from './Favicon';
+import { compareWindowNames } from '../services/sortUtils';
 
 export type SortField = 'title' | 'window' | 'url' | 'lastAccessed';
 export type SortDirection = 'asc' | 'desc';
@@ -33,6 +34,7 @@ interface TabListViewProps {
   onToggleTabCheck: (tabId: string) => void;
   onToggleAllChecks: (tabIds: string[], checked: boolean) => void;
   focusedArea: 'sidebar' | 'tabs';
+  onTabContextMenu?: (e: React.MouseEvent, tab: Tab) => void;
 }
 
 export const TabListView: React.FC<TabListViewProps> = ({
@@ -50,7 +52,8 @@ export const TabListView: React.FC<TabListViewProps> = ({
   checkedTabIds,
   onToggleTabCheck,
   onToggleAllChecks,
-  focusedArea
+  focusedArea,
+  onTabContextMenu
 }) => {
   const rowRefs = useRef<{ [key: string]: HTMLTableRowElement | null }>({});
 
@@ -130,10 +133,11 @@ export const TabListView: React.FC<TabListViewProps> = ({
           valA = a.title.toLowerCase();
           valB = b.title.toLowerCase();
           break;
-        case 'window':
-          valA = (windowNames[a.windowId] || '').toLowerCase();
-          valB = (windowNames[b.windowId] || '').toLowerCase();
-          break;
+        case 'window': {
+          // Natural sort so window10 follows window9, not window1.
+          const cmp = compareWindowNames(windowNames[a.windowId] || '', windowNames[b.windowId] || '');
+          return sortDirection === 'asc' ? cmp : -cmp;
+        }
         case 'url':
           valA = a.url.toLowerCase();
           valB = b.url.toLowerCase();
@@ -212,7 +216,9 @@ export const TabListView: React.FC<TabListViewProps> = ({
                 <tr 
                   key={tab.id} 
                   ref={(el) => { rowRefs.current[tab.id] = el; }}
-                  onClick={() => { onSelect(tab.id); onActivate(tab); }}
+                  onClick={() => onSelect(tab.id)}
+                  onDoubleClick={() => onActivate(tab)}
+                  onContextMenu={(e) => onTabContextMenu?.(e, tab)}
                   className={`group transition-colors cursor-pointer ${
                     isSelected 
                       ? 'bg-indigo-50 dark:bg-indigo-600/20 hover:bg-indigo-100 dark:hover:bg-indigo-600/30 ring-1 ring-inset ring-indigo-500/50' 

@@ -54,7 +54,8 @@ export const getWindows = async (): Promise<WindowData[]> => {
               // Use t.lastAccessed if available (Chrome 121+). The fallback must be
               // stable across refreshes — a Date.now() fallback re-stamps these tabs
               // on every reload, churning the "Last Accessed" sort order.
-              lastAccessed: t.lastAccessed || 0
+              lastAccessed: t.lastAccessed || 0,
+              discarded: !!t.discarded
             };
           })
         };
@@ -88,6 +89,22 @@ export const closeTab = async (tabId: string): Promise<void> => {
     await chrome.tabs.remove(parseInt(tabId));
   } else {
     console.log(`[Mock] Closing tab ID: ${tabId}`);
+  }
+};
+
+export const focusWindow = async (windowId: string): Promise<void> => {
+  if (isExtension) {
+    await chrome.windows.update(parseInt(windowId), { focused: true });
+  } else {
+    console.log(`[Mock] Focusing window ${windowId}`);
+  }
+};
+
+export const closeWindow = async (windowId: string): Promise<void> => {
+  if (isExtension) {
+    await chrome.windows.remove(parseInt(windowId));
+  } else {
+    console.log(`[Mock] Closing window ${windowId}`);
   }
 };
 
@@ -215,6 +232,57 @@ export const getTabContent = async (tabId: string): Promise<string> => {
         </body>
       </html>
     `;
+  }
+};
+
+// Makes relative links (CSS/images) resolve when captured HTML is rendered
+// in an iframe. Shared by the Preview Panel and card thumbnails.
+export const injectBaseTag = (html: string, url: string): string => {
+  const baseTag = `<base href="${url}" target="_blank">`;
+  return html.toLowerCase().includes('<head')
+    ? html.replace(/<head[^>]*>/i, (match) => `${match}${baseTag}`)
+    : `${baseTag}${html}`;
+};
+
+// Card-view thumbnails: HTML captures cached per tab (keyed to the URL so a
+// navigation invalidates the entry) and fetched through a small concurrency
+// gate so scrolling a grid of ~170 cards can't fire ~170 simultaneous
+// script injections.
+const thumbnailCache = new Map<string, { url: string; html: string }>();
+const MAX_CONCURRENT_CAPTURES = 4;
+let activeCaptures = 0;
+const captureWaiters: Array<() => void> = [];
+
+const acquireCaptureSlot = (): Promise<void> =>
+  new Promise((resolve) => {
+    if (activeCaptures < MAX_CONCURRENT_CAPTURES) {
+      activeCaptures++;
+      resolve();
+    } else {
+      captureWaiters.push(() => { activeCaptures++; resolve(); });
+    }
+  });
+
+const releaseCaptureSlot = (): void => {
+  activeCaptures--;
+  const next = captureWaiters.shift();
+  if (next) next();
+};
+
+export const getTabThumbnail = async (tab: Tab): Promise<string | null> => {
+  const cached = thumbnailCache.get(tab.id);
+  if (cached && cached.url === tab.url) return cached.html;
+  if (tab.discarded) return null; // never wake a sleeping tab just to thumbnail it
+
+  await acquireCaptureSlot();
+  try {
+    const raw = await getTabContent(tab.id);
+    if (!raw) return null;
+    const html = injectBaseTag(raw, tab.url);
+    thumbnailCache.set(tab.id, { url: tab.url, html });
+    return html;
+  } finally {
+    releaseCaptureSlot();
   }
 };
 

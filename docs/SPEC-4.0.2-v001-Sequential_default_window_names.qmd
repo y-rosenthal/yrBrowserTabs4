@@ -1,4 +1,7 @@
-# SPEC 4.0.2 — Sequential Default Window Names (v001) {.unnumbered}
+---
+title: "SPEC-4.0.2-v001-Sequential_default_window_names.qmd"
+subtitle: "SPEC 4.0.2 — Sequential Default Window Names (v001)"
+---
 
 | | |
 |---|---|

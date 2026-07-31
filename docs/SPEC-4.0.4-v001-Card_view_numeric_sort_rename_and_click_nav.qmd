@@ -1,0 +1,312 @@
+---
+title: "SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.qmd"
+subtitle: "SPEC 4.0.4 — Card View, Numeric Window Sort, Rename & Click Navigation (v001)"
+---
+
+| | |
+|---|---|
+| **Software version** | 4.0.4 (targets; the pre-existing code is tagged `v4.0.3`) |
+| **Spec revision** | v001 |
+| **Date** | 2026-07-31 |
+| **Status** | Draft — awaiting approval, nothing built yet |
+
+This spec covers four requested changes:
+
+1. Windows named `window1`, `window2`, … must sort numerically, not
+   character-by-character (and default names stay un-padded: `window1`,
+   **not** `window01`).
+2. A new **card view** for tabs alongside the existing detail (table) view,
+   with resizable cards (GUI control + hotkeys), a content thumbnail per
+   card, and a metadata overlay whose fields and order are configurable in
+   Settings.
+3. An intuitive UI control to manually rename a window.
+4. Single-click on a tab row must **not** navigate to the tab; navigation
+   moves to double-click (plus the existing explicit controls).
+
+Issues, ambiguities, and open questions found while analyzing the request
+against the current code are collected in
+[Issues & open questions](#issues-open-questions) — please review that
+section before approving. Per the workflow, a revised version of this spec
+would be `…-v002-….qmd`.
+
+## Requirement 1 — Numeric sorting of window names
+
+### Current behavior and root cause
+
+The assumption in the request is correct: window names are compared as
+plain lowercase strings in three independent sort sites, so
+`window10` sorts between `window1` and `window2`:
+
+- `components/Sidebar.tsx` — `sortedWindows` (the sidebar window list;
+  default sort is by name ascending, so this is where the misordering is
+  most visible).
+- `App.tsx` — `getSortedTabs`, `case 'window'` (the "Window" column sort in
+  the All Tabs table).
+- `components/TabListView.tsx` — `displayedTabs`, `case 'window'` (the same
+  sort duplicated for uncontrolled/AI-group tables).
+
+The name *generator* (`services/nameGenerator.ts`) already produces
+un-padded `window1`, `window2`, … — no change there, and **no zero-padding
+will be introduced**.
+
+### Design
+
+Add a single shared comparator in a small new module (e.g.
+`services/sortUtils.ts`) and use it at all three sites:
+
+```ts
+export const compareWindowNames = (a: string, b: string) =>
+  a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+```
+
+`localeCompare` with `numeric: true` is a *natural sort*: any run of digits
+inside a name is compared by numeric value, so
+`window1 < window2 < … < window10 < window11`. This satisfies "sort by just
+the numerical number" for the default names while also behaving sensibly
+for names that are not purely `window<N>`:
+
+- Custom/AI names without digits (e.g. `Research`, `Shopping`) sort
+  alphabetically among themselves.
+- Mixed sets interleave alphabetically with numeric runs compared
+  numerically (`Project 2 < Project 10`).
+
+The duplicated string-compare logic stays where it is (this spec does not
+refactor the three sort sites into one), only the comparison for the
+window-name field changes.
+
+## Requirement 2 — Card view for tabs
+
+### View toggle
+
+- A **Detail / Card** toggle (two-icon segmented control, e.g. list icon and
+  grid icon) is added to the header toolbar next to the existing preview
+  toggle.
+- The choice persists across sessions (`chrome.storage`, see
+  [Persistence](#persistence-settings-schema)).
+- The toggle applies everywhere the tab list renders: All Tabs, By Window,
+  sidebar-checkbox filtering, and each AI group (each group renders its own
+  grid under its heading).
+- Search, sorting, checkbox multi-select, selection/preview, keyboard
+  navigation, and the close action all keep working in card view; sorting
+  controls move into a small sort dropdown in the toolbar when card view is
+  active (there are no column headers to click).
+
+### Card layout and grid
+
+- Cards are laid out with CSS grid:
+  `grid-template-columns: repeat(auto-fill, minmax(var(--card-width), 1fr))`
+  — they wrap automatically and are responsive to window and pane width.
+- Each card represents **one tab** and shows:
+  - a **thumbnail** of the tab's page content filling the card (see next
+    section), and
+  - a **metadata overlay** hovering above the thumbnail (semi-transparent
+    scrim, anchored to the bottom of the card) so the user sees both the
+    page and the data. Default field order matches the requested priority:
+    **icon → last accessed → tab name → domain → window name**.
+- If the visible metadata does not fit the overlay, the overlay itself is
+  scrollable (`overflow-y: auto` with a max height). Because the browser
+  natively scrolls the innermost scrollable element under the pointer, the
+  requested hover-governed behavior falls out for free: wheel over a card's
+  overlay scrolls that overlay; wheel anywhere else scrolls the main tab
+  grid.
+- Selected card gets the same indigo ring treatment as a selected row;
+  checkbox and close (×) sit in the card's top corners (visible on
+  hover/selection, like today's row actions).
+
+### Card sizing
+
+- **GUI control:** a compact slider in the toolbar (visible only in card
+  view) plus `−` / `+` stepper buttons, adjusting card width between
+  ~160 px and ~480 px in steps. A double-click on the slider handle (or a
+  reset button) returns to the default (~240 px).
+- **Hotkeys:** `Ctrl` `+` / `Ctrl` `-` (also accepting `Ctrl` `=` for the
+  unshifted plus key) grow/shrink cards; `Ctrl` `0` resets. Handled on
+  `keydown` with `preventDefault()`, and **only while card view is
+  active** — in detail view the browser's normal page-zoom shortcuts are
+  untouched. `Ctrl` + mouse wheel over the grid also resizes (optional,
+  cheap to add, same guard). See issue 2 below for the zoom-shortcut
+  trade-off.
+- The chosen size persists across sessions.
+
+### Thumbnails
+
+Chrome gives extensions **no way to screenshot a background tab**
+(`chrome.tabs.captureVisibleTab` only captures the active tab of a
+window). The design therefore reuses the mechanism the Preview Panel
+already uses — `getTabContent` in `services/tabService.ts` captures the
+page's HTML via `chrome.scripting.executeScript` — rendered small:
+
+- Each card renders the captured HTML in a sandboxed `<iframe srcDoc …>`
+  scaled down with `transform: scale(…)` (`pointer-events: none`, same
+  `sandbox="allow-same-origin"` and injected `<base>` tag as the Preview
+  Panel), so the thumbnail is a genuine miniature of the page.
+- **Lazy + bounded:** thumbnails are captured only for cards visible in the
+  viewport (IntersectionObserver), fetched through a small concurrency
+  queue (e.g. 4 at a time), and cached per tab id + URL so re-scrolling and
+  re-renders don't re-inject scripts. Off-screen cards drop back to the
+  cheap placeholder to bound memory (see issue 3 for scale concerns).
+- **Fallbacks:** sleeping (discarded) tabs, restricted pages
+  (`chrome://`, Web Store), and capture failures show a placeholder —
+  large favicon + domain on a neutral background, with a moon badge for
+  sleeping tabs. Card view does **not** auto-wake sleeping tabs (waking
+  ~100 tabs to thumbnail them would defeat Chrome's Memory Saver); the
+  existing Preview Panel "Wake up & preview" flow remains the way to wake
+  a specific tab.
+
+### Metadata configuration (Settings)
+
+- The Settings (gear) menu gains a **"Card view options"** section listing
+  the five fields — icon, last accessed, tab name, domain, window — each
+  with a visibility checkbox (easy on/off) and up/down reorder arrows (or
+  drag handles).
+- The order also controls truncation priority: fields render in order and
+  the overlay scrolls when they overflow, so higher-priority fields are the
+  ones visible without scrolling.
+- Configuration persists across sessions.
+
+### Persistence (settings schema)
+
+`StorageData` in `types.ts` (and `services/storageService.ts`) gains:
+
+```ts
+tabViewMode?: 'detail' | 'card';        // default 'detail'
+cardWidth?: number;                     // px, default 240
+cardMetadata?: { field: 'icon' | 'lastAccessed' | 'title' | 'domain' | 'window';
+                 visible: boolean }[];  // default: all visible, order as above
+```
+
+## Requirement 3 — Manual window rename
+
+**This already exists**, though it is evidently not discoverable enough:
+in the sidebar, **double-clicking a window name** opens an inline edit
+box, and hovering a window row reveals a **pencil (✎) icon** that does the
+same. Enter saves, Escape cancels, renames persist to storage and
+participate in the existing undo/redo history. (The interactive tour
+mentions the double-click, but nothing in the resting UI advertises it.)
+
+Proposed discoverability improvements (rather than a new mechanism):
+
+- Make the pencil icon on sidebar rows **always visible** (subtle, not
+  hover-only) so the affordance is self-evident.
+- Add the same inline rename to the **main content header**: when viewing a
+  single window (By Window mode), the window-name `<h1>` gets a pencil
+  button and double-click-to-edit, wired to the same `handleRenameWindow`
+  path.
+
+If something else was intended here (e.g. rename from the card/detail view
+rows, or a right-click context menu), see issue 5.
+
+## Requirement 4 — Single click must not navigate
+
+### Current behavior
+
+In `components/TabListView.tsx` a row click runs
+`onSelect(tab.id); onActivate(tab);` — i.e. every single click both selects
+the row *and* switches Chrome to that tab, which yanks focus away from the
+dashboard.
+
+### Design
+
+- **Single click** — selects the row/card only (highlights it and shows it
+  in the Preview Panel). No navigation.
+- **Double click** — navigates (activates) the tab. Applies to both detail
+  rows and cards.
+- Unchanged explicit navigation affordances (so the feature stays
+  discoverable): the **↗ Switch to Tab** hover button on each row/card, the
+  **Enter** key on the keyboard-selected tab, and the ↗ button in the
+  Preview Panel header.
+- Copy that teaches the old behavior gets updated: the extension info
+  banner and tour/user-guide text will mention "double-click (or ↗ / Enter)
+  to switch to a tab".
+
+## Issues & open questions {#issues-open-questions}
+
+1. **Spec file naming deviates from the documented convention.** The
+   request asked for `SPEC-4.0.3-v001-someMeaningfulName.qmd` (the version
+   was later bumped to 4.0.4 — see issue 9), but
+   `docs/spec-conventions.qmd` defines
+   `SPEC-<version>-<Description>-v<NNN>.qmd` (revision *last*), which the
+   three existing 4.0.2 specs follow. This file follows the request as
+   given. Please confirm which format wins; if the new one, the conventions
+   page and (optionally) the old filenames should be updated for
+   consistency.
+2. **`Ctrl` `+` / `Ctrl` `-` shadow browser zoom.** Chrome delivers these
+   keydowns to the page and honors `preventDefault()`, so the hotkeys are
+   implementable — but while the dashboard is focused **in card view** the
+   user loses keyboard page-zoom (mitigations: hotkeys only active in card
+   view; `Ctrl` `0` still resets card size; browser zoom remains available
+   via the Chrome menu). If that trade-off is unwanted, alternatives are
+   `Ctrl` `Shift` `+`/`-` or `[` / `]`.
+3. **Thumbnails cannot be true screenshots, and scale is a real concern.**
+   Screenshot APIs only work for the active tab, so thumbnails are
+   scaled-down HTML captures (same source as the Preview Panel). Two
+   consequences: (a) JS-heavy pages may look imperfect in miniature
+   (already true of the Preview Panel); (b) with ~170 tabs, hundreds of
+   live iframes would be heavy, hence the lazy-render / concurrency-queue /
+   off-screen-eviction design. If in practice this is still too heavy, the
+   v002 fallback is favicon+domain placeholder cards with thumbnails only
+   for the hovered/selected card.
+4. **"Each card should show a view of the contents of the window"** — this
+   spec interprets a card as representing **one tab** (mirroring the detail
+   rows and the metadata list you gave, which is per-tab), with the
+   thumbnail showing that tab's page. If you instead wanted one card per
+   *browser window* (a window's tabs summarized inside a card), that is a
+   different layout — say so and v002 will respec it.
+5. **Rename already exists** (sidebar double-click + hover pencil). This
+   spec assumes the ask is really about discoverability and adds the
+   affordances in Requirement 3. If you wanted a different control (context
+   menu, rename button in the toolbar, rename from tab rows), flag it for
+   v002.
+6. **Keyboard navigation in the card grid.** Today `←`/`→` switch focus
+   between sidebar and tab list, and `↑`/`↓` move through tabs. In a grid,
+   users expect arrows to move in two dimensions, which collides with the
+   sidebar-switch binding. Proposed for v001: keep `←`/`→` as area
+   switching, and have `↑`/`↓` step linearly through cards (previous/next
+   in sort order). If you want true 2-D grid navigation, we'd move area
+   switching to `Tab` or `Ctrl` `←`/`→` — preference?
+7. **Numeric sort with custom names.** "Sort by just the number" is
+   well-defined for `window<N>` names but not for renamed windows
+   (`Research`, `Shopping`). The natural-sort comparator handles both
+   (numbers numeric, text alphabetic); confirm that is acceptable rather
+   than, say, forcing number-less names to the end.
+8. **Double-click reachability.** Double-click as the sole *click*
+   navigation is fine on desktop, but it is slower for rapid tab hopping
+   and unfriendly to some accessibility setups — which is why the ↗ button
+   and Enter remain first-class. No action needed; noting the reasoning.
+9. **Tag/version mismatch.** Per instruction, the latest commit
+   (`c72a0a1`) is tagged `v4.0.3`, but `package.json` and `manifest.json`
+   at that commit still say `4.0.2` (no 4.0.3 version-bump commit was ever
+   made). Harmless, but worth knowing; the first commit of this work should
+   bump both files straight to `4.0.4`.
+
+## Affected files (planned)
+
+- `services/sortUtils.ts` — **new**: shared natural-sort comparator.
+- `components/Sidebar.tsx` — numeric name sort; always-visible rename
+  pencil.
+- `App.tsx` — numeric sort in `getSortedTabs`; view-mode/card-size/metadata
+  state + persistence; sizing hotkeys; header rename affordance; toolbar
+  toggle, slider, and card-view sort dropdown; updated banner copy.
+- `components/TabListView.tsx` — numeric sort; row click = select only,
+  double-click = activate.
+- `components/TabCardView.tsx` — **new**: card grid, thumbnail iframes,
+  metadata overlay, lazy capture queue.
+- `components/CardViewOptions.tsx` (or inline in the settings menu) —
+  **new**: field visibility/order editor.
+- `services/tabService.ts` — thumbnail capture reuse (cache + concurrency
+  around `getTabContent`).
+- `services/storageService.ts`, `types.ts` — new persisted settings.
+- `components/OnboardingTour.tsx` / tour copy in `App.tsx`,
+  `components/UserGuideModal.tsx` — updated click-behavior wording.
+- `_quarto.yml` — this spec added to the book.
+- `package.json`, `manifest.json` — version bump to 4.0.4 (see issue 9).
+
+## Out of scope
+
+- True pixel screenshots of background tabs (not possible with current
+  Chrome extension APIs without focusing each tab).
+- Auto-waking sleeping tabs to capture thumbnails.
+- Card view for the *windows* list in the sidebar (see issue 4 — only if
+  requested in v002).
+- Refactoring the three duplicated sort implementations into one (only the
+  comparator is shared).

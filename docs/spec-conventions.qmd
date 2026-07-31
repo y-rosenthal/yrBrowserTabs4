@@ -1,4 +1,7 @@
-# Spec Conventions {.unnumbered}
+---
+title: "spec-conventions.qmd"
+subtitle: "Spec Conventions"
+---
 
 ## File naming
 
@@ -6,13 +9,13 @@ Specification documents live in the `docs/` folder and are Quarto `.qmd` files
 named as follows:
 
 ```
-SPEC-<software-version>-<Description_of_changes>-v<NNN>.qmd
+SPEC-<software-version>-v<NNN>-<Description_of_changes>.qmd
 ```
 
 For example:
 
 ```
-SPEC-4.0.2-Fix_tab_grouping_bugs-v001.qmd
+SPEC-4.0.4-v001-Fix_tab_grouping_bugs.qmd
 ```
 
 Where:
@@ -22,6 +25,11 @@ Where:
 - `<Description_of_changes>` — a short underscore-separated summary of what
   the spec covers.
 - `v<NNN>` — the revision of the *spec document itself*, starting at `v001`.
+
+> **Note (2026-07-31):** the format originally placed the revision last
+> (`SPEC-<version>-<Description>-v<NNN>.qmd`). The revision now comes right
+> after the version, and the pre-existing 4.0.2 spec files were renamed to
+> match.
 
 ## Revising a spec
 

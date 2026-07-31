@@ -5,6 +5,7 @@ project:
 book:
   title: "TabMaster AI — Documentation"
   author: "YR"
+  reader-mode: true
   chapters:
     - index.qmd
     - README.md
@@ -12,14 +13,20 @@ book:
       chapters:
         - docs/spec-conventions.qmd
         # Add new spec files here, newest first:
-        - docs/SPEC-4.0.2-Flicker_onboarding_and_stability_fixes-v003.qmd
-        - docs/SPEC-4.0.2-Sequential_default_window_names-v002.qmd
-        - docs/SPEC-4.0.2-Sequential_default_window_names-v001.qmd
+        - docs/SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd
+        - docs/SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.qmd
+        - docs/SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.qmd
+        - docs/SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.qmd
+        - docs/SPEC-4.0.2-v001-Sequential_default_window_names.qmd
 
 format:
   html:
     theme:
       light: cosmo
       dark: darkly
+    css: styles.css
+    include-after-body: sidebar-resize.html
+    grid:
+      sidebar-width: 340px
     toc: true
     number-sections: false
