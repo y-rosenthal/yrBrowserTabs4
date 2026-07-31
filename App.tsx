@@ -6,7 +6,7 @@ import { ViewMode, WindowData, Tab, TabGroup, OnboardingStep, WindowReorgSnapsho
 import { Search, Info, ExternalLink, RefreshCw, AlertCircle, Maximize2, Download, Table, FileText, Eye, EyeOff, FolderPlus, HelpCircle, BookOpen, Sun, Moon, Key, LayoutTemplate, RotateCcw, Settings, Sparkles, ListFilter, List, LayoutGrid, Minus, Plus, Copy, FolderInput, Edit2, Trash2, CheckSquare, Undo2, Redo2, Wand2, ChevronUp, ChevronDown } from 'lucide-react';
 import { organizeTabsWithAI, generateWindowNamesWithAI } from './services/geminiService';
 import { getWindows, activateTab, closeTab, getPlatformInfo, moveTabs, createWindowWithTabs, focusOrOpenExtensionTab, subscribeToUpdates, focusWindow, closeWindow, wakeTab, isExtensionPopup } from './services/tabService';
-import { saveCustomWindowName, getStorageData, setOnboardingSeen, saveTheme, saveApiKey, saveViewSettings, DEFAULT_CARD_METADATA } from './services/storageService';
+import { saveCustomWindowName, saveCustomWindowNames, getStorageData, setOnboardingSeen, saveTheme, saveApiKey, saveViewSettings, DEFAULT_CARD_METADATA } from './services/storageService';
 import { compareWindowNames } from './services/sortUtils';
 import { TabListView, SortField, SortDirection } from './components/TabListView';
 import { TabCardView } from './components/TabCardView';
@@ -153,7 +153,7 @@ const App: React.FC = () => {
   const [tabDisplayMode, setTabDisplayMode] = useState<'detail' | 'card'>('detail');
   const [cardGrouping, setCardGrouping] = useState<'tab' | 'window'>('tab');
   const [cardWidth, setCardWidth] = useState(240);
-  const [cardMetadata, setCardMetadata] = useState<CardMetadataSetting[]>(DEFAULT_CARD_METADATA!);
+  const [cardMetadata, setCardMetadata] = useState<CardMetadataSetting[]>(DEFAULT_CARD_METADATA);
   const [cardColumns, setCardColumns] = useState(1);
   const [showCardSortMenu, setShowCardSortMenu] = useState(false);
   const cardSortMenuRef = useRef<HTMLDivElement>(null);
@@ -265,9 +265,13 @@ const App: React.FC = () => {
   };
 
   // --- HELPERS ---
+  // Track the hide timer so a new toast isn't dismissed early by the
+  // previous toast's 3-second timeout.
+  const notificationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showNotification = (msg: string, type: 'success' | 'info' = 'info') => {
     setNotification({ msg, type });
-    setTimeout(() => setNotification(null), 3000);
+    if (notificationTimer.current) clearTimeout(notificationTimer.current);
+    notificationTimer.current = setTimeout(() => setNotification(null), 3000);
   };
 
   const handleError = (title: string, userMessage: string, error?: any) => {
@@ -512,8 +516,9 @@ const App: React.FC = () => {
   // --- KEYBOARD NAV ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).tagName === 'INPUT') return;
-      if (onboardingIndex !== -1) return; 
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable) return;
+      if (onboardingIndex !== -1) return;
 
       // Area switching lives on Ctrl+Arrow so plain arrows can navigate the
       // card grid in two dimensions.
@@ -685,7 +690,7 @@ const App: React.FC = () => {
       const newNames = await generateWindowNamesWithAI([win]);
       const updatedMap = { ...windowNameMap, ...newNames };
       pushNameHistory(updatedMap);
-      await Promise.all(Object.entries(newNames).map(([id, name]) => saveCustomWindowName(id, name)));
+      await saveCustomWindowNames(newNames);
       showNotification("Window renamed", 'success');
     } catch (error: any) {
       if (error.message === "NO_API_KEY" || error.message === "INVALID_API_KEY") {
@@ -703,9 +708,10 @@ const App: React.FC = () => {
     const targets = [...sidebarSelectedWindowIds].sort((a, b) =>
       compareWindowNames(windowNameMap[a] || '', windowNameMap[b] || ''));
     const newMap = { ...windowNameMap };
-    targets.forEach((id, i) => { newMap[id] = `${base}${i + 1}`; });
+    const renamed: Record<string, string> = {};
+    targets.forEach((id, i) => { newMap[id] = `${base}${i + 1}`; renamed[id] = newMap[id]; });
     pushNameHistory(newMap); // single history entry: one Undo reverts the whole batch
-    await Promise.all(targets.map(id => saveCustomWindowName(id, newMap[id])));
+    await saveCustomWindowNames(renamed);
     showNotification(`Renamed ${targets.length} windows`, 'success');
   };
 
@@ -898,9 +904,9 @@ const App: React.FC = () => {
       // 2. Update History & State
       const updatedMap = { ...windowNameMap, ...newNames };
       pushNameHistory(updatedMap);
-      
-      // 3. Save all to storage (parallel)
-      await Promise.all(Object.entries(newNames).map(([id, name]) => saveCustomWindowName(id, name)));
+
+      // 3. Save all to storage in one write
+      await saveCustomWindowNames(newNames);
       
       showNotification(
         sidebarSelectedWindowIds.length > 0 
@@ -937,12 +943,18 @@ const App: React.FC = () => {
 
       // 2. Execute Moves
       const sortedWindows = [...windows].sort((a, b) => a.id.localeCompare(b.id)); // Stable order to recycle
-      
+
       const newNameMap = { ...windowNameMap };
+
+      // Tabs may have closed since the groups were generated (and the AI can
+      // return ids that never existed) — moving a stale id throws and aborts
+      // the reorg midway, so only currently-open tabs are moved.
+      const openTabIds = new Set(allTabs.map(t => t.id));
 
       for (let i = 0; i < tabGroups.length; i++) {
         const group = tabGroups[i];
-        
+        const validTabIds = group.tabIds.filter(id => openTabIds.has(id));
+
         let targetWindowId: string;
 
         if (i < sortedWindows.length) {
@@ -953,13 +965,15 @@ const App: React.FC = () => {
           await saveCustomWindowName(targetWindowId, group.categoryName);
         } else {
           // Create new window
-          if (group.tabIds.length === 0) continue;
-          await createWindowWithTabs(group.tabIds);
-          continue; 
+          if (validTabIds.length === 0) continue;
+          await createWindowWithTabs(validTabIds);
+          continue;
         }
 
         // Move tabs to recycled window
-        await moveTabs(group.tabIds, targetWindowId);
+        if (validTabIds.length > 0) {
+          await moveTabs(validTabIds, targetWindowId);
+        }
       }
 
       pushNameHistory(newNameMap);
@@ -991,21 +1005,25 @@ const App: React.FC = () => {
       // but we called loadTabs above. Since state updates are async, we should use getWindows() directly.
       const currentWindows = await getWindows();
       const currentWindowIds = new Set(currentWindows.map(w => w.id));
+      // Tabs closed since the snapshot can't be moved — a stale id throws
+      // and aborts the whole undo.
+      const openTabIds = new Set(currentWindows.flatMap(w => w.tabs).map(t => t.id));
 
       const restoredNameMap = { ...windowNameMap };
 
       for (const snapWin of snapshot.windows) {
+         const validTabIds = snapWin.tabIds.filter(id => openTabIds.has(id));
          if (currentWindowIds.has(snapWin.id)) {
            // Window still exists, move tabs back
-           if (snapWin.tabIds.length > 0) {
-             await moveTabs(snapWin.tabIds, snapWin.id);
+           if (validTabIds.length > 0) {
+             await moveTabs(validTabIds, snapWin.id);
            }
            restoredNameMap[snapWin.id] = snapWin.name;
            await saveCustomWindowName(snapWin.id, snapWin.name);
          } else {
            // Window is gone, create new one with these tabs
-           if (snapWin.tabIds.length > 0) {
-              await createWindowWithTabs(snapWin.tabIds);
+           if (validTabIds.length > 0) {
+              await createWindowWithTabs(validTabIds);
               // Name is lost for new ID unless we track it, simplification for now.
            }
          }
@@ -1029,7 +1047,7 @@ const App: React.FC = () => {
       const prevMap = nameHistory[prevIndex];
       setHistoryIndex(prevIndex);
       setWindowNameMap(prevMap);
-      await Promise.all(Object.entries(prevMap).map(([id, name]) => saveCustomWindowName(id, name)));
+      await saveCustomWindowNames(prevMap);
       showNotification("Undo successful", 'info');
     }
   };
@@ -1040,7 +1058,7 @@ const App: React.FC = () => {
       const nextMap = nameHistory[nextIndex];
       setHistoryIndex(nextIndex);
       setWindowNameMap(nextMap);
-      await Promise.all(Object.entries(nextMap).map(([id, name]) => saveCustomWindowName(id, name)));
+      await saveCustomWindowNames(nextMap);
       showNotification("Redo successful", 'info');
     }
   };
@@ -1128,6 +1146,7 @@ const App: React.FC = () => {
     link.href = url;
     link.download = `${filename}.${type}`;
     link.click();
+    URL.revokeObjectURL(url);
     setShowExportMenu(false);
   };
 

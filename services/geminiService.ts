@@ -67,7 +67,7 @@ export const organizeTabsWithAI = async (tabs: Tab[]): Promise<TabGroup[]> => {
     return result.groups || [];
   } catch (error: any) {
     console.error("Error organizing tabs with Gemini:", error);
-    if (error.message.includes('API_KEY')) {
+    if (String(error?.message || '').includes('API_KEY')) {
        throw new Error("INVALID_API_KEY");
     }
     throw error;
@@ -129,7 +129,7 @@ export const generateWindowNamesWithAI = async (windows: WindowData[]): Promise<
 
   } catch (error: any) {
     console.error("Error renaming windows with Gemini:", error);
-    if (error.message.includes('API_KEY')) {
+    if (String(error?.message || '').includes('API_KEY')) {
        throw new Error("INVALID_API_KEY");
     }
     throw error;

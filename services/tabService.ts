@@ -250,9 +250,11 @@ export const getTabContent = async (tabId: string): Promise<string> => {
 };
 
 // Makes relative links (CSS/images) resolve when captured HTML is rendered
-// in an iframe. Shared by the Preview Panel and card thumbnails.
+// in an iframe. Shared by the Preview Panel and card thumbnails. The URL is
+// attribute-escaped so a quote in it can't break out of the href.
 export const injectBaseTag = (html: string, url: string): string => {
-  const baseTag = `<base href="${url}" target="_blank">`;
+  const safeUrl = url.replace(/"/g, '&quot;');
+  const baseTag = `<base href="${safeUrl}" target="_blank">`;
   return html.toLowerCase().includes('<head')
     ? html.replace(/<head[^>]*>/i, (match) => `${match}${baseTag}`)
     : `${baseTag}${html}`;
@@ -263,6 +265,10 @@ export const injectBaseTag = (html: string, url: string): string => {
 // gate so scrolling a grid of ~170 cards can't fire ~170 simultaneous
 // script injections.
 const thumbnailCache = new Map<string, { url: string; html: string }>();
+// Entries for closed tabs are never touched again; cap the cache and evict
+// the oldest entries (Map preserves insertion order) so it can't grow
+// without bound over a long session.
+const MAX_THUMBNAIL_CACHE = 300;
 const MAX_CONCURRENT_CAPTURES = 4;
 let activeCaptures = 0;
 const captureWaiters: Array<() => void> = [];
@@ -293,7 +299,13 @@ export const getTabThumbnail = async (tab: Tab): Promise<string | null> => {
     const raw = await getTabContent(tab.id);
     if (!raw) return null;
     const html = injectBaseTag(raw, tab.url);
+    thumbnailCache.delete(tab.id); // re-insert so this entry counts as newest
     thumbnailCache.set(tab.id, { url: tab.url, html });
+    while (thumbnailCache.size > MAX_THUMBNAIL_CACHE) {
+      const oldest = thumbnailCache.keys().next().value;
+      if (oldest === undefined) break;
+      thumbnailCache.delete(oldest);
+    }
     return html;
   } finally {
     releaseCaptureSlot();

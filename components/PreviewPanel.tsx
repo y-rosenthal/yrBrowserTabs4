@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Tab, WindowData } from '../types';
 import { ExternalLink, X, Globe, Lock, Loader2, RefreshCw } from 'lucide-react';
-import { getTabContent, isTabDiscarded, wakeTab } from '../services/tabService';
+import { getTabContent, injectBaseTag, isTabDiscarded, wakeTab } from '../services/tabService';
 import { Favicon } from './Favicon';
 
 interface PreviewPanelProps {
@@ -59,19 +59,8 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
         if (!isMounted) return;
 
         if (content) {
-          // We need to inject a <base> tag so relative links (CSS/Images) work correctly
-          // We search for <head> to inject it, or prepend it if missing.
-          const baseTag = `<base href="${tab.url}" target="_blank">`;
-          const hasHead = content.toLowerCase().includes('<head');
-
-          let processedHtml = content;
-          if (hasHead) {
-            processedHtml = content.replace(/<head[^>]*>/i, (match) => `${match}${baseTag}`);
-          } else {
-            processedHtml = `${baseTag}${content}`;
-          }
-
-          setHtmlContent(processedHtml);
+          // Inject a <base> tag so relative links (CSS/Images) resolve.
+          setHtmlContent(injectBaseTag(content, tab.url));
         } else {
           setError(true);
           // Offer the wake-up action only when the tab is actually asleep

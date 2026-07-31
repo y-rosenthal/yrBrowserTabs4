@@ -21,6 +21,7 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({ onClose }) => {
     link.href = url;
     link.download = 'TabMaster-UserGuide.md';
     link.click();
+    URL.revokeObjectURL(url);
   };
 
   return (

@@ -1,11 +1,11 @@
 
-import { StorageData } from '../types';
+import { CardMetadataSetting, StorageData } from '../types';
 
 declare const chrome: any;
 
 const isExtension = typeof chrome !== 'undefined' && !!chrome.storage;
 
-export const DEFAULT_CARD_METADATA: StorageData['cardMetadata'] = [
+export const DEFAULT_CARD_METADATA: CardMetadataSetting[] = [
   { field: 'icon', visible: true },
   { field: 'lastAccessed', visible: true },
   { field: 'title', visible: true },
@@ -49,13 +49,36 @@ export const getStorageData = async (): Promise<StorageData> => {
   return Promise.resolve(memStorage);
 };
 
+// customWindowNames is stored as one map, so every save is a
+// read-modify-write. Concurrent saves (e.g. renaming several windows in one
+// action) would each read the same old map and the last write would win,
+// silently dropping the other renames — so all writes go through this queue,
+// which chains them one after another.
+let nameWriteQueue: Promise<void> = Promise.resolve();
+
+const enqueueNameWrite = (names: Record<string, string>): Promise<void> => {
+  nameWriteQueue = nameWriteQueue.then(async () => {
+    const data = await getStorageData();
+    const updatedNames = { ...data.customWindowNames, ...names };
+    await chrome.storage.local.set({ customWindowNames: updatedNames });
+  });
+  return nameWriteQueue;
+};
+
 export const saveCustomWindowName = async (windowId: string, name: string): Promise<void> => {
   if (isExtension) {
-    const data = await getStorageData();
-    const updatedNames = { ...data.customWindowNames, [windowId]: name };
-    await chrome.storage.local.set({ customWindowNames: updatedNames });
+    await enqueueNameWrite({ [windowId]: name });
   } else {
     memStorage.customWindowNames[windowId] = name;
+  }
+};
+
+// Persists several window names in a single storage write.
+export const saveCustomWindowNames = async (names: Record<string, string>): Promise<void> => {
+  if (isExtension) {
+    await enqueueNameWrite(names);
+  } else {
+    memStorage.customWindowNames = { ...memStorage.customWindowNames, ...names };
   }
 };
 

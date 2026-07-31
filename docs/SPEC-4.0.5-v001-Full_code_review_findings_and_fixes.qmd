@@ -1,0 +1,169 @@
+---
+title: "SPEC-4.0.5-v001"
+subtitle: "Full code review — findings and fixes"
+---
+
+## Scope
+
+A full review of the TabMaster AI codebase as of v4.0.4 (commit `a5dba57`):
+every source file (`App.tsx`, all components, all services), the build
+configuration (`vite.config.ts`, `tsconfig.json`, `tailwind.config.js`),
+the extension manifest, and the HTML entry point. The production build
+(`tsc && vite build`) was verified before and after the changes.
+
+All issues below were fixed in v4.0.5. They are ordered by severity.
+
+## Findings and fixes
+
+### 1. AI Studio CDN importmap shipped inside the extension (high)
+
+**Where:** `app.html`
+
+**Problem:** the page kept a leftover `<script type="importmap">` from the
+original AI Studio prototype, mapping `react`, `react-dom`, `lucide-react`,
+`@google/genai` (and even `vite` itself) to `https://aistudiocdn.com/…`
+CDN URLs — at versions that don't match the project's dependencies
+(React 19 in the map vs. React 18 in `package.json`). Vite copies the tag
+verbatim into `dist/app.html`, so it shipped inside the extension, where:
+
+- the inline script violates the Manifest V3 content-security policy
+  (`script-src 'self'`), logging a CSP error on every launch; and
+- had it ever been honored, module resolution would have been hijacked to
+  remote, version-mismatched copies of the app's core libraries.
+
+A `<link>` to Google Fonts (Inter) was also present — an external network
+dependency for a font family that `tailwind.config.js` never references, so
+it was pure dead weight.
+
+**Fix:** removed both. `dist/app.html` now contains only the bundled
+script/stylesheet references (1.21 kB → 0.38 kB).
+
+### 2. Concurrent window renames lost in storage (high)
+
+**Where:** `services/storageService.ts` + call sites in `App.tsx`
+
+**Problem:** custom window names are stored as a single
+`customWindowNames` map, and `saveCustomWindowName()` performs a
+read-modify-write of the whole map. Several features saved many names *in
+parallel* with `Promise.all(...)`:
+
+- "Auto Name" (AI rename of all/checked windows)
+- batch rename ("name1, name2, …")
+- undo / redo of name changes
+
+Each parallel writer read the same old map, merged in only its own key, and
+wrote the result — so the last write won and **all other renames were
+silently dropped from storage**. The UI looked correct until the next
+reload, when the lost names reverted to defaults.
+
+**Fix:** all writes now go through a serialized write queue (each write
+chains on the previous one), and a new bulk `saveCustomWindowNames(map)`
+persists any number of names in a single read-modify-write. All
+multi-rename call sites in `App.tsx` use the bulk call.
+
+### 3. "Apply to Windows" / "Undo Reorg" abort on stale tab ids (medium)
+
+**Where:** `App.tsx` (`handleApplyAiOrganization`, `handleUndoReorg`)
+
+**Problem:** the AI grouping result (and the undo snapshot) hold tab ids
+captured earlier. If any of those tabs were closed in the meantime — or if
+the model returned an id that never existed — `chrome.tabs.move` throws and
+the whole reorganization aborts midway, leaving windows half-moved.
+
+**Fix:** both operations now intersect the stored tab ids with the
+currently open tabs before moving, and skip empty groups.
+
+### 4. Toast notifications dismissed too early (medium)
+
+**Where:** `App.tsx` (`showNotification`)
+
+**Problem:** every toast armed its own 3-second `setTimeout` that
+unconditionally cleared the notification state. If a second toast appeared
+within 3 seconds of the first, the *first* toast's timer hid the *second*
+toast almost immediately.
+
+**Fix:** the hide timer is kept in a ref and cleared before each new toast.
+
+### 5. Gemini error handling could mask the real error (medium)
+
+**Where:** `services/geminiService.ts`
+
+**Problem:** both API wrappers ran `error.message.includes('API_KEY')` in
+their `catch` blocks. A rejection without a `.message` string (Gemini SDK
+errors are not always `Error` instances) threw a `TypeError` inside the
+`catch`, replacing the real failure and breaking the "invalid key → show
+the API-key dialog" flow.
+
+**Fix:** the check is now `String(error?.message || '').includes(...)`.
+
+### 6. Unescaped URL interpolated into preview HTML (low)
+
+**Where:** `services/tabService.ts` (`injectBaseTag`),
+`components/PreviewPanel.tsx`
+
+**Problem:** the tab URL was interpolated into `<base href="...">` without
+escaping, so a `"` in a URL could break out of the attribute. Impact was
+limited (previews render in a sandboxed iframe with scripts disabled), but
+it was still an injection point — and `PreviewPanel` duplicated the same
+injection logic inline instead of using the shared helper.
+
+**Fix:** `injectBaseTag` escapes quotes; `PreviewPanel` now calls the
+shared helper.
+
+### 7. Unbounded thumbnail cache (low)
+
+**Where:** `services/tabService.ts`
+
+**Problem:** card-view thumbnails were cached per tab id and never evicted
+when tabs closed, so the cache (full HTML captures, often hundreds of KB
+each) grew without bound over a long session.
+
+**Fix:** the cache is capped at 300 entries with oldest-first eviction
+(recapture refreshes an entry's position).
+
+### 8. Smaller items (low)
+
+- **Leaked object URLs** — CSV/Markdown export and the User Guide download
+  never called `URL.revokeObjectURL()`. Fixed in `App.tsx` and
+  `UserGuideModal.tsx`.
+- **Keyboard navigation vs. text inputs** — the global key handler only
+  ignored `<input>` elements; it now also ignores `<textarea>`, `<select>`,
+  and `contentEditable` targets.
+- **`tailwind.config.js` scanned a nonexistent file** — `content` listed
+  `./index.html` (the entry point is `app.html`). Harmless today because
+  the HTML holds no Tailwind classes, but fixed so future classes in the
+  entry page aren't purged.
+- **Empty `.env.example`** — now documents the optional `API_KEY` build-time
+  fallback used by `vite.config.ts` / `geminiService.ts`.
+- **`DEFAULT_CARD_METADATA` typing** — declared as the optional
+  `StorageData['cardMetadata']` type, forcing a non-null assertion in
+  `App.tsx`. Now typed `CardMetadataSetting[]` and the assertion is gone.
+
+## Reviewed and left as-is
+
+Noted for the record; none of these blocks correct operation:
+
+- **`metadata.json`** is an AI Studio scaffold artifact. Kept: harmless,
+  and it documents the app description.
+- **`handleUndoReorg` name loss** for windows that no longer exist —
+  restored tabs go to a new window whose generated id has no stored name.
+  Acknowledged in a code comment as a deliberate simplification.
+- **Double sorting in `TabListView`** — the parent passes pre-sorted rows
+  in controlled mode and the table sorts again with the same comparator.
+  Redundant but stable and cheap.
+- **`background.js`** is a stub (install log only) — intentional.
+- **`constants.ts` mock data** is only used by the web-demo fallback path.
+- Bundle size (~489 kB pre-gzip) is dominated by `@google/genai` +
+  `lucide-react`; fine for an unpacked extension, no code-splitting needed.
+
+## Verification
+
+- `npm run build` (`tsc` strict type-check + Vite production build) passes.
+- `dist/app.html` verified free of CDN references; `dist/manifest.json`
+  carries the bumped version.
+- `quarto render` regenerates this book without errors.
+
+## Version
+
+`package.json` and `manifest.json` bumped **4.0.4 → 4.0.5** (bug-fix
+release, no feature changes). Tagged `v4.0.5`.
