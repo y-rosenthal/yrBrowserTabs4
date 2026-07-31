@@ -5,7 +5,7 @@ import { DEMO_NOTICE } from './constants';
 import { ViewMode, WindowData, Tab, TabGroup, OnboardingStep, WindowReorgSnapshot, CardMetadataSetting, CardMetadataField } from './types';
 import { Search, Info, ExternalLink, RefreshCw, AlertCircle, Maximize2, Download, Table, FileText, Eye, EyeOff, FolderPlus, HelpCircle, BookOpen, Sun, Moon, Key, LayoutTemplate, RotateCcw, Settings, Sparkles, ListFilter, List, LayoutGrid, Minus, Plus, Copy, FolderInput, Edit2, Trash2, CheckSquare, Undo2, Redo2, Wand2, ChevronUp, ChevronDown } from 'lucide-react';
 import { organizeTabsWithAI, generateWindowNamesWithAI } from './services/geminiService';
-import { getWindows, activateTab, closeTab, getPlatformInfo, moveTabs, createWindowWithTabs, focusOrOpenExtensionTab, subscribeToUpdates, focusWindow, closeWindow, wakeTab } from './services/tabService';
+import { getWindows, activateTab, closeTab, getPlatformInfo, moveTabs, createWindowWithTabs, focusOrOpenExtensionTab, subscribeToUpdates, focusWindow, closeWindow, wakeTab, isExtensionPopup } from './services/tabService';
 import { saveCustomWindowName, getStorageData, setOnboardingSeen, saveTheme, saveApiKey, saveViewSettings, DEFAULT_CARD_METADATA } from './services/storageService';
 import { compareWindowNames } from './services/sortUtils';
 import { TabListView, SortField, SortDirection } from './components/TabListView';
@@ -192,8 +192,13 @@ const App: React.FC = () => {
       if (data.cardMetadata) setCardMetadata(data.cardMetadata);
       const shouldMaximize = data.openMaximized !== false;
       setOpenMaximized(shouldMaximize);
-      if (platformInfo.isExtension && window.innerWidth < 800 && shouldMaximize) {
-        focusOrOpenExtensionTab();
+      if (platformInfo.isExtension && shouldMaximize) {
+        isExtensionPopup().then(async (isPopup) => {
+          if (isPopup) {
+            await focusOrOpenExtensionTab();
+            window.close(); // dismiss the popup once the full tab is up
+          }
+        });
       }
     });
 
@@ -1199,7 +1204,7 @@ const App: React.FC = () => {
         {/* Header */}
         <header className="h-16 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-md flex items-center justify-between px-6 shrink-0 z-40 relative">
           <div className="flex items-center gap-4 flex-1">
-            <h1 className="text-lg font-semibold text-slate-800 dark:text-slate-100 hidden md:block">
+            <h1 className="text-lg font-semibold text-slate-800 dark:text-slate-100 hidden md:block whitespace-nowrap">
               {sidebarSelectedWindowIds.length > 0 
                 ? `Selected Windows (${sidebarSelectedWindowIds.length})` 
                 : viewMode === ViewMode.ALL ? 'All Tabs'
@@ -1295,8 +1300,10 @@ const App: React.FC = () => {
                 </button>
               </div>
 
+              {/* Hidden below lg so the popup's 800px toolbar keeps the
+                  maximize and settings buttons reachable. */}
               {tabDisplayMode === 'card' && (
-                <div className="flex items-center gap-1 mr-1 animate-in fade-in duration-200">
+                <div className="hidden lg:flex items-center gap-1 mr-1 animate-in fade-in duration-200">
                   {/* Tab cards vs Window cards */}
                   <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-full p-0.5 text-[11px] font-medium">
                     <button
@@ -1371,6 +1378,16 @@ const App: React.FC = () => {
                 </div>
               )}
 
+              {/* Maximize — first in the icon row so it can never be
+                  clipped out of a narrow popup toolbar. */}
+              <button
+                onClick={focusOrOpenExtensionTab}
+                className="p-2 shrink-0 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors"
+                title="Open in new tab (Maximize)"
+              >
+                <Maximize2 size={18} />
+              </button>
+
               {/* Theme Toggle */}
               <button
                   onClick={toggleTheme}
@@ -1380,8 +1397,9 @@ const App: React.FC = () => {
                   {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
               </button>
 
-              {/* Help Trigger */}
-              <div className="relative help-btn-wrapper" ref={helpMenuRef}>
+              {/* Help Trigger (hidden in narrow popup widths to keep
+                  Maximize/Settings reachable) */}
+              <div className="relative help-btn-wrapper hidden lg:block" ref={helpMenuRef}>
                 <button 
                   id="help-btn"
                   onClick={() => setShowHelpMenu(!showHelpMenu)}
@@ -1406,7 +1424,7 @@ const App: React.FC = () => {
                 )}
               </div>
 
-              <div className="relative" ref={exportMenuRef}>
+              <div className="relative hidden lg:block" ref={exportMenuRef}>
                 <button 
                   onClick={() => setShowExportMenu(!showExportMenu)}
                   className={`p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors ${showExportMenu ? 'text-indigo-600 dark:text-white bg-slate-200 dark:bg-slate-800' : ''}`}
@@ -1426,9 +1444,9 @@ const App: React.FC = () => {
                 )}
               </div>
 
-              <button 
+              <button
                 onClick={() => setShowPreview(!showPreview)}
-                className={`p-2 rounded-full transition-colors ${showPreview ? 'bg-indigo-100 dark:bg-indigo-600/20 text-indigo-600 dark:text-indigo-400' : 'hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'}`}
+                className={`p-2 rounded-full transition-colors hidden lg:block ${showPreview ? 'bg-indigo-100 dark:bg-indigo-600/20 text-indigo-600 dark:text-indigo-400' : 'hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'}`}
                 title="Toggle Preview Panel"
               >
                 {showPreview ? <Eye size={18} /> : <EyeOff size={18} />}
@@ -1442,14 +1460,6 @@ const App: React.FC = () => {
                 <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
               </button>
               
-              <button 
-                onClick={focusOrOpenExtensionTab}
-                className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors"
-                title="Open in new tab (Maximize)"
-              >
-                <Maximize2 size={18} />
-              </button>
-
               {/* Settings Trigger - Moved to End */}
               <div className="relative settings-btn-wrapper" ref={settingsMenuRef}>
                 <button 

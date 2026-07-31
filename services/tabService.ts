@@ -24,6 +24,20 @@ export const getPlatformInfo = () => ({
   mode: isExtension ? 'Live Extension' : 'Web Demo'
 });
 
+// True when running as the action popup (or any non-tab extension page):
+// chrome.tabs.getCurrent() resolves to a Tab only inside a real browser
+// tab. More reliable than width heuristics — the popup is exactly 800px
+// wide, which `innerWidth < 800` misses.
+export const isExtensionPopup = async (): Promise<boolean> => {
+  if (!isExtension || !chrome.tabs?.getCurrent) return false;
+  try {
+    const current = await chrome.tabs.getCurrent();
+    return !current;
+  } catch {
+    return window.innerWidth <= 800;
+  }
+};
+
 export const getWindows = async (): Promise<WindowData[]> => {
   if (isExtension) {
     // Real Chrome API Call
