@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.7.33">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd – TabMaster AI — Documentation</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<link href="../docs/SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.html" rel="next">
+<link href="../docs/SPEC-4.0.5-v001-Full_code_review_findings_and_fixes.html" rel="prev">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-ea385d0e468b0dd5ea5bf0780b1290d9.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-bc185b5c5bdbcb35c2eb49d8a876ef70.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-ea385d0e468b0dd5ea5bf0780b1290d9.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-cc87306aee257ee75d640cc1568daac3.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-e0930f1673340d6ba98b66fddfb52324.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-cc87306aee257ee75d640cc1568daac3.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+<link rel="stylesheet" href="../styles.css">
+</head>
+
+<body class="nav-sidebar floating quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../docs/spec-conventions.html">Specifications</a></li><li class="breadcrumb-item"><a href="../docs/SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.html"><span class="chapter-title">SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="../">TabMaster AI — Documentation</a> 
+        <div class="sidebar-tools-main">
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+  <a href="" class="quarto-reader-toggle quarto-navigation-tool px-1" onclick="window.quartoToggleReader(); return false;" title="Toggle reader mode">
+  <div class="quarto-reader-toggle-btn">
+  <i class="bi"></i>
+  </div>
+</a>
+</div>
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Welcome</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../README.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">TabMaster AI</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Specifications</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/spec-conventions.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">spec-conventions.qmd</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/SPEC-4.0.5-v001-Full_code_review_findings_and_fixes.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">SPEC-4.0.5-v001</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.html" class="sidebar-item-text sidebar-link active"><span class="chapter-title">SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.qmd</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.qmd</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.qmd</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/SPEC-4.0.2-v001-Sequential_default_window_names.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">SPEC-4.0.2-v001-Sequential_default_window_names.qmd</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#requirement-1-numeric-sorting-of-window-names" id="toc-requirement-1-numeric-sorting-of-window-names" class="nav-link active" data-scroll-target="#requirement-1-numeric-sorting-of-window-names">Requirement 1 — Numeric sorting of window names</a>
+  <ul class="collapse">
+  <li><a href="#current-behavior-and-root-cause" id="toc-current-behavior-and-root-cause" class="nav-link" data-scroll-target="#current-behavior-and-root-cause">Current behavior and root cause</a></li>
+  <li><a href="#design-decided-natural-sort" id="toc-design-decided-natural-sort" class="nav-link" data-scroll-target="#design-decided-natural-sort">Design (decided: natural sort)</a></li>
+  </ul></li>
+  <li><a href="#requirement-2-card-view-for-tabs-and-windows" id="toc-requirement-2-card-view-for-tabs-and-windows" class="nav-link" data-scroll-target="#requirement-2-card-view-for-tabs-and-windows">Requirement 2 — Card view for tabs and windows</a>
+  <ul class="collapse">
+  <li><a href="#view-toggle-and-grouping-decided-both-user-selectable" id="toc-view-toggle-and-grouping-decided-both-user-selectable" class="nav-link" data-scroll-target="#view-toggle-and-grouping-decided-both-user-selectable">View toggle and grouping (decided: both, user-selectable)</a></li>
+  <li><a href="#grid-layout" id="toc-grid-layout" class="nav-link" data-scroll-target="#grid-layout">Grid layout</a></li>
+  <li><a href="#tab-cards" id="toc-tab-cards" class="nav-link" data-scroll-target="#tab-cards">Tab cards</a></li>
+  <li><a href="#window-cards" id="toc-window-cards" class="nav-link" data-scroll-target="#window-cards">Window cards</a></li>
+  <li><a href="#card-sizing-decided-hotkeys" id="toc-card-sizing-decided-hotkeys" class="nav-link" data-scroll-target="#card-sizing-decided-hotkeys">Card sizing (decided: <code>[</code> / <code>]</code> hotkeys)</a></li>
+  <li><a href="#thumbnails-decided-scaled-html-captures" id="toc-thumbnails-decided-scaled-html-captures" class="nav-link" data-scroll-target="#thumbnails-decided-scaled-html-captures">Thumbnails (decided: scaled HTML captures)</a></li>
+  <li><a href="#metadata-configuration-settings" id="toc-metadata-configuration-settings" class="nav-link" data-scroll-target="#metadata-configuration-settings">Metadata configuration (Settings)</a></li>
+  <li><a href="#keyboard-navigation-decided-full-2-d-arrows" id="toc-keyboard-navigation-decided-full-2-d-arrows" class="nav-link" data-scroll-target="#keyboard-navigation-decided-full-2-d-arrows">Keyboard navigation (decided: full 2-D arrows)</a></li>
+  <li><a href="#persistence-settings-schema" id="toc-persistence-settings-schema" class="nav-link" data-scroll-target="#persistence-settings-schema">Persistence (settings schema)</a></li>
+  </ul></li>
+  <li><a href="#requirement-3-manual-window-rename-decided-right-click-menu" id="toc-requirement-3-manual-window-rename-decided-right-click-menu" class="nav-link" data-scroll-target="#requirement-3-manual-window-rename-decided-right-click-menu">Requirement 3 — Manual window rename (decided: right-click menu)</a></li>
+  <li><a href="#requirement-4-single-click-must-not-navigate" id="toc-requirement-4-single-click-must-not-navigate" class="nav-link" data-scroll-target="#requirement-4-single-click-must-not-navigate">Requirement 4 — Single click must not navigate</a>
+  <ul class="collapse">
+  <li><a href="#current-behavior" id="toc-current-behavior" class="nav-link" data-scroll-target="#current-behavior">Current behavior</a></li>
+  <li><a href="#design" id="toc-design" class="nav-link" data-scroll-target="#design">Design</a></li>
+  </ul></li>
+  <li><a href="#requirement-5-right-click-context-menus" id="toc-requirement-5-right-click-context-menus" class="nav-link" data-scroll-target="#requirement-5-right-click-context-menus">Requirement 5 — Right-click context menus</a>
+  <ul class="collapse">
+  <li><a href="#tab-menu-detail-rows-and-tab-cards" id="toc-tab-menu-detail-rows-and-tab-cards" class="nav-link" data-scroll-target="#tab-menu-detail-rows-and-tab-cards">Tab menu (detail rows and tab cards)</a></li>
+  <li><a href="#window-menu-sidebar-rows-and-window-cards" id="toc-window-menu-sidebar-rows-and-window-cards" class="nav-link" data-scroll-target="#window-menu-sidebar-rows-and-window-cards">Window menu (sidebar rows and window cards)</a></li>
+  <li><a href="#ai-group-menu-category-headings-in-ai-organized-view" id="toc-ai-group-menu-category-headings-in-ai-organized-view" class="nav-link" data-scroll-target="#ai-group-menu-category-headings-in-ai-organized-view">AI group menu (category headings in AI Organized view)</a></li>
+  <li><a href="#implementation-notes" id="toc-implementation-notes" class="nav-link" data-scroll-target="#implementation-notes">Implementation notes</a></li>
+  </ul></li>
+  <li><a href="#requirement-6-sleeping-tabs-wake-automatically-on-settled-selection" id="toc-requirement-6-sleeping-tabs-wake-automatically-on-settled-selection" class="nav-link" data-scroll-target="#requirement-6-sleeping-tabs-wake-automatically-on-settled-selection">Requirement 6 — Sleeping tabs wake automatically on settled selection</a></li>
+  <li><a href="#second-round-decisions-2026-07-31" id="toc-second-round-decisions-2026-07-31" class="nav-link" data-scroll-target="#second-round-decisions-2026-07-31">Second-round decisions (2026-07-31)</a></li>
+  <li><a href="#resolved-questions-from-v001" id="toc-resolved-questions-from-v001" class="nav-link" data-scroll-target="#resolved-questions-from-v001">Resolved questions (from v001)</a></li>
+  <li><a href="#remaining-notes-risks" id="toc-remaining-notes-risks" class="nav-link" data-scroll-target="#remaining-notes-risks">Remaining notes &amp; risks</a></li>
+  <li><a href="#affected-files-planned" id="toc-affected-files-planned" class="nav-link" data-scroll-target="#affected-files-planned">Affected files (planned)</a></li>
+  <li><a href="#out-of-scope" id="toc-out-of-scope" class="nav-link" data-scroll-target="#out-of-scope">Out of scope</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../docs/spec-conventions.html">Specifications</a></li><li class="breadcrumb-item"><a href="../docs/SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.html"><span class="chapter-title">SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd</span></a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title"><span class="chapter-title">SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd</span></h1>
+<p class="subtitle lead">SPEC 4.0.4 — Card View, Numeric Window Sort, Rename &amp; Click Navigation (v002)</p>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<tbody>
+<tr class="odd">
+<td><strong>Software version</strong></td>
+<td>4.0.4 (targets; the pre-existing code is tagged <code>v4.0.3</code>)</td>
+</tr>
+<tr class="even">
+<td><strong>Spec revision</strong></td>
+<td>v002 (supersedes v001)</td>
+</tr>
+<tr class="odd">
+<td><strong>Date</strong></td>
+<td>2026-07-31</td>
+</tr>
+<tr class="even">
+<td><strong>Status</strong></td>
+<td>Implemented (2026-07-31)</td>
+</tr>
+</tbody>
+</table>
+<p>This revision incorporates the answers to the seven open questions raised in v001. The decisions, in brief:</p>
+<ol type="1">
+<li><strong>Cards represent both tabs and windows</strong> — a user-selectable grouping toggle (v001 assumed per-tab only).</li>
+<li><strong>Thumbnails are scaled HTML captures</strong> (as proposed), lazy-loaded with a capture queue and cache.</li>
+<li><strong>Rename is triggered by right-click</strong> on a window name (the existing double-click / pencil paths remain unchanged).</li>
+<li><strong>Card sizing hotkeys are <code>[</code> (shrink) and <code>]</code> (grow)</strong> — not <code>Ctrl</code> <code>+</code>/<code>-</code>, avoiding any conflict with browser zoom.</li>
+<li><strong>The new spec filename format is adopted</strong> (<code>SPEC-&lt;version&gt;-v&lt;NNN&gt;-&lt;Name&gt;.qmd</code>); the three 4.0.2 spec files were renamed to match and <code>spec-conventions.qmd</code> updated (done alongside this revision).</li>
+<li><strong>Card view gets full 2-D arrow-key navigation</strong>; sidebar↔︎tabs area switching moves to <code>Ctrl</code> <code>←</code>/<code>→</code>.</li>
+<li><strong>Natural sort confirmed</strong> for window names.</li>
+</ol>
+<p>Sections unchanged from v001 are restated here in full so this document stands alone.</p>
+<blockquote class="blockquote">
+<p><strong>Extended in place (2026-07-31, second Q&amp;A round):</strong> after approval of the above, a review of the whole interface for right-click opportunities was run item-by-item. Its outcomes are Requirements 5 (context menus) and 6 (sleeping-tab auto-wake), plus amendments to Requirement 3 (rename now lives inside the window context menu, with batch numbering) and to the thumbnail fallback notes.</p>
+</blockquote>
+<section id="requirement-1-numeric-sorting-of-window-names" class="level2">
+<h2 class="anchored" data-anchor-id="requirement-1-numeric-sorting-of-window-names">Requirement 1 — Numeric sorting of window names</h2>
+<section id="current-behavior-and-root-cause" class="level3">
+<h3 class="anchored" data-anchor-id="current-behavior-and-root-cause">Current behavior and root cause</h3>
+<p>Window names are compared as plain lowercase strings in three independent sort sites, so <code>window10</code> sorts between <code>window1</code> and <code>window2</code>:</p>
+<ul>
+<li><code>components/Sidebar.tsx</code> — <code>sortedWindows</code> (the sidebar window list; default sort is by name ascending, so this is where the misordering is most visible).</li>
+<li><code>App.tsx</code> — <code>getSortedTabs</code>, <code>case 'window'</code> (the “Window” column sort in the All Tabs table).</li>
+<li><code>components/TabListView.tsx</code> — <code>displayedTabs</code>, <code>case 'window'</code> (the same sort duplicated for uncontrolled/AI-group tables).</li>
+</ul>
+<p>The name <em>generator</em> (<code>services/nameGenerator.ts</code>) already produces un-padded <code>window1</code>, <code>window2</code>, … — no change there, and <strong>no zero-padding will be introduced</strong>.</p>
+</section>
+<section id="design-decided-natural-sort" class="level3">
+<h3 class="anchored" data-anchor-id="design-decided-natural-sort">Design (decided: natural sort)</h3>
+<p>Add a single shared comparator in a small new module (<code>services/sortUtils.ts</code>) and use it at all three sites:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode ts code-with-copy"><code class="sourceCode typescript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="kw">const</span> compareWindowNames <span class="op">=</span> (a<span class="op">:</span> <span class="dt">string</span><span class="op">,</span> b<span class="op">:</span> <span class="dt">string</span>) <span class="kw">=&gt;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  a<span class="op">.</span><span class="fu">localeCompare</span>(b<span class="op">,</span> <span class="kw">undefined</span><span class="op">,</span> { numeric<span class="op">:</span> <span class="kw">true</span><span class="op">,</span> sensitivity<span class="op">:</span> <span class="st">'base'</span> })<span class="op">;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p><code>localeCompare</code> with <code>numeric: true</code> is a <em>natural sort</em>: any run of digits inside a name is compared by numeric value, so <code>window1 &lt; window2 &lt; … &lt; window10 &lt; window11</code>. Custom/AI names without digits sort alphabetically among themselves, and mixed sets interleave (<code>Project 2 &lt; Project 10</code>; <code>Research</code> sorts by its first character against <code>window…</code>). Confirmed as the desired rule in Q7.</p>
+<p>Only the comparator is shared; the three duplicated sort implementations stay where they are.</p>
+</section>
+</section>
+<section id="requirement-2-card-view-for-tabs-and-windows" class="level2">
+<h2 class="anchored" data-anchor-id="requirement-2-card-view-for-tabs-and-windows">Requirement 2 — Card view for tabs and windows</h2>
+<section id="view-toggle-and-grouping-decided-both-user-selectable" class="level3">
+<h3 class="anchored" data-anchor-id="view-toggle-and-grouping-decided-both-user-selectable">View toggle and grouping (decided: both, user-selectable)</h3>
+<ul>
+<li>A <strong>Detail / Card</strong> toggle (list icon / grid icon segmented control) is added to the header toolbar next to the existing preview toggle.</li>
+<li>When card view is active, a second small control appears beside it: <strong>“Cards: Tabs | Windows”</strong> — the user-selectable grouping from Q1.</li>
+<li>Both choices persist across sessions (<code>chrome.storage</code>, see <a href="#persistence-settings-schema">Persistence</a>).</li>
+<li>The toggle applies everywhere the tab list renders: All Tabs, By Window, sidebar-checkbox filtering, and each AI group (each group renders its own grid under its heading; the <em>Windows</em> grouping applies only to the All-Tabs-style views, since AI groups and By Window mode are not window-shaped collections — there the control is disabled with a tooltip).</li>
+<li>Search, sorting, checkbox multi-select, selection/preview, keyboard navigation, and the close action all keep working in card view; sorting controls move into a small sort dropdown in the toolbar when card view is active (there are no column headers to click).</li>
+</ul>
+</section>
+<section id="grid-layout" class="level3">
+<h3 class="anchored" data-anchor-id="grid-layout">Grid layout</h3>
+<p>Cards are laid out with CSS grid: <code>grid-template-columns: repeat(auto-fill, minmax(var(--card-width), 1fr))</code> — they wrap automatically and are responsive to window and pane width.</p>
+</section>
+<section id="tab-cards" class="level3">
+<h3 class="anchored" data-anchor-id="tab-cards">Tab cards</h3>
+<p>Each tab card shows:</p>
+<ul>
+<li>a <strong>thumbnail</strong> of the tab’s page content filling the card (see <a href="SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.html#thumbnails">Thumbnails</a>), and</li>
+<li>a <strong>metadata overlay</strong> hovering above the thumbnail (semi-transparent scrim anchored to the bottom of the card) so the user sees both the page and the data. Default field order matches the requested priority: <strong>icon → last accessed → tab name → domain → window name</strong>.</li>
+</ul>
+<p>If the visible metadata does not fit, the overlay itself is scrollable (<code>overflow-y: auto</code> with a max height). The browser natively scrolls the innermost scrollable element under the pointer, so the hover-governed behavior falls out for free: wheel over a card’s overlay scrolls that overlay; wheel anywhere else scrolls the main grid.</p>
+<p>The selected card gets the same indigo ring treatment as a selected row; checkbox and close (×) sit in the card’s top corners (visible on hover/selection, like today’s row actions).</p>
+</section>
+<section id="window-cards" class="level3">
+<h3 class="anchored" data-anchor-id="window-cards">Window cards</h3>
+<p>In the <em>Windows</em> grouping, each card represents one browser window:</p>
+<ul>
+<li><strong>Thumbnail:</strong> the window’s active tab’s page capture (cheapest honest “view of the window’s contents”; a 2×2 mosaic of the first four tabs is a possible later upgrade).</li>
+<li><strong>Overlay:</strong> window name, tab count badge, and most-recent <code>lastAccessed</code> across the window’s tabs.</li>
+<li><strong>Interactions:</strong> single-click selects the card; <strong>double-click drills into that window</strong> (switches the dashboard to By Window view for it); a hover <strong>↗</strong> button focuses the actual Chrome window; <strong>right-click opens the window context menu</strong> (see Requirements 3 and 5). Window checkboxes mirror the sidebar’s merge-selection checkboxes.</li>
+</ul>
+</section>
+<section id="card-sizing-decided-hotkeys" class="level3">
+<h3 class="anchored" data-anchor-id="card-sizing-decided-hotkeys">Card sizing (decided: <code>[</code> / <code>]</code> hotkeys)</h3>
+<ul>
+<li><strong>GUI control:</strong> a compact slider in the toolbar (visible only in card view) plus <code>−</code> / <code>+</code> stepper buttons, adjusting card width between ~160 px and ~480 px in steps, with a reset affordance (double-click the slider handle) returning to the default (~240 px).</li>
+<li><strong>Hotkeys:</strong> <strong><code>[</code> shrinks, <code>]</code> grows</strong> (chosen in Q4 over <code>Ctrl</code> <code>+</code>/<code>-</code> to leave browser page-zoom untouched). Active only while card view is shown and no input field has focus (the existing keydown handler already ignores <code>INPUT</code> targets). No modifier needed; no browser shortcut conflicts.</li>
+<li>The chosen size persists across sessions.</li>
+</ul>
+</section>
+<section id="thumbnails-decided-scaled-html-captures" class="level3">
+<h3 class="anchored" data-anchor-id="thumbnails-decided-scaled-html-captures">Thumbnails (decided: scaled HTML captures)</h3>
+<p>Chrome gives extensions <strong>no way to screenshot a background tab</strong> (<code>chrome.tabs.captureVisibleTab</code> only captures the active tab of a window). Confirmed approach (Q2): reuse the mechanism the Preview Panel already uses — <code>getTabContent</code> in <code>services/tabService.ts</code> captures the page’s HTML via <code>chrome.scripting.executeScript</code> — rendered small:</p>
+<ul>
+<li>Each card renders the captured HTML in a sandboxed <code>&lt;iframe srcDoc …&gt;</code> scaled down with <code>transform: scale(…)</code> (<code>pointer-events: none</code>, same <code>sandbox="allow-same-origin"</code> and injected <code>&lt;base&gt;</code> tag as the Preview Panel), so the thumbnail is a genuine miniature of the page.</li>
+<li><strong>Lazy + bounded:</strong> thumbnails are captured only for cards visible in the viewport (IntersectionObserver), fetched through a small concurrency queue (e.g.&nbsp;4 at a time), and cached per tab id + URL so re-scrolling and re-renders don’t re-inject scripts. Off-screen cards drop back to the cheap placeholder to bound memory.</li>
+<li><strong>Fallbacks:</strong> sleeping (discarded) tabs, restricted pages (<code>chrome://</code>, Web Store), and capture failures show a placeholder — large favicon + domain on a neutral background, with a moon badge for sleeping tabs. Card view never <strong>mass</strong>-wakes sleeping tabs just to thumbnail them; only the <em>selected</em> tab auto-wakes via the settled- selection rule (Requirement 6), and the Preview Panel’s “Wake up &amp; preview” button remains as a manual fallback/retry.</li>
+<li><strong>Known risk (accepted in Q2):</strong> JS-heavy pages may look imperfect in miniature, and ~170 tabs make performance the riskiest part of this feature. If the lazy/bounded design still proves too heavy in practice, the fallback (a future revision) is placeholder cards with live thumbnails only for the hovered/selected card.</li>
+</ul>
+</section>
+<section id="metadata-configuration-settings" class="level3">
+<h3 class="anchored" data-anchor-id="metadata-configuration-settings">Metadata configuration (Settings)</h3>
+<ul>
+<li>The Settings (gear) menu gains a <strong>“Card view options”</strong> section listing the five fields — icon, last accessed, tab name, domain, window — each with a visibility checkbox (easy on/off) and up/down reorder arrows.</li>
+<li>The order also controls truncation priority: fields render in order and the overlay scrolls when they overflow, so higher-priority fields are the ones visible without scrolling.</li>
+<li>Configuration persists across sessions and applies to tab cards (window cards have their own fixed, minimal field set).</li>
+</ul>
+</section>
+<section id="keyboard-navigation-decided-full-2-d-arrows" class="level3">
+<h3 class="anchored" data-anchor-id="keyboard-navigation-decided-full-2-d-arrows">Keyboard navigation (decided: full 2-D arrows)</h3>
+<p>Per Q6, card view gets true two-dimensional arrow navigation:</p>
+<ul>
+<li><strong><code>←</code> <code>→</code> <code>↑</code> <code>↓</code></strong> move the selection through the grid; <code>↑</code>/<code>↓</code> jump by one visual row (computed from the current column count).</li>
+<li><strong>Sidebar↔︎tabs area switching moves to <code>Ctrl</code> <code>←</code> / <code>Ctrl</code> <code>→</code></strong> in both views, so the binding is consistent app-wide. In detail view, plain <code>↑</code>/<code>↓</code> keep moving through rows as today (plain <code>←</code>/<code>→</code> become no-ops there).</li>
+<li><code>Enter</code> still activates the selected tab; the info banner and tour copy are updated to teach the new bindings.</li>
+</ul>
+</section>
+<section id="persistence-settings-schema" class="level3">
+<h3 class="anchored" data-anchor-id="persistence-settings-schema">Persistence (settings schema)</h3>
+<p><code>StorageData</code> in <code>types.ts</code> (and <code>services/storageService.ts</code>) gains:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode ts code-with-copy"><code class="sourceCode typescript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>tabViewMode<span class="op">?:</span> <span class="st">'detail'</span> <span class="op">|</span> <span class="st">'card'</span><span class="op">;</span>        <span class="co">// default 'detail'</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>cardGrouping<span class="op">?:</span> <span class="st">'tab'</span> <span class="op">|</span> <span class="st">'window'</span><span class="op">;</span>        <span class="co">// default 'tab'</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>cardWidth<span class="op">?:</span> <span class="dt">number</span><span class="op">;</span>                     <span class="co">// px, default 240</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>cardMetadata<span class="op">?:</span> { field<span class="op">:</span> <span class="st">'icon'</span> <span class="op">|</span> <span class="st">'lastAccessed'</span> <span class="op">|</span> <span class="st">'title'</span> <span class="op">|</span> <span class="st">'domain'</span> <span class="op">|</span> <span class="st">'window'</span><span class="op">;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>                 visible<span class="op">:</span> <span class="dt">boolean</span> }[]<span class="op">;</span>  <span class="co">// default: all visible, order as above</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+</section>
+<section id="requirement-3-manual-window-rename-decided-right-click-menu" class="level2">
+<h2 class="anchored" data-anchor-id="requirement-3-manual-window-rename-decided-right-click-menu">Requirement 3 — Manual window rename (decided: right-click menu)</h2>
+<p>Manual rename already exists (sidebar double-click and hover pencil icon, persisting to storage with undo/redo). Per Q3, the intuitive control to add is <strong>right-click</strong> — amended in the second Q&amp;A round to open the window <strong>context menu</strong> (Requirement 5) with <strong>Rename</strong> as its first item, rather than jumping straight into the editor, so right-click behaves uniformly across the app:</p>
+<ul>
+<li><strong>Rename (single window):</strong> choosing Rename opens the same inline editor as today (Enter saves, Escape cancels, <code>handleRenameWindow</code> path, undo/redo history).</li>
+<li><strong>Rename (multiple windows checked):</strong> when the right-clicked window is one of several checked windows, Rename asks for a <strong>base name</strong> and applies <strong>sequential numbering</strong> — <code>name1</code>, <code>name2</code>, … — to the checked windows in natural-sorted order. The batch is pushed as a <strong>single</strong> history entry, so one Undo reverts the whole batch.</li>
+<li><strong>Undo / Redo</strong> entries appear in the window context menu (same <code>nameHistory</code> the sidebar buttons drive; disabled when unavailable).</li>
+<li>Available wherever a window is a first-class element: <strong>sidebar window rows</strong> and <strong>window cards</strong> in the new card view.</li>
+<li>The existing double-click and pencil-icon paths stay exactly as they are; the v001 discoverability extras (always-visible pencil, header rename) are dropped as unnecessary.</li>
+</ul>
+</section>
+<section id="requirement-4-single-click-must-not-navigate" class="level2">
+<h2 class="anchored" data-anchor-id="requirement-4-single-click-must-not-navigate">Requirement 4 — Single click must not navigate</h2>
+<section id="current-behavior" class="level3">
+<h3 class="anchored" data-anchor-id="current-behavior">Current behavior</h3>
+<p>In <code>components/TabListView.tsx</code> a row click runs <code>onSelect(tab.id); onActivate(tab);</code> — every single click both selects the row <em>and</em> switches Chrome to that tab, yanking focus away from the dashboard.</p>
+</section>
+<section id="design" class="level3">
+<h3 class="anchored" data-anchor-id="design">Design</h3>
+<ul>
+<li><strong>Single click</strong> — selects the row/card only (highlights it and shows it in the Preview Panel). No navigation.</li>
+<li><strong>Double click</strong> — navigates (activates) the tab. Applies to both detail rows and tab cards. (On window cards, double-click drills into the window instead — see <a href="#window-cards">Window cards</a>.)</li>
+<li>Unchanged explicit navigation affordances: the <strong>↗ Switch to Tab</strong> hover button on each row/card, the <strong>Enter</strong> key on the keyboard-selected tab, and the ↗ button in the Preview Panel header.</li>
+<li>Copy that teaches the old behavior gets updated: the extension info banner and tour/user-guide text will say “double-click (or ↗ / Enter) to switch to a tab”.</li>
+</ul>
+</section>
+</section>
+<section id="requirement-5-right-click-context-menus" class="level2">
+<h2 class="anchored" data-anchor-id="requirement-5-right-click-context-menus">Requirement 5 — Right-click context menus</h2>
+<p>Added in the second Q&amp;A round (each candidate item was reviewed individually). Three surfaces get a context menu; the preview panel was considered and <strong>excluded</strong>.</p>
+<section id="tab-menu-detail-rows-and-tab-cards" class="level3">
+<h3 class="anchored" data-anchor-id="tab-menu-detail-rows-and-tab-cards">Tab menu (detail rows and tab cards)</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Item</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Switch to Tab</strong></td>
+<td>Navigate Chrome to the tab (same as double-click / ↗ / Enter).</td>
+</tr>
+<tr class="even">
+<td><strong>Move to Window ▸</strong></td>
+<td>Submenu of all windows, natural-sorted, current window disabled; picking one moves the tab there.</td>
+</tr>
+<tr class="odd">
+<td><strong>Move to New Window</strong></td>
+<td>Moves the tab into a freshly created window.</td>
+</tr>
+<tr class="even">
+<td><strong>Copy URL</strong></td>
+<td>Copies the tab’s URL to the clipboard (first per-tab copy affordance in the app).</td>
+</tr>
+</tbody>
+</table>
+<p>Reviewed and <strong>excluded</strong>: Close Tab (the × hover button suffices), Copy as Markdown link, and Wake Tab (superseded by Requirement 6).</p>
+<p><strong>Multi-select semantics:</strong> when the right-clicked tab is one of several <em>checked</em> tabs, the menu’s actions apply to <strong>all checked tabs</strong> and the labels show the count (“Move 5 Tabs to Window ▸”). Right-clicking an unchecked tab always acts on that tab alone.</p>
+</section>
+<section id="window-menu-sidebar-rows-and-window-cards" class="level3">
+<h3 class="anchored" data-anchor-id="window-menu-sidebar-rows-and-window-cards">Window menu (sidebar rows and window cards)</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Item</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Rename</strong></td>
+<td>First item. Single window → inline editor; multiple checked windows → base name + sequential numbering (see Requirement 3).</td>
+</tr>
+<tr class="even">
+<td><strong>Undo / Redo</strong></td>
+<td>The existing window-name history, also reachable here; disabled when unavailable.</td>
+</tr>
+<tr class="odd">
+<td><strong>Focus Window in Chrome</strong></td>
+<td>Brings the actual browser window to the front (<code>chrome.windows.update({focused: true})</code>) — previously there was no way to jump to a window itself, only to a tab in it.</td>
+</tr>
+<tr class="even">
+<td><strong>Auto-Name with AI</strong></td>
+<td>AI-names just this window (existing Gemini path and history).</td>
+</tr>
+<tr class="odd">
+<td><strong>Merge Checked Windows Here</strong></td>
+<td>Shown when 2+ windows are checked: moves all their tabs into the right-clicked window — the merge modal’s target-picking step becomes unnecessary.</td>
+</tr>
+<tr class="even">
+<td><strong>Move Checked Tabs Here</strong></td>
+<td>Shown when 1+ tabs are checked: files them into the right-clicked window (the window-side complement of the tab menu’s Move to Window ▸).</td>
+</tr>
+<tr class="odd">
+<td><strong>Close Window</strong></td>
+<td>Closes the window and all its tabs behind a “Close window and its N tabs?” confirmation (destructive; uses the existing <code>ConfirmModal</code>).</td>
+</tr>
+</tbody>
+</table>
+<p>Reviewed and <strong>excluded</strong>: View This Window’s Tabs (left-click on the row already does it).</p>
+</section>
+<section id="ai-group-menu-category-headings-in-ai-organized-view" class="level3">
+<h3 class="anchored" data-anchor-id="ai-group-menu-category-headings-in-ai-organized-view">AI group menu (category headings in AI Organized view)</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Item</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Check All Tabs in Group</strong></td>
+<td>Ticks every tab in the category so toolbar bulk actions can target it.</td>
+</tr>
+<tr class="even">
+<td><strong>Move Group to New Window</strong></td>
+<td>Materializes this one category as a real Chrome window, leaving all other windows untouched (lighter alternative to the all-or-nothing “Apply to Windows”).</td>
+</tr>
+</tbody>
+</table>
+<p>Reviewed and <strong>excluded</strong>: Sort Group by ▸ (column headers and the Sort All dropdown already cover sorting).</p>
+</section>
+<section id="implementation-notes" class="level3">
+<h3 class="anchored" data-anchor-id="implementation-notes">Implementation notes</h3>
+<ul>
+<li>One shared <code>components/ContextMenu.tsx</code> renders all three menus: positioned at the cursor (clamped to the viewport), closes on click-outside / Escape / scroll, supports one submenu level and disabled/hidden items.</li>
+<li><code>contextmenu</code> is intercepted (<code>preventDefault()</code>) <strong>only</strong> on tab rows, tab/window cards, sidebar window rows, and AI group headings — the browser’s native right-click menu keeps working everywhere else (search box, preview panel, empty space).</li>
+<li>Menu items reuse the existing action handlers (<code>handleActivateTab</code>, <code>moveTabs</code>, <code>createWindowWithTabs</code>, <code>handleMerge</code>, <code>handleRenameWindow</code>, undo/redo) — no new tab-manipulation plumbing.</li>
+</ul>
+</section>
+</section>
+<section id="requirement-6-sleeping-tabs-wake-automatically-on-settled-selection" class="level2">
+<h2 class="anchored" data-anchor-id="requirement-6-sleeping-tabs-wake-automatically-on-settled-selection">Requirement 6 — Sleeping tabs wake automatically on settled selection</h2>
+<p>Replaces the proposed “Wake Tab” menu item, and answers “shouldn’t waking happen automatically when the user interacts with the tab?” — yes, with one guard. Waking a discarded tab means <strong>reloading the page</strong> (network, CPU, and the memory Chrome’s Memory Saver had reclaimed), so selection <em>traversal</em> must not wake tabs en masse: with ~170 tabs, holding <code>↓</code> through a list of mostly-sleeping tabs would otherwise fire dozens of simultaneous reloads.</p>
+<p><strong>Rule:</strong> when a sleeping tab becomes the selected tab — by click or by keyboard — and <strong>stays selected for ~400 ms</strong>, it is woken automatically (<code>wakeTab</code>) and its preview/thumbnail captured. Consequences:</p>
+<ul>
+<li>A deliberate single click feels fully automatic (the dwell is imperceptible).</li>
+<li>Arrow-keying through the list wakes nothing until the user pauses on a tab.</li>
+<li>Only the currently selected tab is ever auto-woken — never off-screen cards, never in bulk.</li>
+<li>The Preview Panel’s “Wake up &amp; preview” button remains as a manual fallback/retry; its “asleep” messaging changes to a transient “Waking tab…” state since waking now starts on its own.</li>
+</ul>
+</section>
+<section id="second-round-decisions-2026-07-31" class="level2">
+<h2 class="anchored" data-anchor-id="second-round-decisions-2026-07-31">Second-round decisions (2026-07-31)</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>Question</th>
+<th>Decision</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>Tab menu: Switch to Tab</td>
+<td><strong>Include</strong></td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>Tab menu: Close Tab</td>
+<td>Exclude</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td>Tab menu: Move to Window ▸</td>
+<td><strong>Include</strong></td>
+</tr>
+<tr class="even">
+<td>4</td>
+<td>Tab menu: Move to New Window</td>
+<td><strong>Include</strong></td>
+</tr>
+<tr class="odd">
+<td>5</td>
+<td>Tab menu: Copy URL</td>
+<td><strong>Include</strong></td>
+</tr>
+<tr class="even">
+<td>6</td>
+<td>Tab menu: Copy as Markdown</td>
+<td>Exclude</td>
+</tr>
+<tr class="odd">
+<td>7</td>
+<td>Wake policy</td>
+<td><strong>Auto-wake on settled selection</strong> (no menu item)</td>
+</tr>
+<tr class="even">
+<td>8</td>
+<td>Tab menu: apply to checked tabs</td>
+<td><strong>Include</strong></td>
+</tr>
+<tr class="odd">
+<td>9</td>
+<td>Window menu: Rename</td>
+<td><strong>Include</strong>, first item; batch = base name + <code>1..N</code>; Undo/Redo in menu</td>
+</tr>
+<tr class="even">
+<td>10</td>
+<td>Window menu: View This Window’s Tabs</td>
+<td>Exclude</td>
+</tr>
+<tr class="odd">
+<td>11</td>
+<td>Window menu: Focus Window in Chrome</td>
+<td><strong>Include</strong></td>
+</tr>
+<tr class="even">
+<td>12</td>
+<td>Window menu: Auto-Name with AI</td>
+<td><strong>Include</strong></td>
+</tr>
+<tr class="odd">
+<td>13</td>
+<td>Window menu: Merge Checked Windows Here</td>
+<td><strong>Include</strong></td>
+</tr>
+<tr class="even">
+<td>14</td>
+<td>Window menu: Move Checked Tabs Here</td>
+<td><strong>Include</strong></td>
+</tr>
+<tr class="odd">
+<td>15</td>
+<td>Window menu: Close Window</td>
+<td><strong>Include</strong> (with confirm)</td>
+</tr>
+<tr class="even">
+<td>16</td>
+<td>Group menu: Check All Tabs in Group</td>
+<td><strong>Include</strong></td>
+</tr>
+<tr class="odd">
+<td>17</td>
+<td>Group menu: Move Group to New Window</td>
+<td><strong>Include</strong></td>
+</tr>
+<tr class="even">
+<td>18</td>
+<td>Group menu: Sort Group by ▸</td>
+<td>Exclude</td>
+</tr>
+<tr class="odd">
+<td>19</td>
+<td>Preview panel menu</td>
+<td>Exclude</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="resolved-questions-from-v001" class="level2">
+<h2 class="anchored" data-anchor-id="resolved-questions-from-v001">Resolved questions (from v001)</h2>
+<p>All seven v001 open questions were answered on 2026-07-31:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>Question</th>
+<th>Decision</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>Card = tab or window?</td>
+<td><strong>Both</strong>, user-selectable grouping toggle</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>Thumbnail approach</td>
+<td><strong>Scaled HTML captures</strong>, lazy + bounded</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td>Rename control</td>
+<td><strong>Right-click</strong> opens inline rename</td>
+</tr>
+<tr class="even">
+<td>4</td>
+<td>Sizing hotkeys</td>
+<td><strong><code>[</code> / <code>]</code></strong> (no browser-zoom conflict)</td>
+</tr>
+<tr class="odd">
+<td>5</td>
+<td>Spec filename format</td>
+<td><strong>New format</strong> <code>SPEC-&lt;ver&gt;-v&lt;NNN&gt;-&lt;Name&gt;</code>; old files renamed</td>
+</tr>
+<tr class="even">
+<td>6</td>
+<td>Card-grid keyboard nav</td>
+<td><strong>Full 2-D arrows</strong>; area switch on <code>Ctrl</code> <code>←</code>/<code>→</code></td>
+</tr>
+<tr class="odd">
+<td>7</td>
+<td>Sorting custom names</td>
+<td><strong>Natural sort</strong>, interleaved</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="remaining-notes-risks" class="level2">
+<h2 class="anchored" data-anchor-id="remaining-notes-risks">Remaining notes &amp; risks</h2>
+<ol type="1">
+<li><strong>Thumbnail performance at ~170 tabs</strong> remains the main implementation risk (mitigations specified above; fallback identified if they prove insufficient).</li>
+<li><strong>Window-card double-click semantics</strong> — this spec chose <em>drill into By Window view</em> for double-click and a ↗ button for focusing the real Chrome window. Flag during review of the build if you’d prefer double-click to focus the OS window instead.</li>
+<li><strong><code>[</code> / <code>]</code> are plain keys</strong>: they are ignored while typing in any input (search box, rename editor), so there is no risk of hijacking text entry; outside inputs they are otherwise unused by the app.</li>
+<li><strong>Tag/version mismatch (informational).</strong> The latest commit (<code>c72a0a1</code>) is tagged <code>v4.0.3</code>, but <code>package.json</code>/<code>manifest.json</code> there still say <code>4.0.2</code> (no 4.0.3 bump commit was made). The first commit of this work should bump both files straight to <code>4.0.4</code>.</li>
+<li><strong>Double-click reachability</strong> — double-click-to-navigate is slower for rapid tab hopping and unfriendly to some accessibility setups, which is why the ↗ button and Enter remain first-class.</li>
+</ol>
+</section>
+<section id="affected-files-planned" class="level2">
+<h2 class="anchored" data-anchor-id="affected-files-planned">Affected files (planned)</h2>
+<ul>
+<li><code>services/sortUtils.ts</code> — <strong>new</strong>: shared natural-sort comparator.</li>
+<li><code>components/ContextMenu.tsx</code> — <strong>new</strong>: shared context-menu component (cursor positioning, submenu, disabled items, dismissal).</li>
+<li><code>components/Sidebar.tsx</code> — numeric name sort; window context menu on window rows.</li>
+<li><code>App.tsx</code> — numeric sort in <code>getSortedTabs</code>; view-mode / grouping / card-size / metadata state + persistence; <code>[</code>/<code>]</code> sizing hotkeys; 2-D arrow navigation + <code>Ctrl</code>-arrow area switching; toolbar toggles, slider, and card-view sort dropdown; context-menu state and action wiring (batch rename, merge-here, move-here, close window, group actions); settled-selection auto-wake timer; updated banner copy.</li>
+<li><code>components/TabListView.tsx</code> — numeric sort; row click = select only, double-click = activate; tab context menu on rows.</li>
+<li><code>components/TabCardView.tsx</code> — <strong>new</strong>: card grid (tab and window groupings), thumbnail iframes, metadata overlay, lazy capture queue, tab/window context menus on cards.</li>
+<li><code>components/PreviewPanel.tsx</code> — auto-wake integration (“Waking tab…” state; manual wake button becomes fallback/retry).</li>
+<li><code>components/CardViewOptions.tsx</code> (or inline in the settings menu) — <strong>new</strong>: field visibility/order editor.</li>
+<li><code>services/tabService.ts</code> — thumbnail capture reuse (cache + concurrency around <code>getTabContent</code>).</li>
+<li><code>services/storageService.ts</code>, <code>types.ts</code> — new persisted settings.</li>
+<li><code>components/OnboardingTour.tsx</code> / tour copy in <code>App.tsx</code>, <code>components/UserGuideModal.tsx</code> — updated click/keyboard wording.</li>
+<li><code>_quarto.yml</code> — this spec added to the book.</li>
+<li><code>docs/spec-conventions.qmd</code> + three renamed 4.0.2 spec files — new filename convention (already applied alongside this revision).</li>
+<li><code>package.json</code>, <code>manifest.json</code> — version bump to 4.0.4 (see note 4).</li>
+</ul>
+</section>
+<section id="out-of-scope" class="level2">
+<h2 class="anchored" data-anchor-id="out-of-scope">Out of scope</h2>
+<ul>
+<li>True pixel screenshots of background tabs (not possible with current Chrome extension APIs without focusing each tab).</li>
+<li>Auto-waking sleeping tabs to capture thumbnails.</li>
+<li>2×2 mosaic thumbnails on window cards (possible later upgrade).</li>
+<li>Refactoring the three duplicated sort implementations into one (only the comparator is shared).</li>
+</ul>
+
+
+</section>
+
+</main> <!-- /main -->
+<script>
+// Drag-to-resize for the book's navigation sidebar.
+// Quarto lays the page out as a CSS grid; the sidebar spans the tracks
+// between the [page-start] and [body-start] grid lines. Dragging rescales
+// exactly those tracks (read from the live computed style, so every
+// layout/media-query variant works) and pins the result as an inline
+// style. The width persists in localStorage; double-click resets.
+(function () {
+  const KEY = "yr-sidebar-width";
+  const MIN = 180, MAX = 600;
+
+  function ready(fn) {
+    if (document.readyState !== "loading") fn();
+    else document.addEventListener("DOMContentLoaded", fn);
+  }
+
+  ready(function () {
+    const sidebar = document.getElementById("quarto-sidebar");
+    const content = document.getElementById("quarto-content");
+    if (!sidebar || !content) return;
+
+    function applyWidth(target) {
+      content.style.gridTemplateColumns = ""; // fall back to stylesheet…
+      if (!target) return;                    // …which is all a reset needs
+      const computed = getComputedStyle(content).gridTemplateColumns;
+      const tokens = computed.match(/\[[^\]]+\]|\S+/g) || [];
+      let start = -1, end = -1;
+      tokens.forEach(function (t, i) {
+        if (t[0] === "[") {
+          const names = t.slice(1, -1).split(/\s+/);
+          if (start === -1 && names.indexOf("page-start") !== -1) start = i;
+          if (end === -1 && names.indexOf("body-start") !== -1) end = i;
+        }
+      });
+      if (start === -1 || end === -1 || end <= start) return;
+      let sum = 0;
+      for (let i = start + 1; i < end; i++) {
+        if (tokens[i][0] !== "[") sum += parseFloat(tokens[i]) || 0;
+      }
+      if (sum <= 0) return; // sidebar not in the grid (offcanvas/mobile)
+      const scale = target / sum;
+      for (let i = start + 1; i < end; i++) {
+        if (tokens[i][0] !== "[") {
+          tokens[i] = (parseFloat(tokens[i]) * scale).toFixed(1) + "px";
+        }
+      }
+      content.style.gridTemplateColumns = tokens.join(" ");
+    }
+
+    const handle = document.createElement("div");
+    handle.id = "yr-sidebar-drag";
+    handle.title = "Drag to resize sidebar • double-click to reset";
+    sidebar.appendChild(handle);
+
+    let dragging = false;
+    handle.addEventListener("mousedown", function (e) {
+      e.preventDefault();
+      dragging = true;
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+    });
+    window.addEventListener("mousemove", function (e) {
+      if (!dragging) return;
+      const left = sidebar.getBoundingClientRect().left;
+      const w = Math.max(MIN, Math.min(MAX, e.clientX - left));
+      localStorage.setItem(KEY, String(w));
+      applyWidth(w);
+    });
+    window.addEventListener("mouseup", function () {
+      if (!dragging) return;
+      dragging = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    });
+    handle.addEventListener("dblclick", function () {
+      localStorage.removeItem(KEY);
+      applyWidth(null);
+    });
+
+    function restore() {
+      const saved = parseFloat(localStorage.getItem(KEY) || "");
+      if (saved) applyWidth(saved);
+    }
+    let timer;
+    window.addEventListener("resize", function () {
+      clearTimeout(timer);
+      timer = setTimeout(restore, 150); // media queries swap the template
+    });
+    restore();
+  });
+})();
+</script>
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+        const codeEl = trigger.previousElementSibling.cloneNode(true);
+        for (const childEl of codeEl.children) {
+          if (isCodeAnnotation(childEl)) {
+            childEl.remove();
+          }
+        }
+        return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="../docs/SPEC-4.0.5-v001-Full_code_review_findings_and_fixes.html" class="pagination-link" aria-label="SPEC-4.0.5-v001">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-title">SPEC-4.0.5-v001</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../docs/SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.html" class="pagination-link" aria-label="SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.qmd">
+        <span class="nav-page-text"><span class="chapter-title">SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.qmd</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

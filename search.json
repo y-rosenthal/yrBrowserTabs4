@@ -1,0 +1,601 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "TabMaster AI — Documentation",
+    "section": "",
+    "text": "Welcome\nThis book collects the documentation for TabMaster AI, a Chrome extension that uses Google’s Gemini AI to organize browser tabs and windows.\nIt contains:\n\nThe project README — installation instructions and feature overview.\nSpecifications — versioned design/spec documents from the docs/ folder, describing changes made at each software version. Older spec revisions are kept in the book so the history of design decisions remains browsable.\n\nSee Spec Conventions for how spec files are named and versioned.\nTo rebuild this book, run quarto render in the repository root. The rendered HTML is written to _book/.",
+    "crumbs": [
+      "Welcome"
+    ]
+  },
+  {
+    "objectID": "README.html",
+    "href": "README.html",
+    "title": "TabMaster AI",
+    "section": "",
+    "text": "💿 How to Install (Quick Start)\nTabMaster AI is a smart dashboard to organize your browser chaos. It uses Google’s Gemini AI to automatically group your messy tabs and name your windows, so you can focus on what matters.\nYou do not need to be a developer to use this! Follow these simple steps:",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>TabMaster AI</span>"
+    ]
+  },
+  {
+    "objectID": "README.html#how-to-install-quick-start",
+    "href": "README.html#how-to-install-quick-start",
+    "title": "TabMaster AI",
+    "section": "",
+    "text": "Download:\n\nClick the green Code button at the top of this GitHub page.\nSelect Download ZIP.\nUnzip (extract) the downloaded file somewhere on your computer.\n\nOpen Extensions in Chrome:\n\nOpen Google Chrome.\nIn the address bar, type chrome://extensions and press Enter.\n\nEnable Developer Mode:\n\nLook at the top right corner of the Extensions page.\nClick the toggle switch next to Developer mode to turn it ON.\n\nLoad the Extension:\n\nThree new buttons will appear at the top left. Click Load unpacked.\nA file picker will open. Navigate to the folder you just unzipped.\nCrucial Step: Select the folder named dist inside the project folder.\nClick Select Folder (or Open).\n\nDone!\n\nTabMaster AI is now installed.\nClick the puzzle piece icon 🧩 in your Chrome toolbar to pin it and start organizing!",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>TabMaster AI</span>"
+    ]
+  },
+  {
+    "objectID": "README.html#features",
+    "href": "README.html#features",
+    "title": "TabMaster AI",
+    "section": "🚀 Features",
+    "text": "🚀 Features\n\n🧠 AI Organization\n\nGroup Tabs: Click “Organize with AI” to have Gemini analyze and group your tabs into categories (e.g., “Development”, “Social”, “News”).\nApply to Windows: Instantly move tabs into physical browser windows based on these AI categories.\nAuto-Name Windows: Let AI generate descriptive names for your windows based on their content.\n\n\n\n⚡ Navigation & Management\n\nGlobal Search: Find any tab instantly by title or URL across all windows.\nBulk Actions: Select multiple tabs or windows to close, move, or merge them.\nKeyboard Support: Full keyboard navigation (Arrows to move, Enter to switch).\n\n\n\n🛠️ Customization\n\nThemes: Switch between Dark and Light modes.\nExport: Download your tab data as CSV or Markdown.\nPrivacy: Your API Key is stored locally in your browser and never sent to our servers.",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>TabMaster AI</span>"
+    ]
+  },
+  {
+    "objectID": "README.html#user-guide",
+    "href": "README.html#user-guide",
+    "title": "TabMaster AI",
+    "section": "📖 User Guide",
+    "text": "📖 User Guide\n\n1. Organizing Tabs\n\nSidebar: Click the “Organize with AI” button.\nView Results: Tabs will be grouped visually.\nRefine:\n\nUse the “Sort All” dropdown to sort all groups by Name, Domain, etc.\nClick individual column headers to sort specific groups.\n\nApply: Click “Apply to Windows” to reorganize your actual browser windows. Use “Undo” if needed.\n\n\n\n2. Managing Windows\n\nRename: Double-click a window name in the sidebar to rename it.\nAuto-Name: Click the Wand Icon to auto-generate names for all windows.\nMerge: Select multiple windows via checkboxes and click “Merge Windows”.\n\n\n\n3. Setup\n\nGet a free API Key from Google AI Studio.\nClick the Gear Icon in the top-right corner.\nPaste your key.",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>TabMaster AI</span>"
+    ]
+  },
+  {
+    "objectID": "README.html#for-developers-building-from-source",
+    "href": "README.html#for-developers-building-from-source",
+    "title": "TabMaster AI",
+    "section": "👨‍💻 For Developers (Building from Source)",
+    "text": "👨‍💻 For Developers (Building from Source)\nIf you want to modify the code or build it yourself:\n\nInstall: bash     npm install\nRun Development Server: bash     npm run dev\nBuild: bash     npm run build This generates the dist folder used in the installation steps above.",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>TabMaster AI</span>"
+    ]
+  },
+  {
+    "objectID": "docs/spec-conventions.html",
+    "href": "docs/spec-conventions.html",
+    "title": "spec-conventions.qmd",
+    "section": "",
+    "text": "File naming\nSpecification documents live in the docs/ folder and are Quarto .qmd files named as follows:\nFor example:\nWhere:",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>spec-conventions.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/spec-conventions.html#file-naming",
+    "href": "docs/spec-conventions.html#file-naming",
+    "title": "spec-conventions.qmd",
+    "section": "",
+    "text": "SPEC-&lt;software-version&gt;-v&lt;NNN&gt;-&lt;Description_of_changes&gt;.qmd\n\nSPEC-4.0.4-v001-Fix_tab_grouping_bugs.qmd\n\n\n&lt;software-version&gt; — the version of TabMaster AI the spec targets (kept in sync with version in package.json / manifest.json).\n&lt;Description_of_changes&gt; — a short underscore-separated summary of what the spec covers.\nv&lt;NNN&gt; — the revision of the spec document itself, starting at v001.\n\n\nNote (2026-07-31): the format originally placed the revision last (SPEC-&lt;version&gt;-&lt;Description&gt;-v&lt;NNN&gt;.qmd). The revision now comes right after the version, and the pre-existing 4.0.2 spec files were renamed to match.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>spec-conventions.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/spec-conventions.html#revising-a-spec",
+    "href": "docs/spec-conventions.html#revising-a-spec",
+    "title": "spec-conventions.qmd",
+    "section": "Revising a spec",
+    "text": "Revising a spec\nWhen a spec needs to be rewritten, do not edit the old file. Instead, copy it to a new file with the revision number incremented (-v001 → -v002) and make the changes there. The old revision stays in the repository and in the rendered book, so earlier design details remain viewable.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>spec-conventions.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/spec-conventions.html#adding-a-spec-to-the-book",
+    "href": "docs/spec-conventions.html#adding-a-spec-to-the-book",
+    "title": "spec-conventions.qmd",
+    "section": "Adding a spec to the book",
+    "text": "Adding a spec to the book\nNew spec files must be added to the Specifications part in _quarto.yml (Quarto books require chapters to be listed explicitly). List newest revisions first. Then re-render the book:\nquarto render",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>spec-conventions.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.5-v001-Full_code_review_findings_and_fixes.html",
+    "href": "docs/SPEC-4.0.5-v001-Full_code_review_findings_and_fixes.html",
+    "title": "SPEC-4.0.5-v001",
+    "section": "",
+    "text": "Scope\nA full review of the TabMaster AI codebase as of v4.0.4 (commit a5dba57): every source file (App.tsx, all components, all services), the build configuration (vite.config.ts, tsconfig.json, tailwind.config.js), the extension manifest, and the HTML entry point. The production build (tsc && vite build) was verified before and after the changes.\nAll issues below were fixed in v4.0.5. They are ordered by severity.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>SPEC-4.0.5-v001</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.5-v001-Full_code_review_findings_and_fixes.html#findings-and-fixes",
+    "href": "docs/SPEC-4.0.5-v001-Full_code_review_findings_and_fixes.html#findings-and-fixes",
+    "title": "SPEC-4.0.5-v001",
+    "section": "Findings and fixes",
+    "text": "Findings and fixes\n\n1. AI Studio CDN importmap shipped inside the extension (high)\nWhere: app.html\nProblem: the page kept a leftover &lt;script type=\"importmap\"&gt; from the original AI Studio prototype, mapping react, react-dom, lucide-react, @google/genai (and even vite itself) to https://aistudiocdn.com/… CDN URLs — at versions that don’t match the project’s dependencies (React 19 in the map vs. React 18 in package.json). Vite copies the tag verbatim into dist/app.html, so it shipped inside the extension, where:\n\nthe inline script violates the Manifest V3 content-security policy (script-src 'self'), logging a CSP error on every launch; and\nhad it ever been honored, module resolution would have been hijacked to remote, version-mismatched copies of the app’s core libraries.\n\nA &lt;link&gt; to Google Fonts (Inter) was also present — an external network dependency for a font family that tailwind.config.js never references, so it was pure dead weight.\nFix: removed both. dist/app.html now contains only the bundled script/stylesheet references (1.21 kB → 0.38 kB).\n\n\n2. Concurrent window renames lost in storage (high)\nWhere: services/storageService.ts + call sites in App.tsx\nProblem: custom window names are stored as a single customWindowNames map, and saveCustomWindowName() performs a read-modify-write of the whole map. Several features saved many names in parallel with Promise.all(...):\n\n“Auto Name” (AI rename of all/checked windows)\nbatch rename (“name1, name2, …”)\nundo / redo of name changes\n\nEach parallel writer read the same old map, merged in only its own key, and wrote the result — so the last write won and all other renames were silently dropped from storage. The UI looked correct until the next reload, when the lost names reverted to defaults.\nFix: all writes now go through a serialized write queue (each write chains on the previous one), and a new bulk saveCustomWindowNames(map) persists any number of names in a single read-modify-write. All multi-rename call sites in App.tsx use the bulk call.\n\n\n3. “Apply to Windows” / “Undo Reorg” abort on stale tab ids (medium)\nWhere: App.tsx (handleApplyAiOrganization, handleUndoReorg)\nProblem: the AI grouping result (and the undo snapshot) hold tab ids captured earlier. If any of those tabs were closed in the meantime — or if the model returned an id that never existed — chrome.tabs.move throws and the whole reorganization aborts midway, leaving windows half-moved.\nFix: both operations now intersect the stored tab ids with the currently open tabs before moving, and skip empty groups.\n\n\n4. Toast notifications dismissed too early (medium)\nWhere: App.tsx (showNotification)\nProblem: every toast armed its own 3-second setTimeout that unconditionally cleared the notification state. If a second toast appeared within 3 seconds of the first, the first toast’s timer hid the second toast almost immediately.\nFix: the hide timer is kept in a ref and cleared before each new toast.\n\n\n5. Gemini error handling could mask the real error (medium)\nWhere: services/geminiService.ts\nProblem: both API wrappers ran error.message.includes('API_KEY') in their catch blocks. A rejection without a .message string (Gemini SDK errors are not always Error instances) threw a TypeError inside the catch, replacing the real failure and breaking the “invalid key → show the API-key dialog” flow.\nFix: the check is now String(error?.message || '').includes(...).\n\n\n6. Unescaped URL interpolated into preview HTML (low)\nWhere: services/tabService.ts (injectBaseTag), components/PreviewPanel.tsx\nProblem: the tab URL was interpolated into &lt;base href=\"...\"&gt; without escaping, so a \" in a URL could break out of the attribute. Impact was limited (previews render in a sandboxed iframe with scripts disabled), but it was still an injection point — and PreviewPanel duplicated the same injection logic inline instead of using the shared helper.\nFix: injectBaseTag escapes quotes; PreviewPanel now calls the shared helper.\n\n\n7. Unbounded thumbnail cache (low)\nWhere: services/tabService.ts\nProblem: card-view thumbnails were cached per tab id and never evicted when tabs closed, so the cache (full HTML captures, often hundreds of KB each) grew without bound over a long session.\nFix: the cache is capped at 300 entries with oldest-first eviction (recapture refreshes an entry’s position).\n\n\n8. Smaller items (low)\n\nLeaked object URLs — CSV/Markdown export and the User Guide download never called URL.revokeObjectURL(). Fixed in App.tsx and UserGuideModal.tsx.\nKeyboard navigation vs. text inputs — the global key handler only ignored &lt;input&gt; elements; it now also ignores &lt;textarea&gt;, &lt;select&gt;, and contentEditable targets.\ntailwind.config.js scanned a nonexistent file — content listed ./index.html (the entry point is app.html). Harmless today because the HTML holds no Tailwind classes, but fixed so future classes in the entry page aren’t purged.\nEmpty .env.example — now documents the optional API_KEY build-time fallback used by vite.config.ts / geminiService.ts.\nDEFAULT_CARD_METADATA typing — declared as the optional StorageData['cardMetadata'] type, forcing a non-null assertion in App.tsx. Now typed CardMetadataSetting[] and the assertion is gone.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>SPEC-4.0.5-v001</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.5-v001-Full_code_review_findings_and_fixes.html#reviewed-and-left-as-is",
+    "href": "docs/SPEC-4.0.5-v001-Full_code_review_findings_and_fixes.html#reviewed-and-left-as-is",
+    "title": "SPEC-4.0.5-v001",
+    "section": "Reviewed and left as-is",
+    "text": "Reviewed and left as-is\nNoted for the record; none of these blocks correct operation:\n\nmetadata.json is an AI Studio scaffold artifact. Kept: harmless, and it documents the app description.\nhandleUndoReorg name loss for windows that no longer exist — restored tabs go to a new window whose generated id has no stored name. Acknowledged in a code comment as a deliberate simplification.\nDouble sorting in TabListView — the parent passes pre-sorted rows in controlled mode and the table sorts again with the same comparator. Redundant but stable and cheap.\nbackground.js is a stub (install log only) — intentional.\nconstants.ts mock data is only used by the web-demo fallback path.\nBundle size (~489 kB pre-gzip) is dominated by @google/genai + lucide-react; fine for an unpacked extension, no code-splitting needed.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>SPEC-4.0.5-v001</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.5-v001-Full_code_review_findings_and_fixes.html#verification",
+    "href": "docs/SPEC-4.0.5-v001-Full_code_review_findings_and_fixes.html#verification",
+    "title": "SPEC-4.0.5-v001",
+    "section": "Verification",
+    "text": "Verification\n\nnpm run build (tsc strict type-check + Vite production build) passes.\ndist/app.html verified free of CDN references; dist/manifest.json carries the bumped version.\nquarto render regenerates this book without errors.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>SPEC-4.0.5-v001</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.5-v001-Full_code_review_findings_and_fixes.html#version",
+    "href": "docs/SPEC-4.0.5-v001-Full_code_review_findings_and_fixes.html#version",
+    "title": "SPEC-4.0.5-v001",
+    "section": "Version",
+    "text": "Version\npackage.json and manifest.json bumped 4.0.4 → 4.0.5 (bug-fix release, no feature changes). Tagged v4.0.5.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>SPEC-4.0.5-v001</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.html",
+    "href": "docs/SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.html",
+    "title": "SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd",
+    "section": "",
+    "text": "Requirement 1 — Numeric sorting of window names\nThis revision incorporates the answers to the seven open questions raised in v001. The decisions, in brief:\nSections unchanged from v001 are restated here in full so this document stands alone.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.html#requirement-1-numeric-sorting-of-window-names",
+    "href": "docs/SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.html#requirement-1-numeric-sorting-of-window-names",
+    "title": "SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd",
+    "section": "",
+    "text": "Current behavior and root cause\nWindow names are compared as plain lowercase strings in three independent sort sites, so window10 sorts between window1 and window2:\n\ncomponents/Sidebar.tsx — sortedWindows (the sidebar window list; default sort is by name ascending, so this is where the misordering is most visible).\nApp.tsx — getSortedTabs, case 'window' (the “Window” column sort in the All Tabs table).\ncomponents/TabListView.tsx — displayedTabs, case 'window' (the same sort duplicated for uncontrolled/AI-group tables).\n\nThe name generator (services/nameGenerator.ts) already produces un-padded window1, window2, … — no change there, and no zero-padding will be introduced.\n\n\nDesign (decided: natural sort)\nAdd a single shared comparator in a small new module (services/sortUtils.ts) and use it at all three sites:\nexport const compareWindowNames = (a: string, b: string) =&gt;\n  a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });\nlocaleCompare with numeric: true is a natural sort: any run of digits inside a name is compared by numeric value, so window1 &lt; window2 &lt; … &lt; window10 &lt; window11. Custom/AI names without digits sort alphabetically among themselves, and mixed sets interleave (Project 2 &lt; Project 10; Research sorts by its first character against window…). Confirmed as the desired rule in Q7.\nOnly the comparator is shared; the three duplicated sort implementations stay where they are.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.html#requirement-2-card-view-for-tabs-and-windows",
+    "href": "docs/SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.html#requirement-2-card-view-for-tabs-and-windows",
+    "title": "SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd",
+    "section": "Requirement 2 — Card view for tabs and windows",
+    "text": "Requirement 2 — Card view for tabs and windows\n\nView toggle and grouping (decided: both, user-selectable)\n\nA Detail / Card toggle (list icon / grid icon segmented control) is added to the header toolbar next to the existing preview toggle.\nWhen card view is active, a second small control appears beside it: “Cards: Tabs | Windows” — the user-selectable grouping from Q1.\nBoth choices persist across sessions (chrome.storage, see Persistence).\nThe toggle applies everywhere the tab list renders: All Tabs, By Window, sidebar-checkbox filtering, and each AI group (each group renders its own grid under its heading; the Windows grouping applies only to the All-Tabs-style views, since AI groups and By Window mode are not window-shaped collections — there the control is disabled with a tooltip).\nSearch, sorting, checkbox multi-select, selection/preview, keyboard navigation, and the close action all keep working in card view; sorting controls move into a small sort dropdown in the toolbar when card view is active (there are no column headers to click).\n\n\n\nGrid layout\nCards are laid out with CSS grid: grid-template-columns: repeat(auto-fill, minmax(var(--card-width), 1fr)) — they wrap automatically and are responsive to window and pane width.\n\n\nTab cards\nEach tab card shows:\n\na thumbnail of the tab’s page content filling the card (see Thumbnails), and\na metadata overlay hovering above the thumbnail (semi-transparent scrim anchored to the bottom of the card) so the user sees both the page and the data. Default field order matches the requested priority: icon → last accessed → tab name → domain → window name.\n\nIf the visible metadata does not fit, the overlay itself is scrollable (overflow-y: auto with a max height). The browser natively scrolls the innermost scrollable element under the pointer, so the hover-governed behavior falls out for free: wheel over a card’s overlay scrolls that overlay; wheel anywhere else scrolls the main grid.\nThe selected card gets the same indigo ring treatment as a selected row; checkbox and close (×) sit in the card’s top corners (visible on hover/selection, like today’s row actions).\n\n\nWindow cards\nIn the Windows grouping, each card represents one browser window:\n\nThumbnail: the window’s active tab’s page capture (cheapest honest “view of the window’s contents”; a 2×2 mosaic of the first four tabs is a possible later upgrade).\nOverlay: window name, tab count badge, and most-recent lastAccessed across the window’s tabs.\nInteractions: single-click selects the card; double-click drills into that window (switches the dashboard to By Window view for it); a hover ↗ button focuses the actual Chrome window; right-click opens the window context menu (see Requirements 3 and 5). Window checkboxes mirror the sidebar’s merge-selection checkboxes.\n\n\n\nCard sizing (decided: [ / ] hotkeys)\n\nGUI control: a compact slider in the toolbar (visible only in card view) plus − / + stepper buttons, adjusting card width between ~160 px and ~480 px in steps, with a reset affordance (double-click the slider handle) returning to the default (~240 px).\nHotkeys: [ shrinks, ] grows (chosen in Q4 over Ctrl +/- to leave browser page-zoom untouched). Active only while card view is shown and no input field has focus (the existing keydown handler already ignores INPUT targets). No modifier needed; no browser shortcut conflicts.\nThe chosen size persists across sessions.\n\n\n\nThumbnails (decided: scaled HTML captures)\nChrome gives extensions no way to screenshot a background tab (chrome.tabs.captureVisibleTab only captures the active tab of a window). Confirmed approach (Q2): reuse the mechanism the Preview Panel already uses — getTabContent in services/tabService.ts captures the page’s HTML via chrome.scripting.executeScript — rendered small:\n\nEach card renders the captured HTML in a sandboxed &lt;iframe srcDoc …&gt; scaled down with transform: scale(…) (pointer-events: none, same sandbox=\"allow-same-origin\" and injected &lt;base&gt; tag as the Preview Panel), so the thumbnail is a genuine miniature of the page.\nLazy + bounded: thumbnails are captured only for cards visible in the viewport (IntersectionObserver), fetched through a small concurrency queue (e.g. 4 at a time), and cached per tab id + URL so re-scrolling and re-renders don’t re-inject scripts. Off-screen cards drop back to the cheap placeholder to bound memory.\nFallbacks: sleeping (discarded) tabs, restricted pages (chrome://, Web Store), and capture failures show a placeholder — large favicon + domain on a neutral background, with a moon badge for sleeping tabs. Card view never mass-wakes sleeping tabs just to thumbnail them; only the selected tab auto-wakes via the settled- selection rule (Requirement 6), and the Preview Panel’s “Wake up & preview” button remains as a manual fallback/retry.\nKnown risk (accepted in Q2): JS-heavy pages may look imperfect in miniature, and ~170 tabs make performance the riskiest part of this feature. If the lazy/bounded design still proves too heavy in practice, the fallback (a future revision) is placeholder cards with live thumbnails only for the hovered/selected card.\n\n\n\nMetadata configuration (Settings)\n\nThe Settings (gear) menu gains a “Card view options” section listing the five fields — icon, last accessed, tab name, domain, window — each with a visibility checkbox (easy on/off) and up/down reorder arrows.\nThe order also controls truncation priority: fields render in order and the overlay scrolls when they overflow, so higher-priority fields are the ones visible without scrolling.\nConfiguration persists across sessions and applies to tab cards (window cards have their own fixed, minimal field set).\n\n\n\nKeyboard navigation (decided: full 2-D arrows)\nPer Q6, card view gets true two-dimensional arrow navigation:\n\n← → ↑ ↓ move the selection through the grid; ↑/↓ jump by one visual row (computed from the current column count).\nSidebar↔︎tabs area switching moves to Ctrl ← / Ctrl → in both views, so the binding is consistent app-wide. In detail view, plain ↑/↓ keep moving through rows as today (plain ←/→ become no-ops there).\nEnter still activates the selected tab; the info banner and tour copy are updated to teach the new bindings.\n\n\n\nPersistence (settings schema)\nStorageData in types.ts (and services/storageService.ts) gains:\ntabViewMode?: 'detail' | 'card';        // default 'detail'\ncardGrouping?: 'tab' | 'window';        // default 'tab'\ncardWidth?: number;                     // px, default 240\ncardMetadata?: { field: 'icon' | 'lastAccessed' | 'title' | 'domain' | 'window';\n                 visible: boolean }[];  // default: all visible, order as above",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.html#requirement-3-manual-window-rename-decided-right-click-menu",
+    "href": "docs/SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.html#requirement-3-manual-window-rename-decided-right-click-menu",
+    "title": "SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd",
+    "section": "Requirement 3 — Manual window rename (decided: right-click menu)",
+    "text": "Requirement 3 — Manual window rename (decided: right-click menu)\nManual rename already exists (sidebar double-click and hover pencil icon, persisting to storage with undo/redo). Per Q3, the intuitive control to add is right-click — amended in the second Q&A round to open the window context menu (Requirement 5) with Rename as its first item, rather than jumping straight into the editor, so right-click behaves uniformly across the app:\n\nRename (single window): choosing Rename opens the same inline editor as today (Enter saves, Escape cancels, handleRenameWindow path, undo/redo history).\nRename (multiple windows checked): when the right-clicked window is one of several checked windows, Rename asks for a base name and applies sequential numbering — name1, name2, … — to the checked windows in natural-sorted order. The batch is pushed as a single history entry, so one Undo reverts the whole batch.\nUndo / Redo entries appear in the window context menu (same nameHistory the sidebar buttons drive; disabled when unavailable).\nAvailable wherever a window is a first-class element: sidebar window rows and window cards in the new card view.\nThe existing double-click and pencil-icon paths stay exactly as they are; the v001 discoverability extras (always-visible pencil, header rename) are dropped as unnecessary.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.html#requirement-4-single-click-must-not-navigate",
+    "href": "docs/SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.html#requirement-4-single-click-must-not-navigate",
+    "title": "SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd",
+    "section": "Requirement 4 — Single click must not navigate",
+    "text": "Requirement 4 — Single click must not navigate\n\nCurrent behavior\nIn components/TabListView.tsx a row click runs onSelect(tab.id); onActivate(tab); — every single click both selects the row and switches Chrome to that tab, yanking focus away from the dashboard.\n\n\nDesign\n\nSingle click — selects the row/card only (highlights it and shows it in the Preview Panel). No navigation.\nDouble click — navigates (activates) the tab. Applies to both detail rows and tab cards. (On window cards, double-click drills into the window instead — see Window cards.)\nUnchanged explicit navigation affordances: the ↗ Switch to Tab hover button on each row/card, the Enter key on the keyboard-selected tab, and the ↗ button in the Preview Panel header.\nCopy that teaches the old behavior gets updated: the extension info banner and tour/user-guide text will say “double-click (or ↗ / Enter) to switch to a tab”.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.html#requirement-5-right-click-context-menus",
+    "href": "docs/SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.html#requirement-5-right-click-context-menus",
+    "title": "SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd",
+    "section": "Requirement 5 — Right-click context menus",
+    "text": "Requirement 5 — Right-click context menus\nAdded in the second Q&A round (each candidate item was reviewed individually). Three surfaces get a context menu; the preview panel was considered and excluded.\n\nTab menu (detail rows and tab cards)\n\n\n\n\n\n\n\nItem\nAction\n\n\n\n\nSwitch to Tab\nNavigate Chrome to the tab (same as double-click / ↗ / Enter).\n\n\nMove to Window ▸\nSubmenu of all windows, natural-sorted, current window disabled; picking one moves the tab there.\n\n\nMove to New Window\nMoves the tab into a freshly created window.\n\n\nCopy URL\nCopies the tab’s URL to the clipboard (first per-tab copy affordance in the app).\n\n\n\nReviewed and excluded: Close Tab (the × hover button suffices), Copy as Markdown link, and Wake Tab (superseded by Requirement 6).\nMulti-select semantics: when the right-clicked tab is one of several checked tabs, the menu’s actions apply to all checked tabs and the labels show the count (“Move 5 Tabs to Window ▸”). Right-clicking an unchecked tab always acts on that tab alone.\n\n\nWindow menu (sidebar rows and window cards)\n\n\n\n\n\n\n\nItem\nAction\n\n\n\n\nRename\nFirst item. Single window → inline editor; multiple checked windows → base name + sequential numbering (see Requirement 3).\n\n\nUndo / Redo\nThe existing window-name history, also reachable here; disabled when unavailable.\n\n\nFocus Window in Chrome\nBrings the actual browser window to the front (chrome.windows.update({focused: true})) — previously there was no way to jump to a window itself, only to a tab in it.\n\n\nAuto-Name with AI\nAI-names just this window (existing Gemini path and history).\n\n\nMerge Checked Windows Here\nShown when 2+ windows are checked: moves all their tabs into the right-clicked window — the merge modal’s target-picking step becomes unnecessary.\n\n\nMove Checked Tabs Here\nShown when 1+ tabs are checked: files them into the right-clicked window (the window-side complement of the tab menu’s Move to Window ▸).\n\n\nClose Window\nCloses the window and all its tabs behind a “Close window and its N tabs?” confirmation (destructive; uses the existing ConfirmModal).\n\n\n\nReviewed and excluded: View This Window’s Tabs (left-click on the row already does it).\n\n\nAI group menu (category headings in AI Organized view)\n\n\n\n\n\n\n\nItem\nAction\n\n\n\n\nCheck All Tabs in Group\nTicks every tab in the category so toolbar bulk actions can target it.\n\n\nMove Group to New Window\nMaterializes this one category as a real Chrome window, leaving all other windows untouched (lighter alternative to the all-or-nothing “Apply to Windows”).\n\n\n\nReviewed and excluded: Sort Group by ▸ (column headers and the Sort All dropdown already cover sorting).\n\n\nImplementation notes\n\nOne shared components/ContextMenu.tsx renders all three menus: positioned at the cursor (clamped to the viewport), closes on click-outside / Escape / scroll, supports one submenu level and disabled/hidden items.\ncontextmenu is intercepted (preventDefault()) only on tab rows, tab/window cards, sidebar window rows, and AI group headings — the browser’s native right-click menu keeps working everywhere else (search box, preview panel, empty space).\nMenu items reuse the existing action handlers (handleActivateTab, moveTabs, createWindowWithTabs, handleMerge, handleRenameWindow, undo/redo) — no new tab-manipulation plumbing.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.html#requirement-6-sleeping-tabs-wake-automatically-on-settled-selection",
+    "href": "docs/SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.html#requirement-6-sleeping-tabs-wake-automatically-on-settled-selection",
+    "title": "SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd",
+    "section": "Requirement 6 — Sleeping tabs wake automatically on settled selection",
+    "text": "Requirement 6 — Sleeping tabs wake automatically on settled selection\nReplaces the proposed “Wake Tab” menu item, and answers “shouldn’t waking happen automatically when the user interacts with the tab?” — yes, with one guard. Waking a discarded tab means reloading the page (network, CPU, and the memory Chrome’s Memory Saver had reclaimed), so selection traversal must not wake tabs en masse: with ~170 tabs, holding ↓ through a list of mostly-sleeping tabs would otherwise fire dozens of simultaneous reloads.\nRule: when a sleeping tab becomes the selected tab — by click or by keyboard — and stays selected for ~400 ms, it is woken automatically (wakeTab) and its preview/thumbnail captured. Consequences:\n\nA deliberate single click feels fully automatic (the dwell is imperceptible).\nArrow-keying through the list wakes nothing until the user pauses on a tab.\nOnly the currently selected tab is ever auto-woken — never off-screen cards, never in bulk.\nThe Preview Panel’s “Wake up & preview” button remains as a manual fallback/retry; its “asleep” messaging changes to a transient “Waking tab…” state since waking now starts on its own.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.html#second-round-decisions-2026-07-31",
+    "href": "docs/SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.html#second-round-decisions-2026-07-31",
+    "title": "SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd",
+    "section": "Second-round decisions (2026-07-31)",
+    "text": "Second-round decisions (2026-07-31)\n\n\n\n\n\n\n\n\n#\nQuestion\nDecision\n\n\n\n\n1\nTab menu: Switch to Tab\nInclude\n\n\n2\nTab menu: Close Tab\nExclude\n\n\n3\nTab menu: Move to Window ▸\nInclude\n\n\n4\nTab menu: Move to New Window\nInclude\n\n\n5\nTab menu: Copy URL\nInclude\n\n\n6\nTab menu: Copy as Markdown\nExclude\n\n\n7\nWake policy\nAuto-wake on settled selection (no menu item)\n\n\n8\nTab menu: apply to checked tabs\nInclude\n\n\n9\nWindow menu: Rename\nInclude, first item; batch = base name + 1..N; Undo/Redo in menu\n\n\n10\nWindow menu: View This Window’s Tabs\nExclude\n\n\n11\nWindow menu: Focus Window in Chrome\nInclude\n\n\n12\nWindow menu: Auto-Name with AI\nInclude\n\n\n13\nWindow menu: Merge Checked Windows Here\nInclude\n\n\n14\nWindow menu: Move Checked Tabs Here\nInclude\n\n\n15\nWindow menu: Close Window\nInclude (with confirm)\n\n\n16\nGroup menu: Check All Tabs in Group\nInclude\n\n\n17\nGroup menu: Move Group to New Window\nInclude\n\n\n18\nGroup menu: Sort Group by ▸\nExclude\n\n\n19\nPreview panel menu\nExclude",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.html#resolved-questions-from-v001",
+    "href": "docs/SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.html#resolved-questions-from-v001",
+    "title": "SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd",
+    "section": "Resolved questions (from v001)",
+    "text": "Resolved questions (from v001)\nAll seven v001 open questions were answered on 2026-07-31:\n\n\n\n\n\n\n\n\n#\nQuestion\nDecision\n\n\n\n\n1\nCard = tab or window?\nBoth, user-selectable grouping toggle\n\n\n2\nThumbnail approach\nScaled HTML captures, lazy + bounded\n\n\n3\nRename control\nRight-click opens inline rename\n\n\n4\nSizing hotkeys\n[ / ] (no browser-zoom conflict)\n\n\n5\nSpec filename format\nNew format SPEC-&lt;ver&gt;-v&lt;NNN&gt;-&lt;Name&gt;; old files renamed\n\n\n6\nCard-grid keyboard nav\nFull 2-D arrows; area switch on Ctrl ←/→\n\n\n7\nSorting custom names\nNatural sort, interleaved",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.html#remaining-notes-risks",
+    "href": "docs/SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.html#remaining-notes-risks",
+    "title": "SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd",
+    "section": "Remaining notes & risks",
+    "text": "Remaining notes & risks\n\nThumbnail performance at ~170 tabs remains the main implementation risk (mitigations specified above; fallback identified if they prove insufficient).\nWindow-card double-click semantics — this spec chose drill into By Window view for double-click and a ↗ button for focusing the real Chrome window. Flag during review of the build if you’d prefer double-click to focus the OS window instead.\n[ / ] are plain keys: they are ignored while typing in any input (search box, rename editor), so there is no risk of hijacking text entry; outside inputs they are otherwise unused by the app.\nTag/version mismatch (informational). The latest commit (c72a0a1) is tagged v4.0.3, but package.json/manifest.json there still say 4.0.2 (no 4.0.3 bump commit was made). The first commit of this work should bump both files straight to 4.0.4.\nDouble-click reachability — double-click-to-navigate is slower for rapid tab hopping and unfriendly to some accessibility setups, which is why the ↗ button and Enter remain first-class.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.html#affected-files-planned",
+    "href": "docs/SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.html#affected-files-planned",
+    "title": "SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd",
+    "section": "Affected files (planned)",
+    "text": "Affected files (planned)\n\nservices/sortUtils.ts — new: shared natural-sort comparator.\ncomponents/ContextMenu.tsx — new: shared context-menu component (cursor positioning, submenu, disabled items, dismissal).\ncomponents/Sidebar.tsx — numeric name sort; window context menu on window rows.\nApp.tsx — numeric sort in getSortedTabs; view-mode / grouping / card-size / metadata state + persistence; [/] sizing hotkeys; 2-D arrow navigation + Ctrl-arrow area switching; toolbar toggles, slider, and card-view sort dropdown; context-menu state and action wiring (batch rename, merge-here, move-here, close window, group actions); settled-selection auto-wake timer; updated banner copy.\ncomponents/TabListView.tsx — numeric sort; row click = select only, double-click = activate; tab context menu on rows.\ncomponents/TabCardView.tsx — new: card grid (tab and window groupings), thumbnail iframes, metadata overlay, lazy capture queue, tab/window context menus on cards.\ncomponents/PreviewPanel.tsx — auto-wake integration (“Waking tab…” state; manual wake button becomes fallback/retry).\ncomponents/CardViewOptions.tsx (or inline in the settings menu) — new: field visibility/order editor.\nservices/tabService.ts — thumbnail capture reuse (cache + concurrency around getTabContent).\nservices/storageService.ts, types.ts — new persisted settings.\ncomponents/OnboardingTour.tsx / tour copy in App.tsx, components/UserGuideModal.tsx — updated click/keyboard wording.\n_quarto.yml — this spec added to the book.\ndocs/spec-conventions.qmd + three renamed 4.0.2 spec files — new filename convention (already applied alongside this revision).\npackage.json, manifest.json — version bump to 4.0.4 (see note 4).",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.html#out-of-scope",
+    "href": "docs/SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.html#out-of-scope",
+    "title": "SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd",
+    "section": "Out of scope",
+    "text": "Out of scope\n\nTrue pixel screenshots of background tabs (not possible with current Chrome extension APIs without focusing each tab).\nAuto-waking sleeping tabs to capture thumbnails.\n2×2 mosaic thumbnails on window cards (possible later upgrade).\nRefactoring the three duplicated sort implementations into one (only the comparator is shared).",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.html",
+    "href": "docs/SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.html",
+    "title": "SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.qmd",
+    "section": "",
+    "text": "Requirement 1 — Numeric sorting of window names\nThis spec covers four requested changes:\nIssues, ambiguities, and open questions found while analyzing the request against the current code are collected in Issues & open questions — please review that section before approving. Per the workflow, a revised version of this spec would be …-v002-….qmd.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.html#requirement-1-numeric-sorting-of-window-names",
+    "href": "docs/SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.html#requirement-1-numeric-sorting-of-window-names",
+    "title": "SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.qmd",
+    "section": "",
+    "text": "Current behavior and root cause\nThe assumption in the request is correct: window names are compared as plain lowercase strings in three independent sort sites, so window10 sorts between window1 and window2:\n\ncomponents/Sidebar.tsx — sortedWindows (the sidebar window list; default sort is by name ascending, so this is where the misordering is most visible).\nApp.tsx — getSortedTabs, case 'window' (the “Window” column sort in the All Tabs table).\ncomponents/TabListView.tsx — displayedTabs, case 'window' (the same sort duplicated for uncontrolled/AI-group tables).\n\nThe name generator (services/nameGenerator.ts) already produces un-padded window1, window2, … — no change there, and no zero-padding will be introduced.\n\n\nDesign\nAdd a single shared comparator in a small new module (e.g. services/sortUtils.ts) and use it at all three sites:\nexport const compareWindowNames = (a: string, b: string) =&gt;\n  a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });\nlocaleCompare with numeric: true is a natural sort: any run of digits inside a name is compared by numeric value, so window1 &lt; window2 &lt; … &lt; window10 &lt; window11. This satisfies “sort by just the numerical number” for the default names while also behaving sensibly for names that are not purely window&lt;N&gt;:\n\nCustom/AI names without digits (e.g. Research, Shopping) sort alphabetically among themselves.\nMixed sets interleave alphabetically with numeric runs compared numerically (Project 2 &lt; Project 10).\n\nThe duplicated string-compare logic stays where it is (this spec does not refactor the three sort sites into one), only the comparison for the window-name field changes.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.html#requirement-2-card-view-for-tabs",
+    "href": "docs/SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.html#requirement-2-card-view-for-tabs",
+    "title": "SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.qmd",
+    "section": "Requirement 2 — Card view for tabs",
+    "text": "Requirement 2 — Card view for tabs\n\nView toggle\n\nA Detail / Card toggle (two-icon segmented control, e.g. list icon and grid icon) is added to the header toolbar next to the existing preview toggle.\nThe choice persists across sessions (chrome.storage, see Persistence).\nThe toggle applies everywhere the tab list renders: All Tabs, By Window, sidebar-checkbox filtering, and each AI group (each group renders its own grid under its heading).\nSearch, sorting, checkbox multi-select, selection/preview, keyboard navigation, and the close action all keep working in card view; sorting controls move into a small sort dropdown in the toolbar when card view is active (there are no column headers to click).\n\n\n\nCard layout and grid\n\nCards are laid out with CSS grid: grid-template-columns: repeat(auto-fill, minmax(var(--card-width), 1fr)) — they wrap automatically and are responsive to window and pane width.\nEach card represents one tab and shows:\n\na thumbnail of the tab’s page content filling the card (see next section), and\na metadata overlay hovering above the thumbnail (semi-transparent scrim, anchored to the bottom of the card) so the user sees both the page and the data. Default field order matches the requested priority: icon → last accessed → tab name → domain → window name.\n\nIf the visible metadata does not fit the overlay, the overlay itself is scrollable (overflow-y: auto with a max height). Because the browser natively scrolls the innermost scrollable element under the pointer, the requested hover-governed behavior falls out for free: wheel over a card’s overlay scrolls that overlay; wheel anywhere else scrolls the main tab grid.\nSelected card gets the same indigo ring treatment as a selected row; checkbox and close (×) sit in the card’s top corners (visible on hover/selection, like today’s row actions).\n\n\n\nCard sizing\n\nGUI control: a compact slider in the toolbar (visible only in card view) plus − / + stepper buttons, adjusting card width between ~160 px and ~480 px in steps. A double-click on the slider handle (or a reset button) returns to the default (~240 px).\nHotkeys: Ctrl + / Ctrl - (also accepting Ctrl = for the unshifted plus key) grow/shrink cards; Ctrl 0 resets. Handled on keydown with preventDefault(), and only while card view is active — in detail view the browser’s normal page-zoom shortcuts are untouched. Ctrl + mouse wheel over the grid also resizes (optional, cheap to add, same guard). See issue 2 below for the zoom-shortcut trade-off.\nThe chosen size persists across sessions.\n\n\n\nThumbnails\nChrome gives extensions no way to screenshot a background tab (chrome.tabs.captureVisibleTab only captures the active tab of a window). The design therefore reuses the mechanism the Preview Panel already uses — getTabContent in services/tabService.ts captures the page’s HTML via chrome.scripting.executeScript — rendered small:\n\nEach card renders the captured HTML in a sandboxed &lt;iframe srcDoc …&gt; scaled down with transform: scale(…) (pointer-events: none, same sandbox=\"allow-same-origin\" and injected &lt;base&gt; tag as the Preview Panel), so the thumbnail is a genuine miniature of the page.\nLazy + bounded: thumbnails are captured only for cards visible in the viewport (IntersectionObserver), fetched through a small concurrency queue (e.g. 4 at a time), and cached per tab id + URL so re-scrolling and re-renders don’t re-inject scripts. Off-screen cards drop back to the cheap placeholder to bound memory (see issue 3 for scale concerns).\nFallbacks: sleeping (discarded) tabs, restricted pages (chrome://, Web Store), and capture failures show a placeholder — large favicon + domain on a neutral background, with a moon badge for sleeping tabs. Card view does not auto-wake sleeping tabs (waking ~100 tabs to thumbnail them would defeat Chrome’s Memory Saver); the existing Preview Panel “Wake up & preview” flow remains the way to wake a specific tab.\n\n\n\nMetadata configuration (Settings)\n\nThe Settings (gear) menu gains a “Card view options” section listing the five fields — icon, last accessed, tab name, domain, window — each with a visibility checkbox (easy on/off) and up/down reorder arrows (or drag handles).\nThe order also controls truncation priority: fields render in order and the overlay scrolls when they overflow, so higher-priority fields are the ones visible without scrolling.\nConfiguration persists across sessions.\n\n\n\nPersistence (settings schema)\nStorageData in types.ts (and services/storageService.ts) gains:\ntabViewMode?: 'detail' | 'card';        // default 'detail'\ncardWidth?: number;                     // px, default 240\ncardMetadata?: { field: 'icon' | 'lastAccessed' | 'title' | 'domain' | 'window';\n                 visible: boolean }[];  // default: all visible, order as above",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.html#requirement-3-manual-window-rename",
+    "href": "docs/SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.html#requirement-3-manual-window-rename",
+    "title": "SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.qmd",
+    "section": "Requirement 3 — Manual window rename",
+    "text": "Requirement 3 — Manual window rename\nThis already exists, though it is evidently not discoverable enough: in the sidebar, double-clicking a window name opens an inline edit box, and hovering a window row reveals a pencil (✎) icon that does the same. Enter saves, Escape cancels, renames persist to storage and participate in the existing undo/redo history. (The interactive tour mentions the double-click, but nothing in the resting UI advertises it.)\nProposed discoverability improvements (rather than a new mechanism):\n\nMake the pencil icon on sidebar rows always visible (subtle, not hover-only) so the affordance is self-evident.\nAdd the same inline rename to the main content header: when viewing a single window (By Window mode), the window-name &lt;h1&gt; gets a pencil button and double-click-to-edit, wired to the same handleRenameWindow path.\n\nIf something else was intended here (e.g. rename from the card/detail view rows, or a right-click context menu), see issue 5.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.html#requirement-4-single-click-must-not-navigate",
+    "href": "docs/SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.html#requirement-4-single-click-must-not-navigate",
+    "title": "SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.qmd",
+    "section": "Requirement 4 — Single click must not navigate",
+    "text": "Requirement 4 — Single click must not navigate\n\nCurrent behavior\nIn components/TabListView.tsx a row click runs onSelect(tab.id); onActivate(tab); — i.e. every single click both selects the row and switches Chrome to that tab, which yanks focus away from the dashboard.\n\n\nDesign\n\nSingle click — selects the row/card only (highlights it and shows it in the Preview Panel). No navigation.\nDouble click — navigates (activates) the tab. Applies to both detail rows and cards.\nUnchanged explicit navigation affordances (so the feature stays discoverable): the ↗ Switch to Tab hover button on each row/card, the Enter key on the keyboard-selected tab, and the ↗ button in the Preview Panel header.\nCopy that teaches the old behavior gets updated: the extension info banner and tour/user-guide text will mention “double-click (or ↗ / Enter) to switch to a tab”.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.html#issues-open-questions",
+    "href": "docs/SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.html#issues-open-questions",
+    "title": "SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.qmd",
+    "section": "Issues & open questions",
+    "text": "Issues & open questions\n\nSpec file naming deviates from the documented convention. The request asked for SPEC-4.0.3-v001-someMeaningfulName.qmd (the version was later bumped to 4.0.4 — see issue 9), but docs/spec-conventions.qmd defines SPEC-&lt;version&gt;-&lt;Description&gt;-v&lt;NNN&gt;.qmd (revision last), which the three existing 4.0.2 specs follow. This file follows the request as given. Please confirm which format wins; if the new one, the conventions page and (optionally) the old filenames should be updated for consistency.\nCtrl + / Ctrl - shadow browser zoom. Chrome delivers these keydowns to the page and honors preventDefault(), so the hotkeys are implementable — but while the dashboard is focused in card view the user loses keyboard page-zoom (mitigations: hotkeys only active in card view; Ctrl 0 still resets card size; browser zoom remains available via the Chrome menu). If that trade-off is unwanted, alternatives are Ctrl Shift +/- or [ / ].\nThumbnails cannot be true screenshots, and scale is a real concern. Screenshot APIs only work for the active tab, so thumbnails are scaled-down HTML captures (same source as the Preview Panel). Two consequences: (a) JS-heavy pages may look imperfect in miniature (already true of the Preview Panel); (b) with ~170 tabs, hundreds of live iframes would be heavy, hence the lazy-render / concurrency-queue / off-screen-eviction design. If in practice this is still too heavy, the v002 fallback is favicon+domain placeholder cards with thumbnails only for the hovered/selected card.\n“Each card should show a view of the contents of the window” — this spec interprets a card as representing one tab (mirroring the detail rows and the metadata list you gave, which is per-tab), with the thumbnail showing that tab’s page. If you instead wanted one card per browser window (a window’s tabs summarized inside a card), that is a different layout — say so and v002 will respec it.\nRename already exists (sidebar double-click + hover pencil). This spec assumes the ask is really about discoverability and adds the affordances in Requirement 3. If you wanted a different control (context menu, rename button in the toolbar, rename from tab rows), flag it for v002.\nKeyboard navigation in the card grid. Today ←/→ switch focus between sidebar and tab list, and ↑/↓ move through tabs. In a grid, users expect arrows to move in two dimensions, which collides with the sidebar-switch binding. Proposed for v001: keep ←/→ as area switching, and have ↑/↓ step linearly through cards (previous/next in sort order). If you want true 2-D grid navigation, we’d move area switching to Tab or Ctrl ←/→ — preference?\nNumeric sort with custom names. “Sort by just the number” is well-defined for window&lt;N&gt; names but not for renamed windows (Research, Shopping). The natural-sort comparator handles both (numbers numeric, text alphabetic); confirm that is acceptable rather than, say, forcing number-less names to the end.\nDouble-click reachability. Double-click as the sole click navigation is fine on desktop, but it is slower for rapid tab hopping and unfriendly to some accessibility setups — which is why the ↗ button and Enter remain first-class. No action needed; noting the reasoning.\nTag/version mismatch. Per instruction, the latest commit (c72a0a1) is tagged v4.0.3, but package.json and manifest.json at that commit still say 4.0.2 (no 4.0.3 version-bump commit was ever made). Harmless, but worth knowing; the first commit of this work should bump both files straight to 4.0.4.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.html#affected-files-planned",
+    "href": "docs/SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.html#affected-files-planned",
+    "title": "SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.qmd",
+    "section": "Affected files (planned)",
+    "text": "Affected files (planned)\n\nservices/sortUtils.ts — new: shared natural-sort comparator.\ncomponents/Sidebar.tsx — numeric name sort; always-visible rename pencil.\nApp.tsx — numeric sort in getSortedTabs; view-mode/card-size/metadata state + persistence; sizing hotkeys; header rename affordance; toolbar toggle, slider, and card-view sort dropdown; updated banner copy.\ncomponents/TabListView.tsx — numeric sort; row click = select only, double-click = activate.\ncomponents/TabCardView.tsx — new: card grid, thumbnail iframes, metadata overlay, lazy capture queue.\ncomponents/CardViewOptions.tsx (or inline in the settings menu) — new: field visibility/order editor.\nservices/tabService.ts — thumbnail capture reuse (cache + concurrency around getTabContent).\nservices/storageService.ts, types.ts — new persisted settings.\ncomponents/OnboardingTour.tsx / tour copy in App.tsx, components/UserGuideModal.tsx — updated click-behavior wording.\n_quarto.yml — this spec added to the book.\npackage.json, manifest.json — version bump to 4.0.4 (see issue 9).",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.html#out-of-scope",
+    "href": "docs/SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.html#out-of-scope",
+    "title": "SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.qmd",
+    "section": "Out of scope",
+    "text": "Out of scope\n\nTrue pixel screenshots of background tabs (not possible with current Chrome extension APIs without focusing each tab).\nAuto-waking sleeping tabs to capture thumbnails.\nCard view for the windows list in the sidebar (see issue 4 — only if requested in v002).\nRefactoring the three duplicated sort implementations into one (only the comparator is shared).",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.html",
+    "href": "docs/SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.html",
+    "title": "SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.qmd",
+    "section": "",
+    "text": "The “Actions” column, explained\nThis revision extends v002 with a second round of issues: the flickering icon column, the reappearing Welcome dialog, and two latent state bugs uncovered while diagnosing them. Root causes were verified by a multi-agent investigation (three independent analysis lenses, each claim adversarially re-checked against the code).\nThe first table column after the checkbox holds two per-row buttons — ↗ Switch to Tab and × Close Tab. They are rendered with opacity: 0 and only become visible when the row is hovered or selected, which is why the column usually looks empty. The icon users see flickering is not in the Actions column: it is the favicon column, the narrow unlabeled column between Actions and Tab Name.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.html#issue-5-continuous-icon-flicker-while-idle",
+    "href": "docs/SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.html#issue-5-continuous-icon-flicker-while-idle",
+    "title": "SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.qmd",
+    "section": "Issue 5 — Continuous icon flicker while idle",
+    "text": "Issue 5 — Continuous icon flicker while idle\nPrimary cause (confirmed). Rows whose favicon could not load fell back to https://via.placeholder.com/16?text=? via an onError handler that re-assigned img.src. That domain is dead (TLS connections fail). Per the HTML spec, assigning src — even the same value — restarts image fetching, so each failure re-fired onError, which re-assigned src, forever: an infinite error/retry loop repainting the 16 px icon (blank ↔︎ broken-glyph) several times a second, on every affected row at once, with a continuous stream of doomed network requests. With 174 tabs, several rows were always looping. The same defect existed in PreviewPanel and the (unused) TabCard.\nAmplifier (confirmed). The dashboard subscribes to eight chrome.tabs/ chrome.windows events with a 200 ms debounce and reloads the full window snapshot on each. Background tabs (Gmail unread counts, YouTube, Memory Saver discards) fire these continuously, so the table re-rendered every few hundred milliseconds even when idle. React only commits real DOM changes for rows whose data changed — but the events themselves supply such changes (title strings, tabs cycling through reload transiently reporting no favicon), so icons flipped between image and fallback as tabs slept and woke.\nFixes.\n\nNew components/Favicon.tsx: renders the tab icon with a local Globe glyph fallback (no network). A failed flag latches on error and resets only when the URL actually changes — a loop is structurally impossible. Fixed 16 px box, so no width wobble. Replaces the broken &lt;img onError&gt; pattern in TabListView and PreviewPanel; the unused TabCard.tsx (same defect) was deleted.\nservices/tabService.ts keeps a lastKnownFavicons map (tab id → last non-empty favIconUrl), so tabs mid-reload keep their icon instead of flashing the fallback.\nloadTabs now computes a JSON signature of the fresh window snapshot and skips all state updates when nothing changed, so display-irrelevant events (audible/muted/loading churn) no longer re-render 174 rows.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.html#issue-6-welcome-dialog-reappears-after-being-dismissed",
+    "href": "docs/SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.html#issue-6-welcome-dialog-reappears-after-being-dismissed",
+    "title": "SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.qmd",
+    "section": "Issue 6 — Welcome dialog reappears after being dismissed",
+    "text": "Issue 6 — Welcome dialog reappears after being dismissed\nCause (confirmed). The X button and “Got it” both close the dialog passing the “Don’t show this again” checkbox state (default unchecked), so plain dismissal never persists hasSeenOnboarding. The first-run check ran inside loadTabs, which re-runs on every chrome tab event — and browsing previews generates a stream of them (waking/reloading a discarded tab fires onUpdated several times). Result: dismiss with X, wake a few tabs, dialog pops up again.\nFix. A session-scoped guard (hasAutoShownWelcome ref): the dialog auto-shows at most once per app session, no matter how it is dismissed. Semantics now:\n\nFresh profile, first launch → dialog shows once.\nDismissed with X or “Got it” (checkbox unchecked) → stays closed for the rest of the session; will show once again next session.\n“Don’t show this again” checked → never auto-shows again.\nHelp menu → “Show Welcome Screen” still opens it manually at any time.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.html#issue-7-latent-stale-subscription-closure-resetting-undo-history",
+    "href": "docs/SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.html#issue-7-latent-stale-subscription-closure-resetting-undo-history",
+    "title": "SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.qmd",
+    "section": "Issue 7 (latent) — Stale subscription closure resetting undo history",
+    "text": "Issue 7 (latent) — Stale subscription closure resetting undo history\nFound during the flicker investigation. The mount-time effect captured the first-render loadTabs closure permanently ([] deps), so every chrome event ran with windows=[], historyIndex=-1: it blinked the toolbar refresh spinner, and — worse — took the “first load” branch, resetting the window-rename undo/redo history on every event and rebuilding the name map (un-persisted in-session names could be reverted).\nFix. The subscription now calls the latest loadTabs through a ref (loadTabsRef), so event-driven reloads see current state and take the normal update path. Undo history survives background events.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.html#issue-8-latent-unstable-lastaccessed-fallback",
+    "href": "docs/SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.html#issue-8-latent-unstable-lastaccessed-fallback",
+    "title": "SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.qmd",
+    "section": "Issue 8 (latent) — Unstable lastAccessed fallback",
+    "text": "Issue 8 (latent) — Unstable lastAccessed fallback\ngetWindows mapped lastAccessed: t.lastAccessed || Date.now() — tabs lacking the field were re-stamped with a fresh time on every reload, churning the default “Last Accessed” sort order. Now falls back to a stable 0, displayed as “—” in the table.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.html#issue-9-adversarial-review-findings-hardening-round",
+    "href": "docs/SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.html#issue-9-adversarial-review-findings-hardening-round",
+    "title": "SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.qmd",
+    "section": "Issue 9 — Adversarial review findings (hardening round)",
+    "text": "Issue 9 — Adversarial review findings (hardening round)\nAfter the fixes above, an adversarial multi-agent review of the full diff (three lenses, 21 agents, every finding re-verified against the code) confirmed nine further defects, all fixed:\n\nPopup layout: preview-pane-open-by-default would squeeze the ~800 px extension popup to an unusably narrow table. The pane now defaults open only when the viewport is wider than 800 px (full-tab dashboard) and stays closed in the popup.\nSnapshot-skip side effects: the manual Refresh button silently did nothing when the snapshot was unchanged, and relative “Last Accessed” times froze during quiet periods. Refresh now forces a reload (loadTabs(true)), and the table re-renders once a minute so times keep ticking.\nDuplicate window names: after closing a window, the stale in-memory name map shadowed the recomputed defaults, yielding two “window2” and no “window1”. Since every rename path (manual, AI, undo/redo) persists to storage, the recomputed defaults + stored customs are now authoritative on reload; closed windows are pruned from the map.\nStale favicon after navigation: the last-known-favicon cache is now scoped to the page origin, so a tab that navigates from github.com to a site with no favicon stops showing GitHub’s icon (the mid-reload flicker protection, where the origin is unchanged, still works).\nWake button on the wrong tab: switching tabs while a (up to 15 s) wake was in flight let its completion clear the new tab’s UI, and a previous tab’s “asleep” flag could briefly mislabel the next tab. Per-tab flags are reset on every fetch, and wake completion is keyed to the tab it started for.\nCrash on URL-less tabs: new URL('') for a tab still pending its first navigation threw during render, white-screening the app (no error boundary). The PreviewPanel now guards hostname parsing like the table already did.\nCSV export printed 12/31/1969 for tabs with the new stable lastAccessed: 0 fallback; it now exports an empty cell.\nRestricted-page detection missed Chrome’s “Cannot access …” error phrasings, so chrome:// tabs showed the generic sleep message instead of the security explanation; the match now covers that family.\nMissing events: tabs.onActivated and windows.onFocusChanged were not subscribed, so active-tab highlights and lastAccessed went stale until an unrelated event fired. Both added (the debounce + snapshot-skip absorb the extra firings).",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.html#affected-files",
+    "href": "docs/SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.html#affected-files",
+    "title": "SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.qmd",
+    "section": "Affected files",
+    "text": "Affected files\n\ncomponents/Favicon.tsx — new.\ncomponents/TabCard.tsx — deleted (unused, contained the same bug).\ncomponents/TabListView.tsx — uses Favicon; “—” for unknown times; once-a-minute clock tick.\ncomponents/PreviewPanel.tsx — uses Favicon; per-tab wake/sleep state; guarded hostname parsing.\nservices/tabService.ts — origin-scoped favicon cache; stable lastAccessed fallback; broader restricted-page detection; subscribes to onActivated/onFocusChanged.\nApp.tsx — onboarding session guard; loadTabsRef stale-closure fix; snapshot-signature skip with force for manual refresh; authoritative name-map recompute; viewport-aware preview default; CSV export guard.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.html#verified-non-causes",
+    "href": "docs/SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.html#verified-non-causes",
+    "title": "SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.qmd",
+    "section": "Verified non-causes",
+    "text": "Verified non-causes\nFor the record, the investigation explicitly ruled out: a feedback loop from loadTabs itself; unstable React row keys; React resetting the DOM-mutated img.src (React 18 diffs against its own previous vdom, not the live DOM); CSP blocking favicons; scrollIntoView or CSS transitions replaying on re-render; and sticky-header repaints.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.html#out-of-scope",
+    "href": "docs/SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.html#out-of-scope",
+    "title": "SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.qmd",
+    "section": "Out of scope",
+    "text": "Out of scope\n\nFiltering which chrome.tabs.onUpdated payloads trigger a reload (the snapshot-signature skip makes this mostly moot).\nPersisting “welcome dismissed” across sessions on plain X-dismissal (the existing checkbox already provides permanence; see Issue 6 semantics).\ntable-fixed column layout: considered as insurance against width redistribution, but measurement showed text columns are hard-capped by truncate, and fixed widths risk clipping. Revisit only if any residual jitter is observed after these fixes.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.html",
+    "href": "docs/SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.html",
+    "title": "SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.qmd",
+    "section": "",
+    "text": "Issue 1 — Sequential default window names\nThis revision extends v001 (sequential window names) with three further issues reported against the same release, plus a source-tree reconciliation that investigation of those issues uncovered.\nUnchanged from v001: default window names are window1, window2, … in window order instead of adjective/noun pairs (“Able Ant”, “Blue Bear”). services/nameGenerator.ts shrank from ~97 lines to 18; custom names and AI “Auto Name” results still override defaults. See v001 for full details.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.html#issue-2-right-hand-side-breaks-when-resizing-the-browser-window",
+    "href": "docs/SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.html#issue-2-right-hand-side-breaks-when-resizing-the-browser-window",
+    "title": "SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.qmd",
+    "section": "Issue 2 — Right-hand side breaks when resizing the browser window",
+    "text": "Issue 2 — Right-hand side breaks when resizing the browser window\nProblem. Shrinking the browser window sometimes clipped or garbled the right side of the layout (tab table columns disappearing under the preview pane, pane pushed off-screen).\nCause. Two compounding flex-layout defects:\n\nThe tab table uses whitespace-nowrap, giving &lt;main&gt; a large intrinsic width. &lt;main&gt; had no min-width: 0, and a flex item’s default min-width: auto prevents it from shrinking below its content — so the row overflowed its overflow-hidden container.\nThe preview pane has a fixed pixel width (250–800 px, shrink-0) that was only clamped during drag-resize, never against the viewport. On a small window the pane could claim more room than exists.\n\nFix (App.tsx):\n\nmin-w-0 added to &lt;main&gt; so it shrinks properly (its content scrolls within it instead of overflowing the row).\nThe preview pane gets max-width: 70vw, and the drag-resize clamp now also caps at 70% of the viewport width.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.html#issue-3-preview-pane-hidden-by-default",
+    "href": "docs/SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.html#issue-3-preview-pane-hidden-by-default",
+    "title": "SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.qmd",
+    "section": "Issue 3 — Preview pane hidden by default",
+    "text": "Issue 3 — Preview pane hidden by default\nProblem. The preview pane started hidden; users had to find the eye toggle in the toolbar to enable it.\nFix. showPreview initial state changed from false to true in App.tsx. The toolbar eye toggle and the pane’s close button still hide it.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.html#issue-4-some-tabs-show-preview-unavailable-wake-up-support",
+    "href": "docs/SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.html#issue-4-some-tabs-show-preview-unavailable-wake-up-support",
+    "title": "SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.qmd",
+    "section": "Issue 4 — Some tabs show “Preview Unavailable”; wake-up support",
+    "text": "Issue 4 — Some tabs show “Preview Unavailable”; wake-up support\nWhy previews fail. The content preview injects a script into the target tab (chrome.scripting.executeScript) and renders the captured HTML in a sandboxed iframe. Capture fails for:\n\nDiscarded (“sleeping”) tabs — Chrome’s Memory Saver unloads tabs not visited recently; there is no page to script. This is per-tab, not per-window, which made the failures look random across windows.\nRestricted pages — chrome:// pages, the Chrome Web Store, other extensions’ pages. Browser policy; not fixable.\n\nNew behavior. When capture fails and chrome.tabs.get(...).discarded is true, the error panel explains the tab is asleep and offers a “Wake up & preview” button. Clicking it:\n\nCalls chrome.tabs.reload(tabId) — reloads the tab in the background without stealing focus from the dashboard.\nWaits for the tab’s onUpdated event to report status: 'complete' (15 s timeout).\nRetries the content capture automatically.\n\nAn explicit button was chosen over auto-waking on click: waking a tab spends the memory/network Chrome was saving and can re-trigger session refreshes, so the user stays in control. Restricted pages keep the existing explanation and “Go to Tab” fallback.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.html#source-tree-reconciliation",
+    "href": "docs/SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.html#source-tree-reconciliation",
+    "title": "SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.qmd",
+    "section": "Source-tree reconciliation",
+    "text": "Source-tree reconciliation\nInvestigating issue 4 revealed that the installed extension was built from ~/Downloads/tabmaster10, a divergent copy containing the content-preview feature (getTabContent, iframe preview panel, scripting permission) that this repository lacked. That feature has now been merged into this repo, which is again the single source of truth:\n\nservices/tabService.ts — getTabContent copied in; new isTabDiscarded and wakeTab helpers added.\ncomponents/PreviewPanel.tsx — replaced with the content-preview version, extended with the sleeping-tab detection and wake-up flow.\nmanifest.json — scripting permission added.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.html#affected-files",
+    "href": "docs/SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.html#affected-files",
+    "title": "SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.qmd",
+    "section": "Affected files",
+    "text": "Affected files\n\nApp.tsx — preview default on; min-w-0 on &lt;main&gt;; viewport clamps on the preview pane width.\ncomponents/PreviewPanel.tsx — content preview + wake-up flow.\nservices/tabService.ts — getTabContent, isTabDiscarded, wakeTab.\nservices/nameGenerator.ts — (from v001) sequential names.\nmanifest.json — scripting permission.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.html#out-of-scope",
+    "href": "docs/SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.html#out-of-scope",
+    "title": "SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.qmd",
+    "section": "Out of scope",
+    "text": "Out of scope\n\nPersisting the preview pane’s visibility/width across sessions.\nBulk-waking all tabs in a window.\nAny preview for restricted pages.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.2-v001-Sequential_default_window_names.html",
+    "href": "docs/SPEC-4.0.2-v001-Sequential_default_window_names.html",
+    "title": "SPEC-4.0.2-v001-Sequential_default_window_names.qmd",
+    "section": "",
+    "text": "Problem\nWhen TabMaster AI loads, every browser window gets a default display name generated from alphabetical adjective/noun word lists: “Able Ant”, “Blue Bear”, “Calm Cat”, and so on (A, B, C… ordering, cycling through five words per letter).\nThese names are whimsical but unhelpful: they carry no information about a window’s position or identity, and users must mentally map arbitrary word pairs to windows. Sequential names are easier to scan and to talk about (“close window3”).",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>8</span>  <span class='chapter-title'>SPEC-4.0.2-v001-Sequential_default_window_names.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.2-v001-Sequential_default_window_names.html#change",
+    "href": "docs/SPEC-4.0.2-v001-Sequential_default_window_names.html#change",
+    "title": "SPEC-4.0.2-v001-Sequential_default_window_names.qmd",
+    "section": "Change",
+    "text": "Change\nDefault window names become sequential: window1, window2, window3, … assigned in the order windows are reported by the browser (the same index ordering the old scheme used).\n\nBehavior details\n\ngenerateWindowName(index) returns window{index + 1} (1-based, no padding, no space).\ngenerateWindowNames(windowIds) is unchanged in shape: it maps each window ID to its generated name by input order.\nCustom names still win. Names the user typed, and names produced by the AI “Auto Name” feature, are stored as customWindowNames and continue to override the generated defaults at merge time in App.tsx (loadTabs). This spec changes only the fallback default.\nWindows are not renamed at the browser level; as before, this is a display name inside the extension.\n\n\n\nCode cleanup\nservices/nameGenerator.ts shrinks from ~97 lines to ~18: the ADJECTIVES and NOUNS word tables (52 lists, 260 words) and the alphabet-cycling logic are deleted. No other module imported them.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>8</span>  <span class='chapter-title'>SPEC-4.0.2-v001-Sequential_default_window_names.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.2-v001-Sequential_default_window_names.html#affected-files",
+    "href": "docs/SPEC-4.0.2-v001-Sequential_default_window_names.html#affected-files",
+    "title": "SPEC-4.0.2-v001-Sequential_default_window_names.qmd",
+    "section": "Affected files",
+    "text": "Affected files\n\nservices/nameGenerator.ts — rewritten (word lists removed, sequential logic added).\n\nCall sites in App.tsx are untouched; the function signatures are preserved.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>8</span>  <span class='chapter-title'>SPEC-4.0.2-v001-Sequential_default_window_names.qmd</span>"
+    ]
+  },
+  {
+    "objectID": "docs/SPEC-4.0.2-v001-Sequential_default_window_names.html#out-of-scope",
+    "href": "docs/SPEC-4.0.2-v001-Sequential_default_window_names.html#out-of-scope",
+    "title": "SPEC-4.0.2-v001-Sequential_default_window_names.qmd",
+    "section": "Out of scope",
+    "text": "Out of scope\n\nAI-generated window naming (generateWindowNamesWithAI in services/geminiService.ts) is unchanged.\nRenumbering after windows close (e.g. gaps like window1, window3) follows the same rule as the old scheme: defaults are recomputed from current window order on each load, so numbers stay contiguous.",
+    "crumbs": [
+      "Specifications",
+      "<span class='chapter-number'>8</span>  <span class='chapter-title'>SPEC-4.0.2-v001-Sequential_default_window_names.qmd</span>"
+    ]
+  }
+]

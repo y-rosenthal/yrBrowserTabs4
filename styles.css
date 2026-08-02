@@ -1,0 +1,23 @@
+/* Sidebar entries are spec filenames whose underscore-joined segments are
+   single unbreakable words wider than the sidebar; without this they get
+   clipped at the sidebar edge instead of wrapping. */
+.sidebar-item .sidebar-item-text {
+  overflow-wrap: anywhere;
+}
+
+/* Drag handle injected by sidebar-resize.html along the sidebar's right
+   edge. The parent sets padding on all sidebar children, which would fatten
+   the 6px strip into the content — hence the padding reset. */
+#yr-sidebar-drag {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 100%;
+  padding: 0 !important;
+  cursor: col-resize;
+  z-index: 10;
+}
+#yr-sidebar-drag:hover {
+  background: rgba(100, 100, 200, 0.25);
+}
