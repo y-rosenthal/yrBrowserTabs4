@@ -484,7 +484,33 @@ const App: React.FC = () => {
     });
   }, [sortField, sortDirection, windows, windowNameMap]);
 
-  const currentDisplayedTabs = useMemo(() => getSortedTabs(filteredTabs), [filteredTabs, getSortedTabs]);
+  // --- STABLE ROW ORDER ---
+  // Closing a tab (or any chrome event) refreshes the snapshot, and with the
+  // default "last accessed" sort the freshly-activated tab would jump rows —
+  // reshuffling the list right under the user's cursor. So the visible order
+  // is frozen: it only re-sorts when the user changes sort/filter/search/view
+  // or presses Refresh (resortEpoch). Otherwise closed tabs just drop out and
+  // new tabs append at the bottom; cell contents still update live.
+  const displayOrderRef = useRef<string[]>([]);
+  const displayOrderKeyRef = useRef('');
+  const [resortEpoch, setResortEpoch] = useState(0);
+
+  const currentDisplayedTabs = useMemo(() => {
+    const sorted = getSortedTabs(filteredTabs);
+    const key = [sortField, sortDirection, viewMode, activeWindowId || '', searchQuery, searchScope, sidebarSelectedWindowIds.join(','), resortEpoch].join('|');
+    if (key !== displayOrderKeyRef.current) {
+      displayOrderKeyRef.current = key;
+      displayOrderRef.current = sorted.map(t => t.id);
+      return sorted;
+    }
+    const byId = new Map(sorted.map(t => [t.id, t] as const));
+    const kept = displayOrderRef.current.filter(id => byId.has(id)).map(id => byId.get(id)!);
+    const keptIds = new Set(displayOrderRef.current);
+    const added = sorted.filter(t => !keptIds.has(t.id));
+    const next = [...kept, ...added];
+    displayOrderRef.current = next.map(t => t.id);
+    return next;
+  }, [filteredTabs, getSortedTabs, sortField, sortDirection, viewMode, activeWindowId, searchQuery, searchScope, sidebarSelectedWindowIds, resortEpoch]);
 
   // AI Grouped Tabs with Search Filter
   const filteredTabGroups = useMemo(() => {
@@ -1591,10 +1617,10 @@ const App: React.FC = () => {
                 {showPreview ? <Eye size={18} /> : <EyeOff size={18} />}
               </button>
 
-              <button 
-                onClick={() => loadTabs(true)}
+              <button
+                onClick={() => { setResortEpoch(e => e + 1); loadTabs(true); }}
                 className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors"
-                title="Refresh Tabs"
+                title="Refresh & re-sort tabs"
               >
                 <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
               </button>

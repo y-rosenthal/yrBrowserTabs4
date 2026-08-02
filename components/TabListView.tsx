@@ -117,14 +117,20 @@ export const TabListView: React.FC<TabListViewProps> = ({
     }
   };
 
+  // Stable row order: rows must not reshuffle when a tab is closed or when
+  // chrome events refresh the data (closing the top tab activates a
+  // neighbor, changing its lastAccessed and re-ranking it). In controlled
+  // mode the parent already provides an order-stabilized list, so it is
+  // used verbatim. In uncontrolled mode (AI group tables) the list re-sorts
+  // only when the sort field/direction changes; otherwise closed tabs drop
+  // out and new tabs append at the bottom.
+  const orderRef = useRef<string[]>([]);
+  const orderKeyRef = useRef('');
+
   const displayedTabs = useMemo(() => {
-    // If controlled (onSort provided), we assume the parent handles data sorting 
-    // BUT App.tsx logic suggests it passes pre-sorted data via currentDisplayedTabs.
-    // However, TabListView still sorts here. 
-    // If sortField/sortDirection match what the parent used to sort, this is a stable sort (no-op or same order).
-    // If we skip sorting here when controlled, we rely entirely on 'tabs' order.
-    
-    return [...tabs].sort((a, b) => {
+    if (onSort) return tabs; // controlled: parent owns sorting and stability
+
+    const sorted = [...tabs].sort((a, b) => {
       let valA: string | number = '';
       let valB: string | number = '';
 
@@ -146,7 +152,7 @@ export const TabListView: React.FC<TabListViewProps> = ({
           valA = a.lastAccessed;
           valB = b.lastAccessed;
           break;
-        default: 
+        default:
           return 0;
       }
 
@@ -154,7 +160,23 @@ export const TabListView: React.FC<TabListViewProps> = ({
       if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [tabs, sortField, sortDirection, windowNames]);
+
+    // forcedSort.timestamp marks each "Sort All" click so repeating the
+    // same field still triggers a fresh re-sort.
+    const key = `${sortField}|${sortDirection}|${forcedSort?.timestamp || 0}`;
+    if (key !== orderKeyRef.current) {
+      orderKeyRef.current = key;
+      orderRef.current = sorted.map(t => t.id);
+      return sorted;
+    }
+    const byId = new Map(sorted.map(t => [t.id, t] as const));
+    const kept = orderRef.current.filter(id => byId.has(id)).map(id => byId.get(id)!);
+    const keptIds = new Set(orderRef.current);
+    const added = sorted.filter(t => !keptIds.has(t.id));
+    const next = [...kept, ...added];
+    orderRef.current = next.map(t => t.id);
+    return next;
+  }, [tabs, sortField, sortDirection, windowNames, onSort, forcedSort]);
 
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) return <ArrowUpDown size={14} className="opacity-30" />;

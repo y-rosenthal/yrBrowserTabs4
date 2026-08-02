@@ -13,6 +13,7 @@ book:
       chapters:
         - docs/spec-conventions.qmd
         # Add new spec files here, newest first:
+        - docs/SPEC-4.1.1-v001-Stable_row_order_when_closing_tabs.qmd
         - docs/SPEC-4.1.0-v001-Gemini_model_update_tour_preview_pills_search_scope_always_maximized.qmd
         - docs/SPEC-4.0.5-v001-Full_code_review_findings_and_fixes.qmd
         - docs/SPEC-4.0.4-v002-Card_view_context_menus_sort_and_click_nav.qmd

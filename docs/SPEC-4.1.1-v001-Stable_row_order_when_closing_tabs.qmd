@@ -1,0 +1,51 @@
+---
+title: "SPEC-4.1.1-v001"
+subtitle: "Stable row order when closing tabs"
+---
+
+## Problem
+
+In detail view, closing a tab (especially the top one) sometimes reshuffled
+the remaining rows. Cause: closing a tab makes Chrome activate a
+neighboring tab, which updates that tab's `lastAccessed` timestamp; the
+resulting refresh re-sorted the list (default sort is "Last Accessed,
+newest first"), so the newly-activated tab jumped to the top — reordering
+rows right under the user's cursor. The same reshuffle could happen from
+any background tab activity while the list was open.
+
+## Behavior change
+
+The **visible row order is now frozen**. It re-sorts only when the user
+takes an explicit action:
+
+- changing the sort column or direction (including the AI-group "Sort All"
+  menu — repeating the same field forces a fresh re-sort),
+- changing the view, window filter, sidebar selection, or search
+  query/scope,
+- pressing the **Refresh** button (its tooltip is now
+  "Refresh & re-sort tabs").
+
+Between those actions:
+
+- closing a tab simply removes its row — nothing else moves;
+- newly opened tabs append at the bottom of the list;
+- cell contents (title, "last accessed" label, favicon) still update live —
+  only the *order* is pinned.
+
+## Implementation
+
+- `App.tsx`: `currentDisplayedTabs` keeps a ref of the last row order plus
+  a context key (sort + filters + search + a `resortEpoch` bumped by the
+  Refresh button). While the key is unchanged, fresh tab data is re-mapped
+  onto the remembered order; when it changes, the list re-sorts and the
+  order is re-snapshotted. This also stabilizes card view and keyboard
+  navigation, which share this list.
+- `TabListView.tsx`: in controlled mode the table now renders the parent's
+  (already stabilized) order verbatim instead of re-sorting it — the
+  previous internal re-sort would have overridden the freeze. Uncontrolled
+  tables (AI-group view) apply the same freeze internally, keyed by their
+  own sort state and the `forcedSort` timestamp.
+
+## Version
+
+`package.json` / `manifest.json` bumped **4.1.0 → 4.1.1**.
