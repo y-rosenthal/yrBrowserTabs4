@@ -46,7 +46,7 @@ const FULL_TOUR_STEPS: OnboardingStep[] = [
   {
     anchor: 'search',
     title: 'Instant Search',
-    content: 'Search every window at once. By default it matches domain names (e.g. "github.com"); use the scope switch inside the search bar to instead match tab titles and URLs, or even the text of the pages themselves.'
+    content: 'Search every window at once. By default it searches domain names (e.g. "github.com"); use the scope switch inside the search bar to instead search tab titles and URLs, or even the text of the pages themselves.'
   },
   {
     anchor: 'view-toggle',
@@ -1416,11 +1416,11 @@ const App: React.FC = () => {
                     <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Search In</div>
                     <button onClick={() => applySearchScope('domain')} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm text-slate-700 dark:text-slate-200">
                       <span className="flex items-center justify-between">Domain names {searchScope === 'domain' && <span className="text-indigo-500">✓</span>}</span>
-                      <span className="block text-xs text-slate-400 dark:text-slate-500">Matches only the server name, e.g. "github.com"</span>
+                      <span className="block text-xs text-slate-400 dark:text-slate-500">Searches only the server name, e.g. "github.com"</span>
                     </button>
                     <button onClick={() => applySearchScope('title')} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm text-slate-700 dark:text-slate-200">
                       <span className="flex items-center justify-between">Titles &amp; URLs {searchScope === 'title' && <span className="text-indigo-500">✓</span>}</span>
-                      <span className="block text-xs text-slate-400 dark:text-slate-500">Fast — matches tab names and addresses</span>
+                      <span className="block text-xs text-slate-400 dark:text-slate-500">Fast — searches tab names and addresses</span>
                     </button>
                     <button onClick={() => applySearchScope('content')} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm text-slate-700 dark:text-slate-200">
                       <span className="flex items-center justify-between">Titles, URLs &amp; page text {searchScope === 'content' && <span className="text-indigo-500">✓</span>}</span>
