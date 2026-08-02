@@ -46,7 +46,7 @@ const FULL_TOUR_STEPS: OnboardingStep[] = [
   {
     anchor: 'search',
     title: 'Instant Search',
-    content: 'Search every window at once. By default it matches tab titles and URLs; use the scope switch inside the search bar to also search the text of the pages themselves.'
+    content: 'Search every window at once. By default it matches domain names (e.g. "github.com"); use the scope switch inside the search bar to instead match tab titles and URLs, or even the text of the pages themselves.'
   },
   {
     anchor: 'view-toggle',
