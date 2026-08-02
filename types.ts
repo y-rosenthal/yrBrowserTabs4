@@ -28,10 +28,13 @@ export enum ViewMode {
 }
 
 export interface OnboardingStep {
-  target: string; // Description of position or element
+  // Value of the data-tour attribute on the element this step points at.
+  // The tour card is positioned next to that element with an arrow and a
+  // spotlight highlight. Steps without an anchor (or whose anchor is not
+  // currently rendered) fall back to a centered card with no arrow.
+  anchor?: string;
   title: string;
   content: string;
-  position: 'center' | 'left' | 'top-left' | 'top-right' | 'bottom-left' | 'top-search';
   isFirstRun?: boolean;
 }
 
@@ -51,9 +54,9 @@ export interface StorageData {
   cardGrouping?: 'tab' | 'window';
   cardWidth?: number;
   cardMetadata?: CardMetadataSetting[];
-  // When true (default), launching the popup jumps straight to the
-  // full-tab dashboard.
-  openMaximized?: boolean;
+  // What the search box matches against: tab titles/URLs only, or also the
+  // captured page text of open tabs.
+  searchScope?: 'title' | 'content';
 }
 
 export interface WindowReorgSnapshot {

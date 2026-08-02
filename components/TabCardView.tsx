@@ -325,8 +325,8 @@ export const TabCardView: React.FC<TabCardViewProps> = ({
                       <span className="font-semibold text-slate-800 dark:text-slate-100 truncate" title={displayName}>
                         {displayName}
                       </span>
-                      <span className="shrink-0 text-[10px] bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300 font-mono">
-                        {win.tabs.length}
+                      <span className="shrink-0 text-[10px] bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300 font-medium">
+                        {win.tabs.length} {win.tabs.length === 1 ? 'tab' : 'tabs'}
                       </span>
                     </div>
                     <div className="text-slate-500 dark:text-slate-400">{formatLastAccessed(lastAccessed)}</div>

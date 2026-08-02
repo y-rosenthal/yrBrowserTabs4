@@ -2,7 +2,7 @@
 {
   "manifest_version": 3,
   "name": "TabMaster AI",
-  "version": "4.0.5",
+  "version": "4.1.0",
   "description": "AI-powered tab manager for Chrome",
   "permissions": [
     "tabs",
@@ -14,7 +14,6 @@
     "<all_urls>"
   ],
   "action": {
-    "default_popup": "app.html",
     "default_title": "TabMaster AI"
   },
   "background": {

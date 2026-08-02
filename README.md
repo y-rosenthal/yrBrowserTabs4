@@ -3,6 +3,8 @@
 
 **TabMaster AI** is a smart dashboard to organize your browser chaos. It uses Google's **Gemini AI** to automatically group your messy tabs and name your windows, so you can focus on what matters.
 
+📚 **Full documentation** (specs and design history): https://y-rosenthal.github.io/yrBrowserTabs4/
+
 ---
 
 ## 💿 How to Install (Quick Start)
@@ -30,7 +32,8 @@
 
 5.  **Done!** 
     - TabMaster AI is now installed. 
-    - Click the puzzle piece icon 🧩 in your Chrome toolbar to pin it and start organizing!
+    - Click the puzzle piece icon 🧩 in your Chrome toolbar to pin it.
+    - Clicking the TabMaster icon opens the dashboard in a **full browser tab** (if a dashboard tab is already open in the current window, it is focused instead).
 
 ---
 
@@ -42,9 +45,11 @@
 - **Auto-Name Windows**: Let AI generate descriptive names for your windows based on their content.
 
 ### ⚡ Navigation & Management
-- **Global Search**: Find any tab instantly by title or URL across all windows.
-- **Bulk Actions**: Select multiple tabs or windows to close, move, or merge them.
-- **Keyboard Support**: Full keyboard navigation (Arrows to move, Enter to switch).
+- **Global Search**: Find any tab instantly by title or URL across all windows. Switch the search scope (inside the search bar) to also search the **text of the pages themselves**.
+- **Bulk Actions**: Check multiple tabs (or "Check All" the current search results) to move them to a new window or close them all at once. Select windows to merge or batch-rename them.
+- **Preview Panel**: Live preview of the selected tab, with clickable pills for every other tab in the same window.
+- **Keyboard Support**: Full keyboard navigation (Arrows to move, Enter to switch, Ctrl+Left/Right to change panes).
+- **Interactive Tour**: A guided tour points at each feature on screen; use its "Tour Steps" panel to jump to any topic.
 
 ### 🛠️ Customization
 - **Themes**: Switch between Dark and Light modes.

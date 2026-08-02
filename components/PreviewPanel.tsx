@@ -12,15 +12,22 @@ interface PreviewPanelProps {
   onActivate: (tab: Tab) => void;
   onClose: (tabId: string) => void;
   onClosePanel: () => void;
+  // Selecting a pill previews that tab (same as selecting it in the list).
+  onSelectTab: (tabId: string) => void;
   // Bumped by App when a sleeping tab was auto-woken, so the capture retries.
   refreshSignal?: number;
 }
 
+// How many sibling-tab pills show before collapsing behind "+N more".
+const PILLS_COLLAPSED_LIMIT = 8;
+
 export const PreviewPanel: React.FC<PreviewPanelProps> = ({
   tab,
+  windows,
   windowNames,
   onActivate,
   onClosePanel,
+  onSelectTab,
   refreshSignal
 }) => {
   const [htmlContent, setHtmlContent] = useState<string>('');
@@ -29,10 +36,15 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
   const [isSleeping, setIsSleeping] = useState(false);
   const [isWaking, setIsWaking] = useState(false);
   const [fetchAttempt, setFetchAttempt] = useState(0);
+  const [pillsExpanded, setPillsExpanded] = useState(false);
   // Wake completion must only touch the UI of the tab it started for.
   const currentTabIdRef = useRef<string | null>(null);
 
   const windowName = tab ? (windowNames[tab.windowId] || 'Unknown Window') : '';
+  // All tabs in the selected tab's window, for the pill strip. The panel
+  // always shows the same window context regardless of whether the main
+  // area is in tab or window mode.
+  const windowTabs = tab ? (windows.find(w => w.id === tab.windowId)?.tabs || []) : [];
   const domain = (() => {
     if (!tab?.url) return '';
     try { return new URL(tab.url).hostname; } catch { return 'Local'; }
@@ -82,6 +94,9 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
     };
   }, [tab?.id, tab?.url, fetchAttempt, refreshSignal]); // Re-run when tab changes, a retry is requested, or an auto-wake finished
 
+  // Collapse the pill strip when the previewed window changes.
+  useEffect(() => { setPillsExpanded(false); }, [tab?.windowId]);
+
   const handleWake = async () => {
     if (!tab) return;
     const wakeId = tab.id;
@@ -107,36 +122,78 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
   return (
     <div className="flex flex-col h-full w-full border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl">
       {/* Header Panel */}
-      <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex flex-col gap-1 shrink-0">
+      <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex flex-col gap-2 shrink-0">
+        {/* Window context: the panel always shows which window the previewed
+            tab belongs to, in both tab and window modes. */}
         <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0 flex-1 text-xs">
+            <span className="shrink-0 px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-600/30 text-indigo-700 dark:text-indigo-300 font-bold uppercase tracking-wider text-[10px]">
+              Window
+            </span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200 truncate" title={windowName}>{windowName}</span>
+            <span className="shrink-0 text-slate-400 dark:text-slate-500">({windowTabs.length} tabs)</span>
+          </div>
+          <button
+            onClick={onClosePanel}
+            className="p-1.5 shrink-0 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white rounded transition-colors"
+            title="Hide preview panel"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Pills: one per tab in the window. The previewed tab's pill shows
+            its full title; the rest truncate (full title on hover). */}
+        {windowTabs.length > 1 && (
+          <div className="flex flex-wrap gap-1.5">
+            {(pillsExpanded ? windowTabs : windowTabs.slice(0, PILLS_COLLAPSED_LIMIT)).map((t) => {
+              const isCurrent = t.id === tab.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => onSelectTab(t.id)}
+                  title={t.title}
+                  className={`flex items-center gap-1.5 rounded-full text-xs px-2.5 py-1 border transition-colors text-left ${
+                    isCurrent
+                      ? 'bg-indigo-600 border-indigo-600 text-white font-medium'
+                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-indigo-400 dark:hover:border-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300'
+                  }`}
+                >
+                  <Favicon src={t.favIconUrl} size={12} />
+                  <span className={isCurrent ? 'break-words' : 'truncate max-w-[130px]'}>{t.title}</span>
+                </button>
+              );
+            })}
+            {windowTabs.length > PILLS_COLLAPSED_LIMIT && (
+              <button
+                onClick={() => setPillsExpanded(!pillsExpanded)}
+                className="rounded-full text-xs px-2.5 py-1 border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300 hover:border-indigo-400 transition-colors"
+              >
+                {pillsExpanded ? 'Show less' : `+${windowTabs.length - PILLS_COLLAPSED_LIMIT} more`}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Previewed tab */}
+        <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-200/70 dark:border-slate-800">
           <div className="flex items-center gap-2 min-w-0 flex-1">
              <Favicon src={tab.favIconUrl} size={16} />
             <h3 className="font-semibold text-sm text-slate-800 dark:text-slate-200 truncate" title={tab.title}>
               {tab.title}
             </h3>
           </div>
-          <div className="flex items-center gap-1 shrink-0">
-             <button
-              onClick={() => onActivate(tab)}
-              className="p-1.5 text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 rounded transition-colors"
-              title="Switch to actual tab"
-            >
-              <ExternalLink size={16} />
-            </button>
-            <button
-              onClick={onClosePanel}
-              className="p-1.5 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white rounded transition-colors"
-              title="Close Preview"
-            >
-              <X size={18} />
-            </button>
-          </div>
+          <button
+            onClick={() => onActivate(tab)}
+            className="p-1.5 shrink-0 text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 rounded transition-colors"
+            title="Switch to actual tab"
+          >
+            <ExternalLink size={16} />
+          </button>
         </div>
 
         <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
-           <span className="truncate max-w-[50%]" title={domain}>{domain}</span>
-           <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span>
-           <span className="truncate" title={windowName}>{windowName}</span>
+           <span className="truncate" title={domain}>{domain}</span>
         </div>
       </div>
 

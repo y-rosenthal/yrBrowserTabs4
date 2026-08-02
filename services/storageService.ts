@@ -22,7 +22,7 @@ const MOCK_STORAGE: StorageData = {
   cardGrouping: 'tab',
   cardWidth: 240,
   cardMetadata: DEFAULT_CARD_METADATA,
-  openMaximized: true
+  searchScope: 'title'
 };
 
 // In-memory fallback for demo mode
@@ -31,7 +31,7 @@ let memStorage = { ...MOCK_STORAGE };
 export const getStorageData = async (): Promise<StorageData> => {
   if (isExtension) {
     return new Promise((resolve) => {
-      chrome.storage.local.get(['customWindowNames', 'hasSeenOnboarding', 'theme', 'apiKey', 'tabViewMode', 'cardGrouping', 'cardWidth', 'cardMetadata', 'openMaximized'], (result: any) => {
+      chrome.storage.local.get(['customWindowNames', 'hasSeenOnboarding', 'theme', 'apiKey', 'tabViewMode', 'cardGrouping', 'cardWidth', 'cardMetadata', 'searchScope'], (result: any) => {
         resolve({
           customWindowNames: result.customWindowNames || {},
           hasSeenOnboarding: result.hasSeenOnboarding || false,
@@ -41,7 +41,7 @@ export const getStorageData = async (): Promise<StorageData> => {
           cardGrouping: result.cardGrouping || 'tab',
           cardWidth: result.cardWidth || 240,
           cardMetadata: result.cardMetadata || DEFAULT_CARD_METADATA,
-          openMaximized: result.openMaximized !== undefined ? result.openMaximized : true
+          searchScope: result.searchScope === 'content' ? 'content' : 'title'
         });
       });
     });
@@ -106,9 +106,9 @@ export const saveApiKey = async (apiKey: string): Promise<void> => {
   }
 };
 
-// Persists any subset of the view/launch preferences.
+// Persists any subset of the view preferences.
 export const saveViewSettings = async (
-  patch: Partial<Pick<StorageData, 'tabViewMode' | 'cardGrouping' | 'cardWidth' | 'cardMetadata' | 'openMaximized'>>
+  patch: Partial<Pick<StorageData, 'tabViewMode' | 'cardGrouping' | 'cardWidth' | 'cardMetadata' | 'searchScope'>>
 ): Promise<void> => {
   if (isExtension) {
     await chrome.storage.local.set(patch);

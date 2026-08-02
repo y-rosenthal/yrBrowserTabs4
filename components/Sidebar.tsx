@@ -201,6 +201,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
         <div className="mt-1 text-xs text-slate-500 dark:text-slate-500">
           {windows.length} Windows • {totalTabs} Tabs
+          <span className="ml-1 text-slate-400 dark:text-slate-600" title="TabMaster AI version">• v{__APP_VERSION__}</span>
         </div>
       </div>
 
@@ -219,6 +220,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {/* Combined Organize Button */}
           <button
+            data-tour="organize"
             onClick={onOrganize}
             disabled={isOrganizing}
             className={`${getButtonStyle(1, viewMode === ViewMode.AI_GROUPED)} ${isOrganizing ? 'bg-indigo-50 dark:bg-indigo-900/30 ring-1 ring-indigo-500/50' : ''}`}
@@ -239,7 +241,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Window Management Controls */}
-        <div className="px-3 mb-2">
+        <div className="px-3 mb-2" data-tour="auto-name">
            <p className="px-3 text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider mb-2">Window Controls</p>
            <div className="flex gap-1.5">
              <button
@@ -277,7 +279,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Windows List */}
-        <div className="px-3 space-y-1">
+        <div className="px-3 space-y-1" data-tour="sidebar-windows">
           {/* Header with Sort Controls */}
           <div className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 py-2 border-b border-transparent flex items-center justify-between px-3 mb-1 text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider select-none shadow-sm">
              <div className="flex items-center gap-2">

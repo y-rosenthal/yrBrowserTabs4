@@ -4,9 +4,12 @@ import react from '@vitejs/plugin-react';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
+import { readFileSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+const pkg = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf-8'));
 
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
@@ -21,7 +24,9 @@ export default defineConfig(({ mode }) => {
       // Use fallback to empty string to ensure variable exists even if not set in .env
       'process.env.API_KEY': JSON.stringify(env.API_KEY || ''),
       // Define global process to avoid "process is not defined" error in some libs
-      'process.env': {} 
+      'process.env': {},
+      // App version shown in the sidebar (single source: package.json)
+      '__APP_VERSION__': JSON.stringify(pkg.version)
     },
     plugins: [
       react(),

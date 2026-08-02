@@ -24,20 +24,6 @@ export const getPlatformInfo = () => ({
   mode: isExtension ? 'Live Extension' : 'Web Demo'
 });
 
-// True when running as the action popup (or any non-tab extension page):
-// chrome.tabs.getCurrent() resolves to a Tab only inside a real browser
-// tab. More reliable than width heuristics — the popup is exactly 800px
-// wide, which `innerWidth < 800` misses.
-export const isExtensionPopup = async (): Promise<boolean> => {
-  if (!isExtension || !chrome.tabs?.getCurrent) return false;
-  try {
-    const current = await chrome.tabs.getCurrent();
-    return !current;
-  } catch {
-    return window.innerWidth <= 800;
-  }
-};
-
 export const getWindows = async (): Promise<WindowData[]> => {
   if (isExtension) {
     // Real Chrome API Call
@@ -106,6 +92,16 @@ export const closeTab = async (tabId: string): Promise<void> => {
   }
 };
 
+// Closes many tabs in one chrome call (used by "Close checked tabs").
+export const closeTabs = async (tabIds: string[]): Promise<void> => {
+  if (tabIds.length === 0) return;
+  if (isExtension) {
+    await chrome.tabs.remove(tabIds.map(id => parseInt(id)));
+  } else {
+    console.log(`[Mock] Closing tabs: ${tabIds.join(', ')}`);
+  }
+};
+
 export const focusWindow = async (windowId: string): Promise<void> => {
   if (isExtension) {
     await chrome.windows.update(parseInt(windowId), { focused: true });
@@ -152,42 +148,6 @@ export const createWindowWithTabs = async (tabIds: string[]): Promise<void> => {
     }
   } else {
     console.log(`[Mock] Creating new window with tabs ${tabIds.join(', ')}`);
-  }
-};
-
-export const focusOrOpenExtensionTab = async () => {
-  if (isExtension) {
-    const extensionUrl = chrome.runtime.getURL('app.html');
-    
-    // Get current window first to ensure we stay in context of where the user is looking.
-    // In a popup, chrome.windows.getCurrent returns the browser window the popup is attached to.
-    let currentWindowId: number | undefined;
-    try {
-      const currentWin = await chrome.windows.getCurrent();
-      currentWindowId = currentWin.id;
-    } catch (e) {
-      console.warn("Could not get current window", e);
-    }
-    
-    if (currentWindowId) {
-      // Check if tab exists in THIS window
-      const tabs = await chrome.tabs.query({ url: extensionUrl, windowId: currentWindowId });
-      
-      if (tabs.length > 0) {
-        const existingTab = tabs[0];
-        // Focus window just in case (though we are likely in it)
-        await chrome.windows.update(currentWindowId, { focused: true });
-        await chrome.tabs.update(existingTab.id, { active: true });
-      } else {
-        // Create in current window
-        await chrome.tabs.create({ url: extensionUrl, windowId: currentWindowId });
-      }
-    } else {
-      // Fallback if window ID extraction failed: just create
-       await chrome.tabs.create({ url: extensionUrl });
-    }
-  } else {
-    window.open(window.location.href, '_blank');
   }
 };
 
@@ -310,6 +270,48 @@ export const getTabThumbnail = async (tab: Tab): Promise<string | null> => {
   } finally {
     releaseCaptureSlot();
   }
+};
+
+// --- Full-text search support ---
+// Visible page text captured per tab (keyed to the URL so navigation
+// invalidates the entry), fetched through the same concurrency gate as
+// thumbnails so indexing a big session can't fire hundreds of injections.
+// Sleeping (discarded) tabs are never woken for indexing; restricted pages
+// (chrome://, Web Store) yield an empty string and are treated as "no text".
+const pageTextCache = new Map<string, { url: string; text: string }>();
+const MAX_PAGE_TEXT_CACHE = 500;
+
+export const getTabPageText = async (tab: Tab): Promise<string> => {
+  const cached = pageTextCache.get(tab.id);
+  if (cached && cached.url === tab.url) return cached.text;
+  if (tab.discarded) return '';
+
+  let text = '';
+  if (isExtension) {
+    await acquireCaptureSlot();
+    try {
+      const results = await chrome.scripting.executeScript({
+        target: { tabId: parseInt(tab.id) },
+        func: () => (document.body?.innerText || '').slice(0, 500000)
+      });
+      text = (results[0]?.result || '').toLowerCase();
+    } catch {
+      text = ''; // restricted page — searchable by title/URL only
+    } finally {
+      releaseCaptureSlot();
+    }
+  } else {
+    text = `mock page text for ${tab.title}`.toLowerCase();
+  }
+
+  pageTextCache.delete(tab.id);
+  pageTextCache.set(tab.id, { url: tab.url, text });
+  while (pageTextCache.size > MAX_PAGE_TEXT_CACHE) {
+    const oldest = pageTextCache.keys().next().value;
+    if (oldest === undefined) break;
+    pageTextCache.delete(oldest);
+  }
+  return text;
 };
 
 export const isTabDiscarded = async (tabId: string): Promise<boolean> => {

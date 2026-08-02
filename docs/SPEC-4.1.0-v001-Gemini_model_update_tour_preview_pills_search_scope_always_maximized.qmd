@@ -1,0 +1,124 @@
+---
+title: "SPEC-4.1.0-v001"
+subtitle: "Gemini model update, tour overhaul, preview pills, search scope, always-maximized"
+---
+
+## Scope
+
+Feature/fix release driven by user feedback on v4.0.5. Six areas: the Gemini
+model 404, the interactive tour, launch behavior (popup vs. tab), the
+preview panel and window cards, search, and version visibility.
+
+## 1. Gemini model update (bug fix)
+
+**Problem:** "Organize with AI" failed with
+`404 — This model models/gemini-2.5-flash is no longer available to new
+users`. Google has closed `gemini-2.5-flash` to new API keys ahead of its
+October 2026 shutdown; new keys must use a 3.x-tier model.
+
+**Fix (`services/geminiService.ts`):** both AI calls now go through a
+fallback chain — `gemini-3.5-flash` → `gemini-flash-latest` →
+`gemini-2.5-flash`. The first model that responds is used; a
+model-unavailable error (404 / NOT_FOUND / "no longer available") advances
+to the next candidate, so new keys get the current model while old
+grandfathered keys keep working.
+
+## 2. Interactive tour overhaul
+
+Previous behavior: five steps, cards at hard-coded screen positions, arrows
+only on some steps, no way to jump between steps.
+
+New behavior (`components/OnboardingTour.tsx`):
+
+- **Element-anchored steps with arrows.** Each step names a `data-tour`
+  attribute on a real UI element. The tour spotlights that element (dim
+  overlay with a bright cutout ring) and places its card on whichever side
+  has room, with an arrow pointing at the element. Steps whose element
+  isn't on screen fall back to a centered card.
+- **Expanded coverage.** Eleven steps: welcome, windows sidebar,
+  auto-name/undo, Organize with AI, search (including scope), detail/card
+  views, working with tabs (checkboxes, context menus, keyboard),
+  preview panel, export, theme, settings.
+- **Stationary "Tour Steps" controller.** A persistent panel lists every
+  step; clicking one jumps straight to it. It has an **End Tour** button,
+  can be dragged by its header, and automatically moves to another corner
+  if it would cover the spotlighted element or the step card.
+- Step cards also gained a **Back** button.
+
+## 3. Always maximized — popup removed
+
+Previous behavior: the toolbar button opened an 800×600 popup which then
+(optionally, via the "Open Maximized" setting) redirected itself to a full
+tab; the Maximize button was kept left of the icon row so the popup
+couldn't clip it.
+
+New behavior: the extension **only** runs as a full browser tab.
+
+- `manifest.json` no longer declares `default_popup`; clicking the toolbar
+  icon fires `chrome.action.onClicked` in `background.js`, which focuses an
+  existing dashboard tab in the current window or opens a new one.
+- Removed: the Maximize header button, the "Open Maximized" setting (and
+  its storage key), popup detection (`isExtensionPopup`),
+  `focusOrOpenExtensionTab`, the 800px popup CSS, and the `hidden lg:`
+  classes that hid Help/Export/Preview buttons at popup widths — the full
+  icon row is now always visible.
+
+## 4. Preview panel: window context and tab pills
+
+The preview panel now has the **same layout in every mode** (tabs, windows,
+AI groups), making it obvious what is being previewed:
+
+- A header row with a **WINDOW badge**, the window's name, and its tab
+  count.
+- A **pill strip** with one pill per tab in that window. The previewed
+  tab's pill is filled (indigo) and shows its full title; other pills
+  truncate at ~130px and reveal their full title on hover. Clicking a pill
+  previews that tab. Beyond 8 tabs the strip collapses behind a
+  **"+N more"** toggle.
+- Below that, the previewed tab's own row (favicon, title, switch-to-tab
+  button) and the live content preview as before.
+
+Window cards in card view now label their badge **"N tabs"** instead of a
+bare number. The preview-toggle (eye) tooltip is now
+**"Show/hide preview panel"**.
+
+## 5. Search scope + bulk close
+
+**What search matched before:** tab **titles and URLs only** — never page
+content. That is now stated in the UI and controllable:
+
+- A scope switch inside the search bar offers **"Titles & URLs"** (default,
+  instant) and **"Titles, URLs & page text"**.
+- Page-text scope lazily captures the visible text (`document.body.innerText`,
+  capped at 500 kB per tab) of open tabs via the `scripting` permission,
+  through the same 4-at-a-time concurrency gate as thumbnails, cached per
+  tab+URL (500-entry LRU). A small counter in the search bar shows indexing
+  progress. **Limits (shown in the scope menu):** sleeping (discarded) tabs
+  are never woken for indexing, and restricted pages (`chrome://`, Web
+  Store) cannot be read — both still match by title/URL.
+- **Check All + bulk close:** a "Check All (N)" button checks every
+  currently displayed tab (i.e. the current search results). With tabs
+  checked, the toolbar shows **Move N**, **Close N** (with a confirmation
+  dialog — closing is not undoable), and an uncheck button. Workflow:
+  search "amazon" → Check All → Close.
+
+## 6. Version number
+
+- Bumped **4.0.5 → 4.1.0** in `package.json` and `manifest.json`.
+- The version is now **visible in the UI**: the sidebar header shows
+  `N Windows • M Tabs • vX.Y.Z`. It is injected at build time from
+  `package.json` via a `__APP_VERSION__` define in `vite.config.ts`, so it
+  can never drift from the released version.
+
+## Verification
+
+- `npm run build` (strict `tsc` + Vite) passes; `dist/` rebuilt.
+- `quarto render` regenerates the book with this spec.
+
+## Notes / accepted limitations
+
+- Full-text search cannot see sleeping tabs without waking them (which
+  would be slow and memory-hungry); title/URL matching still applies to
+  them. This is by design.
+- The Gemini model list will need occasional refreshes as Google retires
+  models; the fallback chain makes that a one-line change.

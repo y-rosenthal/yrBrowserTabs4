@@ -3,9 +3,9 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { Sidebar } from './components/Sidebar';
 import { DEMO_NOTICE } from './constants';
 import { ViewMode, WindowData, Tab, TabGroup, OnboardingStep, WindowReorgSnapshot, CardMetadataSetting, CardMetadataField } from './types';
-import { Search, Info, ExternalLink, RefreshCw, AlertCircle, Maximize2, Download, Table, FileText, Eye, EyeOff, FolderPlus, HelpCircle, BookOpen, Sun, Moon, Key, LayoutTemplate, RotateCcw, Settings, Sparkles, ListFilter, List, LayoutGrid, Minus, Plus, Copy, FolderInput, Edit2, Trash2, CheckSquare, Undo2, Redo2, Wand2, ChevronUp, ChevronDown } from 'lucide-react';
+import { Search, Info, ExternalLink, RefreshCw, AlertCircle, Download, Table, FileText, Eye, EyeOff, FolderPlus, HelpCircle, BookOpen, Sun, Moon, Key, LayoutTemplate, RotateCcw, Settings, Sparkles, ListFilter, List, LayoutGrid, Minus, Plus, Copy, FolderInput, Edit2, Trash2, CheckSquare, Undo2, Redo2, Wand2, ChevronUp, ChevronDown, X } from 'lucide-react';
 import { organizeTabsWithAI, generateWindowNamesWithAI } from './services/geminiService';
-import { getWindows, activateTab, closeTab, getPlatformInfo, moveTabs, createWindowWithTabs, focusOrOpenExtensionTab, subscribeToUpdates, focusWindow, closeWindow, wakeTab, isExtensionPopup } from './services/tabService';
+import { getWindows, activateTab, closeTab, closeTabs, getPlatformInfo, moveTabs, createWindowWithTabs, subscribeToUpdates, focusWindow, closeWindow, wakeTab, getTabPageText } from './services/tabService';
 import { saveCustomWindowName, saveCustomWindowNames, getStorageData, setOnboardingSeen, saveTheme, saveApiKey, saveViewSettings, DEFAULT_CARD_METADATA } from './services/storageService';
 import { compareWindowNames } from './services/sortUtils';
 import { TabListView, SortField, SortDirection } from './components/TabListView';
@@ -21,37 +21,62 @@ import { ConfirmModal } from './components/ConfirmModal';
 import { ErrorModal } from './components/ErrorModal';
 import { generateWindowNames } from './services/nameGenerator';
 
-// Full Tour
+// Full Tour: each step is anchored to a live UI element via its data-tour
+// attribute; the tour card points at it with an arrow and a spotlight.
 const FULL_TOUR_STEPS: OnboardingStep[] = [
   {
-    target: 'center',
-    position: 'center',
     title: 'Welcome to TabMaster AI!',
-    content: 'Take control of your browser chaos. Organize, search, and manage your tabs across all windows from a single dashboard.'
+    content: 'This dashboard shows every tab across all your Chrome windows. This tour walks through the major features. Use the "Tour Steps" panel to jump to any topic, drag it out of the way by its header, or end the tour at any time.'
   },
   {
-    target: 'sidebar',
-    position: 'left',
-    title: 'Navigate & Rename',
-    content: 'Use the sidebar to filter by window. Double-click any window name to rename it. Use "Auto Name" above the list to let AI name them for you.'
+    anchor: 'sidebar-windows',
+    title: 'Your Windows',
+    content: 'Every open window is listed here. Click one to see only its tabs, double-click its name to rename it, and use the checkboxes to select several windows for merging or batch renaming. Right-click a window for more actions.'
   },
   {
-    target: 'top-bar',
-    position: 'top-search',
+    anchor: 'auto-name',
+    title: 'Auto-Name & Undo',
+    content: 'Let Gemini generate descriptive names for your windows based on what is open in them. Every rename — manual or AI — can be reverted with the Undo/Redo arrows.'
+  },
+  {
+    anchor: 'organize',
+    title: 'Organize with AI',
+    content: 'Gemini sorts all your tabs into semantic groups like Development, Shopping, or News. From the grouped view, "Apply to Windows" physically reorganizes your browser windows to match — and it can be undone.'
+  },
+  {
+    anchor: 'search',
     title: 'Instant Search',
-    content: 'Use the search bar here to find any tab instantly by title or URL across all your open windows.'
+    content: 'Search every window at once. By default it matches tab titles and URLs; use the scope switch inside the search bar to also search the text of the pages themselves.'
   },
   {
-    target: 'sidebar',
-    position: 'left',
-    title: 'AI Organization',
-    content: 'Click "Organize with AI" in the sidebar to let Gemini automatically categorize your tabs into logical groups.'
+    anchor: 'view-toggle',
+    title: 'Detail & Card Views',
+    content: 'Switch between a sortable table and visual cards with live page thumbnails. Card view can also group by window, and cards resize with the slider or the [ and ] keys.'
   },
   {
-    target: 'tabs',
-    position: 'center',
-    title: 'Keyboard Navigation',
-    content: 'Power user? Use the arrow keys to move through tabs (all four directions in card view), Ctrl+Left/Right to switch between the sidebar and tab list, and Enter or double-click to jump to a tab.'
+    anchor: 'tabs-area',
+    title: 'Working with Tabs',
+    content: 'Single-click previews a tab; double-click or Enter switches to it. Check several tabs to move or close them together, and right-click any tab for actions like Move to Window or Copy URL. Arrow keys navigate; Ctrl+Left/Right switches between the sidebar and the tab list.'
+  },
+  {
+    anchor: 'preview-toggle',
+    title: 'Preview Panel',
+    content: 'Show or hide a live preview of the selected tab. The panel also shows which window the tab belongs to, with clickable pills for every other tab in that window.'
+  },
+  {
+    anchor: 'export',
+    title: 'Export Your Tabs',
+    content: 'Download everything as a CSV spreadsheet or a Markdown link list — handy for backups or sharing a reading list.'
+  },
+  {
+    anchor: 'theme',
+    title: 'Light & Dark Mode',
+    content: 'Toggle between light and dark themes. Your choice is remembered across sessions.'
+  },
+  {
+    anchor: 'settings',
+    title: 'Settings',
+    content: 'Set your Gemini API key here (required for the AI features) and choose which fields appear on cards in card view.'
   }
 ];
 
@@ -66,8 +91,6 @@ const METADATA_LABELS: Record<CardMetadataField, string> = {
 // Single First Run Step
 const FIRST_RUN_STEP: OnboardingStep[] = [
   {
-    target: 'help-btn',
-    position: 'top-right',
     title: 'Welcome to TabMaster!',
     content: 'Manage all your windows and tabs in one place.',
     isFirstRun: true
@@ -107,9 +130,8 @@ const App: React.FC = () => {
   // Selection & Features
   const [selectedTabId, setSelectedTabId] = useState<string | null>(null); // For Preview/Active
   const [checkedTabIds, setCheckedTabIds] = useState<string[]>([]); // For Multi-select Actions
-  // Default open in the full-tab dashboard, but closed in the ~800px action
-  // popup, where a 384px pane would leave almost no room for the table.
-  const [showPreview, setShowPreview] = useState(() => window.innerWidth > 800);
+  const [showPreview, setShowPreview] = useState(true);
+  const [showCloseCheckedConfirm, setShowCloseCheckedConfirm] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showUserGuide, setShowUserGuide] = useState(false);
   const [showHelpMenu, setShowHelpMenu] = useState(false);
@@ -166,8 +188,16 @@ const App: React.FC = () => {
   // Bumped after a sleeping tab is auto-woken so the preview retries.
   const [wakeSignal, setWakeSignal] = useState(0);
 
-  // Launch preference: open the popup straight into the full-tab dashboard.
-  const [openMaximized, setOpenMaximized] = useState(true);
+  // Search scope: titles/URLs only (fast) or also the captured page text.
+  const [searchScope, setSearchScope] = useState<'title' | 'content'>('title');
+  const [showSearchScopeMenu, setShowSearchScopeMenu] = useState(false);
+  const searchScopeMenuRef = useRef<HTMLDivElement>(null);
+  // Page-text index for content search: `${tabId}|${url}` -> lowercased text.
+  // Lives in a ref (large strings); pageTextVersion bumps re-filtering as
+  // captures land, indexingRemaining drives the progress hint.
+  const pageTextIndex = useRef<Map<string, string>>(new Map());
+  const [pageTextVersion, setPageTextVersion] = useState(0);
+  const [indexingRemaining, setIndexingRemaining] = useState(0);
 
   // AI Global Sort State (Forced sort for all groups)
   const [globalGroupSort, setGlobalGroupSort] = useState<{ field: SortField; direction: SortDirection; timestamp: number } | undefined>(undefined);
@@ -176,9 +206,9 @@ const App: React.FC = () => {
 
   // --- INITIALIZATION ---
   useEffect(() => {
-    // 1. Load Theme + view/launch preferences, then auto-jump to the
-    // full-tab dashboard only if the persisted "Open Maximized" setting
-    // allows it (it defaults to on).
+    // 1. Load Theme + view preferences. (The extension always opens as a
+    // full browser tab — the toolbar click is handled in background.js —
+    // so there is no popup-vs-tab launch logic here anymore.)
     getStorageData().then(data => {
       setTheme(data.theme);
       if (data.theme === 'dark') {
@@ -190,16 +220,7 @@ const App: React.FC = () => {
       if (data.cardGrouping) setCardGrouping(data.cardGrouping);
       if (data.cardWidth) setCardWidth(data.cardWidth);
       if (data.cardMetadata) setCardMetadata(data.cardMetadata);
-      const shouldMaximize = data.openMaximized !== false;
-      setOpenMaximized(shouldMaximize);
-      if (platformInfo.isExtension && shouldMaximize) {
-        isExtensionPopup().then(async (isPopup) => {
-          if (isPopup) {
-            await focusOrOpenExtensionTab();
-            window.close(); // dismiss the popup once the full tab is up
-          }
-        });
-      }
+      if (data.searchScope) setSearchScope(data.searchScope);
     });
 
     // 3. Click outside handler for menus
@@ -219,6 +240,9 @@ const App: React.FC = () => {
       }
       if (cardSortMenuRef.current && !cardSortMenuRef.current.contains(target)) {
         setShowCardSortMenu(false);
+      }
+      if (searchScopeMenuRef.current && !searchScopeMenuRef.current.contains(target)) {
+        setShowSearchScopeMenu(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -376,6 +400,37 @@ const App: React.FC = () => {
   // --- COMPUTED DATA ---
   const allTabs = useMemo(() => windows.flatMap(w => w.tabs), [windows]);
 
+  // Lazily index page text while a content-scoped search is active. Sleeping
+  // tabs are never woken for this, and restricted pages index as empty (they
+  // stay searchable by title/URL). Captures run through the shared 4-wide
+  // concurrency gate in tabService.
+  useEffect(() => {
+    if (searchScope !== 'content' || !searchQuery.trim()) return;
+    const pending = allTabs.filter(t => !t.discarded && !pageTextIndex.current.has(`${t.id}|${t.url}`));
+    if (pending.length === 0) return;
+    let cancelled = false;
+    setIndexingRemaining(pending.length);
+    pending.forEach(t => {
+      getTabPageText(t).then(text => {
+        pageTextIndex.current.set(`${t.id}|${t.url}`, text);
+        if (!cancelled) {
+          setIndexingRemaining(r => Math.max(0, r - 1));
+          setPageTextVersion(v => v + 1);
+        }
+      });
+    });
+    return () => { cancelled = true; };
+  }, [searchScope, searchQuery, allTabs]);
+
+  const tabMatchesQuery = useCallback((t: Tab, q: string): boolean => {
+    if (t.title.toLowerCase().includes(q) || t.url.toLowerCase().includes(q)) return true;
+    if (searchScope === 'content') {
+      const text = pageTextIndex.current.get(`${t.id}|${t.url}`);
+      if (text && text.includes(q)) return true;
+    }
+    return false;
+  }, [searchScope, pageTextVersion]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Filter tabs logic
   const filteredTabs = useMemo(() => {
     let tabs = allTabs;
@@ -388,18 +443,15 @@ const App: React.FC = () => {
     else if (viewMode === ViewMode.BY_WINDOW && activeWindowId) {
       tabs = windows.find(w => w.id === activeWindowId)?.tabs || [];
     }
-    
+
     // 3. Search Filter (if not in AI Grouped Mode)
     // In AI Grouped mode, we filter *inside* the groups logic below to keep structure
     if (searchQuery.trim() && viewMode !== ViewMode.AI_GROUPED) {
       const q = searchQuery.toLowerCase();
-      tabs = tabs.filter(t => 
-        t.title.toLowerCase().includes(q) || 
-        t.url.toLowerCase().includes(q)
-      );
+      tabs = tabs.filter(t => tabMatchesQuery(t, q));
     }
     return tabs;
-  }, [allTabs, windows, viewMode, activeWindowId, searchQuery, sidebarSelectedWindowIds]);
+  }, [allTabs, windows, viewMode, activeWindowId, searchQuery, sidebarSelectedWindowIds, tabMatchesQuery]);
 
   const getSortedTabs = useCallback((tabs: Tab[]) => {
     return [...tabs].sort((a, b) => {
@@ -448,11 +500,11 @@ const App: React.FC = () => {
       const filteredIds = group.tabIds.filter(id => {
         const t = allTabs.find(tab => tab.id === id);
         if (!t) return false;
-        return t.title.toLowerCase().includes(q) || t.url.toLowerCase().includes(q);
+        return tabMatchesQuery(t, q);
       });
       return { ...group, tabIds: filteredIds };
     }).filter(group => group.tabIds.length > 0);
-  }, [viewMode, tabGroups, searchQuery, allTabs]);
+  }, [viewMode, tabGroups, searchQuery, allTabs, tabMatchesQuery]);
 
 
   // Navigation Tabs: Flattened list for keyboard navigation that matches the visual order
@@ -621,6 +673,27 @@ const App: React.FC = () => {
     try { await activateTab(tab); }
     catch (error) {
       showNotification("Failed to switch tab", 'info');
+    }
+  };
+
+  const applySearchScope = (scope: 'title' | 'content') => {
+    setSearchScope(scope);
+    saveViewSettings({ searchScope: scope });
+    setShowSearchScopeMenu(false);
+  };
+
+  // Close every checked tab (confirmed via modal beforehand).
+  const handleCloseCheckedTabs = async () => {
+    const ids = [...checkedTabIds];
+    setShowCloseCheckedConfirm(false);
+    try {
+      await closeTabs(ids);
+      setCheckedTabIds([]);
+      if (selectedTabId && ids.includes(selectedTabId)) setSelectedTabId(null);
+      await loadTabs(true);
+      showNotification(`${ids.length} tab${ids.length > 1 ? 's' : ''} closed`, 'info');
+    } catch (err) {
+      handleError("Close Failed", "Could not close the checked tabs.", err);
     }
   };
 
@@ -1275,34 +1348,93 @@ const App: React.FC = () => {
               </div>
             )}
             
-            <div className="relative max-w-md w-full ml-auto sm:ml-4">
+            <div className="relative max-w-md w-full ml-auto sm:ml-4" data-tour="search">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
               <input
                 type="text"
-                placeholder="Search tabs..."
+                placeholder={searchScope === 'content' ? "Search titles, URLs & page text..." : "Search tab titles & URLs..."}
                 value={searchQuery}
                 onFocus={() => setFocusedArea('tabs')}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-200 rounded-full pl-10 pr-4 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-slate-500 dark:placeholder:text-slate-600"
+                className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-200 rounded-full pl-10 pr-24 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-slate-500 dark:placeholder:text-slate-600"
               />
+              {/* Search scope switch: what the query matches against */}
+              <div className="absolute right-1.5 top-1/2 -translate-y-1/2" ref={searchScopeMenuRef}>
+                <button
+                  onClick={() => setShowSearchScopeMenu(!showSearchScopeMenu)}
+                  className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide transition-colors ${
+                    searchScope === 'content'
+                      ? 'bg-indigo-100 dark:bg-indigo-600/30 text-indigo-700 dark:text-indigo-300'
+                      : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                  }`}
+                  title="Choose what the search matches"
+                >
+                  {indexingRemaining > 0
+                    ? <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 border border-indigo-500 border-t-transparent rounded-full animate-spin" />{indexingRemaining}</span>
+                    : (searchScope === 'content' ? 'Text' : 'Titles')}
+                  <ChevronDown size={10} />
+                </button>
+                {showSearchScopeMenu && (
+                  <div className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 py-1 animate-in fade-in zoom-in-95 duration-100">
+                    <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Search In</div>
+                    <button onClick={() => applySearchScope('title')} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm text-slate-700 dark:text-slate-200">
+                      <span className="flex items-center justify-between">Titles &amp; URLs {searchScope === 'title' && <span className="text-indigo-500">✓</span>}</span>
+                      <span className="block text-xs text-slate-400 dark:text-slate-500">Fast — matches tab names and addresses</span>
+                    </button>
+                    <button onClick={() => applySearchScope('content')} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm text-slate-700 dark:text-slate-200">
+                      <span className="flex items-center justify-between">Titles, URLs &amp; page text {searchScope === 'content' && <span className="text-indigo-500">✓</span>}</span>
+                      <span className="block text-xs text-slate-400 dark:text-slate-500">Also searches the visible text of open tabs. Sleeping tabs and system pages match by title/URL only.</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 mx-2 hidden sm:block"></div>
             
             <div className="flex items-center gap-1">
-              {checkedTabIds.length > 0 && (
+              {/* Check-all: check every currently displayed tab (respects
+                  search + filters), e.g. search "amazon" → check all → close. */}
+              {checkedTabIds.length === 0 && navigationTabs.length > 0 && (
                 <button
-                  onClick={handleMoveTabsToNewWindow}
-                  className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 mr-2 animate-in fade-in zoom-in duration-200"
-                  title="Move selected tabs to a new window"
+                  onClick={() => toggleAllChecks(navigationTabs.map(t => t.id), true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors whitespace-nowrap"
+                  title="Check all tabs currently displayed"
                 >
-                  <FolderPlus size={14} />
-                  Move {checkedTabIds.length} Tabs
+                  <CheckSquare size={14} />
+                  Check All ({navigationTabs.length})
                 </button>
+              )}
+              {checkedTabIds.length > 0 && (
+                <div className="flex items-center gap-1.5 mr-2 animate-in fade-in zoom-in duration-200">
+                  <button
+                    onClick={handleMoveTabsToNewWindow}
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 whitespace-nowrap"
+                    title="Move checked tabs to a new window"
+                  >
+                    <FolderPlus size={14} />
+                    Move {checkedTabIds.length}
+                  </button>
+                  <button
+                    onClick={() => setShowCloseCheckedConfirm(true)}
+                    className="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 whitespace-nowrap"
+                    title="Close all checked tabs"
+                  >
+                    <Trash2 size={14} />
+                    Close {checkedTabIds.length}
+                  </button>
+                  <button
+                    onClick={() => setCheckedTabIds([])}
+                    className="p-1.5 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800"
+                    title="Uncheck all"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
               )}
 
               {/* Detail / Card view toggle */}
-              <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-full p-0.5 mr-1">
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-full p-0.5 mr-1" data-tour="view-toggle">
                 <button
                   onClick={() => setDisplayMode('detail')}
                   className={`p-1.5 rounded-full transition-colors ${tabDisplayMode === 'detail' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
@@ -1319,10 +1451,8 @@ const App: React.FC = () => {
                 </button>
               </div>
 
-              {/* Hidden below lg so the popup's 800px toolbar keeps the
-                  maximize and settings buttons reachable. */}
               {tabDisplayMode === 'card' && (
-                <div className="hidden lg:flex items-center gap-1 mr-1 animate-in fade-in duration-200">
+                <div className="flex items-center gap-1 mr-1 animate-in fade-in duration-200">
                   {/* Tab cards vs Window cards */}
                   <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-full p-0.5 text-[11px] font-medium">
                     <button
@@ -1397,18 +1527,9 @@ const App: React.FC = () => {
                 </div>
               )}
 
-              {/* Maximize — first in the icon row so it can never be
-                  clipped out of a narrow popup toolbar. */}
-              <button
-                onClick={focusOrOpenExtensionTab}
-                className="p-2 shrink-0 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors"
-                title="Open in new tab (Maximize)"
-              >
-                <Maximize2 size={18} />
-              </button>
-
               {/* Theme Toggle */}
               <button
+                  data-tour="theme"
                   onClick={toggleTheme}
                   className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors"
                   title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
@@ -1416,9 +1537,7 @@ const App: React.FC = () => {
                   {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
               </button>
 
-              {/* Help Trigger (hidden in narrow popup widths to keep
-                  Maximize/Settings reachable) */}
-              <div className="relative help-btn-wrapper hidden lg:block" ref={helpMenuRef}>
+              <div className="relative help-btn-wrapper" ref={helpMenuRef}>
                 <button 
                   id="help-btn"
                   onClick={() => setShowHelpMenu(!showHelpMenu)}
@@ -1443,8 +1562,8 @@ const App: React.FC = () => {
                 )}
               </div>
 
-              <div className="relative hidden lg:block" ref={exportMenuRef}>
-                <button 
+              <div className="relative" ref={exportMenuRef} data-tour="export">
+                <button
                   onClick={() => setShowExportMenu(!showExportMenu)}
                   className={`p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors ${showExportMenu ? 'text-indigo-600 dark:text-white bg-slate-200 dark:bg-slate-800' : ''}`}
                   title="Export Data"
@@ -1464,9 +1583,10 @@ const App: React.FC = () => {
               </div>
 
               <button
+                data-tour="preview-toggle"
                 onClick={() => setShowPreview(!showPreview)}
-                className={`p-2 rounded-full transition-colors hidden lg:block ${showPreview ? 'bg-indigo-100 dark:bg-indigo-600/20 text-indigo-600 dark:text-indigo-400' : 'hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'}`}
-                title="Toggle Preview Panel"
+                className={`p-2 rounded-full transition-colors ${showPreview ? 'bg-indigo-100 dark:bg-indigo-600/20 text-indigo-600 dark:text-indigo-400' : 'hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'}`}
+                title="Show/hide preview panel"
               >
                 {showPreview ? <Eye size={18} /> : <EyeOff size={18} />}
               </button>
@@ -1480,8 +1600,8 @@ const App: React.FC = () => {
               </button>
               
               {/* Settings Trigger - Moved to End */}
-              <div className="relative settings-btn-wrapper" ref={settingsMenuRef}>
-                <button 
+              <div className="relative settings-btn-wrapper" ref={settingsMenuRef} data-tour="settings">
+                <button
                   onClick={() => setShowSettingsMenu(!showSettingsMenu)}
                   className={`p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors ${showSettingsMenu ? 'text-indigo-600 dark:text-white bg-slate-200 dark:bg-slate-800' : ''}`}
                   title="Settings"
@@ -1493,23 +1613,6 @@ const App: React.FC = () => {
                      <button onClick={() => { setShowApiKeyModal(true); setShowSettingsMenu(false); }} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm flex items-center gap-2 text-slate-700 dark:text-slate-200">
                       <Key size={14} /> Set API Key
                     </button>
-                    <div className="h-px bg-slate-100 dark:bg-slate-800 my-1"></div>
-                    {/* Launch behavior: remembered across sessions */}
-                    <label className="w-full px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
-                      <Maximize2 size={14} className="shrink-0" />
-                      <span className="flex-1">Open Maximized</span>
-                      <input
-                        type="checkbox"
-                        checked={openMaximized}
-                        onChange={() => {
-                          const next = !openMaximized;
-                          setOpenMaximized(next);
-                          saveViewSettings({ openMaximized: next });
-                          showNotification(next ? "Extension will open maximized" : "Extension will open as a popup", 'info');
-                        }}
-                        className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 bg-white dark:bg-slate-900 border cursor-pointer"
-                      />
-                    </label>
                     <div className="h-px bg-slate-100 dark:bg-slate-800 my-1"></div>
                     {/* Card view metadata: what shows on each card, in which order */}
                     <div className="px-4 py-1.5">
@@ -1570,7 +1673,7 @@ const App: React.FC = () => {
         {/* Content */}
         <div className="flex flex-1 overflow-hidden" onClick={() => setFocusedArea('tabs')}>
           {/* Main Container: Removed top padding to fix sticky header gap issue */}
-          <main className="flex-1 min-w-0 overflow-y-auto px-6 pb-6 pt-0 scroll-smooth">
+          <main className="flex-1 min-w-0 overflow-y-auto px-6 pb-6 pt-0 scroll-smooth" data-tour="tabs-area">
             {/* Visual Spacer to replace padding-top, scrolls away so sticky header hits the top edge */}
             <div className="h-6"></div> 
             
@@ -1668,6 +1771,7 @@ const App: React.FC = () => {
                 onActivate={handleActivateTab}
                 onClose={handleCloseTab}
                 onClosePanel={() => setShowPreview(false)}
+                onSelectTab={setSelectedTabId}
                 refreshSignal={wakeSignal}
               />
             </div>
@@ -1737,6 +1841,17 @@ const App: React.FC = () => {
           />
         )}
 
+        {showCloseCheckedConfirm && (
+          <ConfirmModal
+            title={`Close ${checkedTabIds.length} Tab${checkedTabIds.length > 1 ? 's' : ''}?`}
+            message={`This will close ${checkedTabIds.length} checked tab${checkedTabIds.length > 1 ? 's' : ''} in your browser. This cannot be undone.`}
+            confirmText={`Close ${checkedTabIds.length} Tab${checkedTabIds.length > 1 ? 's' : ''}`}
+            isProcessing={false}
+            onConfirm={handleCloseCheckedTabs}
+            onClose={() => setShowCloseCheckedConfirm(false)}
+          />
+        )}
+
         {contextMenu && (
           <ContextMenu
             x={contextMenu.x}
@@ -1756,13 +1871,12 @@ const App: React.FC = () => {
         )}
 
         {onboardingIndex >= 0 && (
-          <OnboardingTour 
+          <OnboardingTour
             stepIndex={onboardingIndex}
-            totalSteps={currentTourSteps.length}
-            step={currentTourSteps[onboardingIndex]}
+            steps={currentTourSteps}
+            onJump={(i) => setOnboardingIndex(Math.max(0, Math.min(i, currentTourSteps.length - 1)))}
             onNext={(permanent = true) => onboardingIndex < currentTourSteps.length - 1 ? setOnboardingIndex(i => i + 1) : handleFinishOnboarding(permanent)}
             onSkip={(permanent = true) => handleFinishOnboarding(permanent)}
-            onMaximize={focusOrOpenExtensionTab}
             onStartTour={startFullTour}
           />
         )}

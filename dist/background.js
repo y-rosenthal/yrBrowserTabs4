@@ -1,1 +1,1 @@
-chrome.runtime.onInstalled.addListener(()=>{console.log("TabMaster AI installed")});
+chrome.runtime.onInstalled.addListener(()=>{console.log("TabMaster AI installed")});chrome.action.onClicked.addListener(async()=>{const t=chrome.runtime.getURL("app.html");try{const e=await chrome.windows.getCurrent(),a=await chrome.tabs.query({url:t,windowId:e.id});a.length>0?(await chrome.windows.update(e.id,{focused:!0}),await chrome.tabs.update(a[0].id,{active:!0})):await chrome.tabs.create({url:t,windowId:e.id})}catch{await chrome.tabs.create({url:t})}});
