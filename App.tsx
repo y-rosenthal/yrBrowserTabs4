@@ -172,7 +172,7 @@ const App: React.FC = () => {
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   // Card view state (persisted via saveViewSettings)
-  const [tabDisplayMode, setTabDisplayMode] = useState<'detail' | 'card'>('detail');
+  const [tabDisplayMode, setTabDisplayMode] = useState<'detail' | 'card'>('card');
   const [cardGrouping, setCardGrouping] = useState<'tab' | 'window'>('tab');
   const [cardWidth, setCardWidth] = useState(240);
   const [cardMetadata, setCardMetadata] = useState<CardMetadataSetting[]>(DEFAULT_CARD_METADATA);
@@ -735,7 +735,9 @@ const App: React.FC = () => {
   };
 
   const applyCardWidth = (width: number) => {
-    const clamped = Math.max(160, Math.min(480, width));
+    // High cap so zooming can reach a single full-width column; TabCardView
+    // clamps the rendered width to its container so nothing overflows.
+    const clamped = Math.max(160, Math.min(1200, width));
     setCardWidth(clamped);
     saveViewSettings({ cardWidth: clamped });
   };
@@ -1509,7 +1511,7 @@ const App: React.FC = () => {
                   <input
                     type="range"
                     min={160}
-                    max={480}
+                    max={1200}
                     step={20}
                     value={cardWidth}
                     onChange={(e) => applyCardWidth(parseInt(e.target.value, 10))}
@@ -1690,7 +1692,7 @@ const App: React.FC = () => {
           }
           <p className={`text-xs leading-relaxed ${platformInfo.isExtension ? 'text-green-800 dark:text-green-200/80' : 'text-blue-800 dark:text-blue-200/80'}`}>
             {platformInfo.isExtension
-              ? "Extension Active. Single-click previews a tab; double-click (or ↗ / Enter) switches to it. Ctrl+Left/Right moves between Sidebar and Tabs."
+              ? `${tabDisplayMode === 'card' ? 'Press "[" or "]" to zoom cards smaller / larger. ' : ''}Extension Active. Single-click previews a tab; double-click (or ↗ / Enter) switches to it. Ctrl+Left/Right moves between Sidebar and Tabs.`
               : DEMO_NOTICE
             }
           </p>

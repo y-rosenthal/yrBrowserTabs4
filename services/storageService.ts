@@ -18,7 +18,7 @@ const MOCK_STORAGE: StorageData = {
   hasSeenOnboarding: false,
   theme: 'light', // Default to light mode
   apiKey: '',
-  tabViewMode: 'detail',
+  tabViewMode: 'card',
   cardGrouping: 'tab',
   cardWidth: 240,
   cardMetadata: DEFAULT_CARD_METADATA,
@@ -37,7 +37,7 @@ export const getStorageData = async (): Promise<StorageData> => {
           hasSeenOnboarding: result.hasSeenOnboarding || false,
           theme: result.theme || 'light',
           apiKey: result.apiKey || '',
-          tabViewMode: result.tabViewMode || 'detail',
+          tabViewMode: result.tabViewMode || 'card',
           cardGrouping: result.cardGrouping || 'tab',
           cardWidth: result.cardWidth || 240,
           cardMetadata: result.cardMetadata || DEFAULT_CARD_METADATA,

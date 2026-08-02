@@ -139,7 +139,11 @@ export const TabCardView: React.FC<TabCardViewProps> = ({
 }) => {
   const gridRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
-  const thumbHeight = Math.round(cardWidth * 0.7);
+  // The requested card width can exceed the grid's width (zooming all the way
+  // in ends at one full-width column), so clamp it to the container.
+  const [containerWidth, setContainerWidth] = useState(0);
+  const effectiveCardWidth = containerWidth > 0 ? Math.min(cardWidth, containerWidth) : cardWidth;
+  const thumbHeight = Math.round(effectiveCardWidth * 0.7);
 
   // Keep the relative "last accessed" labels ticking.
   const [, setClockTick] = useState(0);
@@ -151,10 +155,12 @@ export const TabCardView: React.FC<TabCardViewProps> = ({
   // Report the current column count so App can do 2-D arrow navigation.
   useEffect(() => {
     const el = gridRef.current;
-    if (!el || !onColumnsChange) return;
+    if (!el) return;
     const report = () => {
       const w = el.clientWidth;
-      onColumnsChange(Math.max(1, Math.floor((w + GRID_GAP) / (cardWidth + GRID_GAP))));
+      setContainerWidth(w);
+      const effW = Math.min(cardWidth, w);
+      onColumnsChange?.(Math.max(1, Math.floor((w + GRID_GAP) / (effW + GRID_GAP))));
     };
     report();
     const observer = new ResizeObserver(report);
@@ -204,7 +210,7 @@ export const TabCardView: React.FC<TabCardViewProps> = ({
     <div
       ref={gridRef}
       className="grid pb-6"
-      style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${cardWidth}px, 1fr))`, gap: GRID_GAP }}
+      style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${effectiveCardWidth}px, 1fr))`, gap: GRID_GAP }}
     >
       {grouping === 'tab'
         ? tabs.map((tab) => {
@@ -220,7 +226,7 @@ export const TabCardView: React.FC<TabCardViewProps> = ({
                 onContextMenu={(e) => onTabContextMenu(e, tab)}
               >
                 <div className="relative" style={{ height: thumbHeight }}>
-                  <TabThumbnail tab={tab} width={cardWidth} height={thumbHeight} />
+                  <TabThumbnail tab={tab} width={effectiveCardWidth} height={thumbHeight} />
 
                   {/* Top-corner controls */}
                   <div
@@ -287,7 +293,7 @@ export const TabCardView: React.FC<TabCardViewProps> = ({
               >
                 <div className="relative" style={{ height: thumbHeight }}>
                   {activeTab ? (
-                    <TabThumbnail tab={activeTab} width={cardWidth} height={thumbHeight} />
+                    <TabThumbnail tab={activeTab} width={effectiveCardWidth} height={thumbHeight} />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center bg-slate-100 dark:bg-slate-800">
                       <AppWindow size={32} className="text-slate-300 dark:text-slate-600" />
