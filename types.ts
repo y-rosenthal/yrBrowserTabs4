@@ -56,7 +56,7 @@ export interface StorageData {
   cardMetadata?: CardMetadataSetting[];
   // What the search box matches against: tab titles/URLs only, or also the
   // captured page text of open tabs.
-  searchScope?: 'title' | 'content';
+  searchScope?: 'domain' | 'title' | 'content';
 }
 
 export interface WindowReorgSnapshot {

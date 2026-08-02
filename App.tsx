@@ -188,8 +188,8 @@ const App: React.FC = () => {
   // Bumped after a sleeping tab is auto-woken so the preview retries.
   const [wakeSignal, setWakeSignal] = useState(0);
 
-  // Search scope: titles/URLs only (fast) or also the captured page text.
-  const [searchScope, setSearchScope] = useState<'title' | 'content'>('title');
+  // Search scope: domain only, titles/URLs, or also the captured page text.
+  const [searchScope, setSearchScope] = useState<'domain' | 'title' | 'content'>('domain');
   const [showSearchScopeMenu, setShowSearchScopeMenu] = useState(false);
   const searchScopeMenuRef = useRef<HTMLDivElement>(null);
   // Page-text index for content search: `${tabId}|${url}` -> lowercased text.
@@ -423,6 +423,11 @@ const App: React.FC = () => {
   }, [searchScope, searchQuery, allTabs]);
 
   const tabMatchesQuery = useCallback((t: Tab, q: string): boolean => {
+    if (searchScope === 'domain') {
+      let domain = 'local';
+      try { domain = new URL(t.url).hostname; } catch (e) { /* non-URL pages match as 'local' */ }
+      return domain.toLowerCase().includes(q);
+    }
     if (t.title.toLowerCase().includes(q) || t.url.toLowerCase().includes(q)) return true;
     if (searchScope === 'content') {
       const text = pageTextIndex.current.get(`${t.id}|${t.url}`);
@@ -702,7 +707,7 @@ const App: React.FC = () => {
     }
   };
 
-  const applySearchScope = (scope: 'title' | 'content') => {
+  const applySearchScope = (scope: 'domain' | 'title' | 'content') => {
     setSearchScope(scope);
     saveViewSettings({ searchScope: scope });
     setShowSearchScopeMenu(false);
@@ -1380,7 +1385,11 @@ const App: React.FC = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
               <input
                 type="text"
-                placeholder={searchScope === 'content' ? "Search titles, URLs & page text..." : "Search tab titles & URLs..."}
+                placeholder={
+                  searchScope === 'content' ? "Search titles, URLs & page text..."
+                  : searchScope === 'title' ? "Search tab titles & URLs..."
+                  : "Search domain names..."
+                }
                 value={searchQuery}
                 onFocus={() => setFocusedArea('tabs')}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -1399,12 +1408,16 @@ const App: React.FC = () => {
                 >
                   {indexingRemaining > 0
                     ? <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 border border-indigo-500 border-t-transparent rounded-full animate-spin" />{indexingRemaining}</span>
-                    : (searchScope === 'content' ? 'Text' : 'Titles')}
+                    : (searchScope === 'content' ? 'Text' : searchScope === 'title' ? 'Titles' : 'Domain')}
                   <ChevronDown size={10} />
                 </button>
                 {showSearchScopeMenu && (
                   <div className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 py-1 animate-in fade-in zoom-in-95 duration-100">
                     <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Search In</div>
+                    <button onClick={() => applySearchScope('domain')} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm text-slate-700 dark:text-slate-200">
+                      <span className="flex items-center justify-between">Domain names {searchScope === 'domain' && <span className="text-indigo-500">✓</span>}</span>
+                      <span className="block text-xs text-slate-400 dark:text-slate-500">Matches only the server name, e.g. "github.com"</span>
+                    </button>
                     <button onClick={() => applySearchScope('title')} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm text-slate-700 dark:text-slate-200">
                       <span className="flex items-center justify-between">Titles &amp; URLs {searchScope === 'title' && <span className="text-indigo-500">✓</span>}</span>
                       <span className="block text-xs text-slate-400 dark:text-slate-500">Fast — matches tab names and addresses</span>

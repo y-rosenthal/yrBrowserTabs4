@@ -22,7 +22,7 @@ const MOCK_STORAGE: StorageData = {
   cardGrouping: 'tab',
   cardWidth: 240,
   cardMetadata: DEFAULT_CARD_METADATA,
-  searchScope: 'title'
+  searchScope: 'domain'
 };
 
 // In-memory fallback for demo mode
@@ -41,7 +41,7 @@ export const getStorageData = async (): Promise<StorageData> => {
           cardGrouping: result.cardGrouping || 'tab',
           cardWidth: result.cardWidth || 240,
           cardMetadata: result.cardMetadata || DEFAULT_CARD_METADATA,
-          searchScope: result.searchScope === 'content' ? 'content' : 'title'
+          searchScope: result.searchScope === 'content' || result.searchScope === 'title' ? result.searchScope : 'domain'
         });
       });
     });
