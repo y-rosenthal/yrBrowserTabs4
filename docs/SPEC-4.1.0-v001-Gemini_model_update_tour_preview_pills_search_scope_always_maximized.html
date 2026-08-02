@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>SPEC-4.0.2-v001-Sequential_default_window_names.qmd – TabMaster AI — Documentation</title>
+<title>SPEC-4.1.0-v001 – TabMaster AI — Documentation</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -30,7 +30,8 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../docs/SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.html" rel="prev">
+<link href="../docs/SPEC-4.0.5-v001-Full_code_review_findings_and_fixes.html" rel="next">
+<link href="../docs/spec-conventions.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
@@ -248,7 +249,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../docs/spec-conventions.html">Specifications</a></li><li class="breadcrumb-item"><a href="../docs/SPEC-4.0.2-v001-Sequential_default_window_names.html"><span class="chapter-title">SPEC-4.0.2-v001-Sequential_default_window_names.qmd</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../docs/spec-conventions.html">Specifications</a></li><li class="breadcrumb-item"><a href="../docs/SPEC-4.1.0-v001-Gemini_model_update_tour_preview_pills_search_scope_always_maximized.html"><span class="chapter-title">SPEC-4.1.0-v001</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -308,7 +309,7 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../docs/SPEC-4.1.0-v001-Gemini_model_update_tour_preview_pills_search_scope_always_maximized.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">SPEC-4.1.0-v001</span></a>
+  <a href="../docs/SPEC-4.1.0-v001-Gemini_model_update_tour_preview_pills_search_scope_always_maximized.html" class="sidebar-item-text sidebar-link active"><span class="chapter-title">SPEC-4.1.0-v001</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -338,7 +339,7 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../docs/SPEC-4.0.2-v001-Sequential_default_window_names.html" class="sidebar-item-text sidebar-link active"><span class="chapter-title">SPEC-4.0.2-v001-Sequential_default_window_names.qmd</span></a>
+  <a href="../docs/SPEC-4.0.2-v001-Sequential_default_window_names.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">SPEC-4.0.2-v001-Sequential_default_window_names.qmd</span></a>
   </div>
 </li>
       </ul>
@@ -353,14 +354,15 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#problem" id="toc-problem" class="nav-link active" data-scroll-target="#problem">Problem</a></li>
-  <li><a href="#change" id="toc-change" class="nav-link" data-scroll-target="#change">Change</a>
-  <ul class="collapse">
-  <li><a href="#behavior-details" id="toc-behavior-details" class="nav-link" data-scroll-target="#behavior-details">Behavior details</a></li>
-  <li><a href="#code-cleanup" id="toc-code-cleanup" class="nav-link" data-scroll-target="#code-cleanup">Code cleanup</a></li>
-  </ul></li>
-  <li><a href="#affected-files" id="toc-affected-files" class="nav-link" data-scroll-target="#affected-files">Affected files</a></li>
-  <li><a href="#out-of-scope" id="toc-out-of-scope" class="nav-link" data-scroll-target="#out-of-scope">Out of scope</a></li>
+  <li><a href="#scope" id="toc-scope" class="nav-link active" data-scroll-target="#scope">Scope</a></li>
+  <li><a href="#gemini-model-update-bug-fix" id="toc-gemini-model-update-bug-fix" class="nav-link" data-scroll-target="#gemini-model-update-bug-fix">1. Gemini model update (bug fix)</a></li>
+  <li><a href="#interactive-tour-overhaul" id="toc-interactive-tour-overhaul" class="nav-link" data-scroll-target="#interactive-tour-overhaul">2. Interactive tour overhaul</a></li>
+  <li><a href="#always-maximized-popup-removed" id="toc-always-maximized-popup-removed" class="nav-link" data-scroll-target="#always-maximized-popup-removed">3. Always maximized — popup removed</a></li>
+  <li><a href="#preview-panel-window-context-and-tab-pills" id="toc-preview-panel-window-context-and-tab-pills" class="nav-link" data-scroll-target="#preview-panel-window-context-and-tab-pills">4. Preview panel: window context and tab pills</a></li>
+  <li><a href="#search-scope-bulk-close" id="toc-search-scope-bulk-close" class="nav-link" data-scroll-target="#search-scope-bulk-close">5. Search scope + bulk close</a></li>
+  <li><a href="#version-number" id="toc-version-number" class="nav-link" data-scroll-target="#version-number">6. Version number</a></li>
+  <li><a href="#verification" id="toc-verification" class="nav-link" data-scroll-target="#verification">Verification</a></li>
+  <li><a href="#notes-accepted-limitations" id="toc-notes-accepted-limitations" class="nav-link" data-scroll-target="#notes-accepted-limitations">Notes / accepted limitations</a></li>
   </ul>
 </nav>
     </div>
@@ -368,10 +370,10 @@ ul.task-list li input[type="checkbox"] {
 <main class="content" id="quarto-document-content">
 
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../docs/spec-conventions.html">Specifications</a></li><li class="breadcrumb-item"><a href="../docs/SPEC-4.0.2-v001-Sequential_default_window_names.html"><span class="chapter-title">SPEC-4.0.2-v001-Sequential_default_window_names.qmd</span></a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../docs/spec-conventions.html">Specifications</a></li><li class="breadcrumb-item"><a href="../docs/SPEC-4.1.0-v001-Gemini_model_update_tour_preview_pills_search_scope_always_maximized.html"><span class="chapter-title">SPEC-4.1.0-v001</span></a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title"><span class="chapter-title">SPEC-4.0.2-v001-Sequential_default_window_names.qmd</span></h1>
-<p class="subtitle lead">SPEC 4.0.2 — Sequential Default Window Names (v001)</p>
+<h1 class="title"><span class="chapter-title">SPEC-4.1.0-v001</span></h1>
+<p class="subtitle lead">Gemini model update, tour overhaul, preview pills, search scope, always-maximized</p>
 </div>
 
 
@@ -388,60 +390,73 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<table class="caption-top table">
-<tbody>
-<tr class="odd">
-<td><strong>Software version</strong></td>
-<td>4.0.2</td>
-</tr>
-<tr class="even">
-<td><strong>Spec revision</strong></td>
-<td>v001</td>
-</tr>
-<tr class="odd">
-<td><strong>Date</strong></td>
-<td>2026-07-22</td>
-</tr>
-<tr class="even">
-<td><strong>Status</strong></td>
-<td>Implemented</td>
-</tr>
-</tbody>
-</table>
-<section id="problem" class="level2">
-<h2 class="anchored" data-anchor-id="problem">Problem</h2>
-<p>When TabMaster AI loads, every browser window gets a default display name generated from alphabetical adjective/noun word lists: “Able Ant”, “Blue Bear”, “Calm Cat”, and so on (A, B, C… ordering, cycling through five words per letter).</p>
-<p>These names are whimsical but unhelpful: they carry no information about a window’s position or identity, and users must mentally map arbitrary word pairs to windows. Sequential names are easier to scan and to talk about (“close window3”).</p>
+<section id="scope" class="level2">
+<h2 class="anchored" data-anchor-id="scope">Scope</h2>
+<p>Feature/fix release driven by user feedback on v4.0.5. Six areas: the Gemini model 404, the interactive tour, launch behavior (popup vs.&nbsp;tab), the preview panel and window cards, search, and version visibility.</p>
 </section>
-<section id="change" class="level2">
-<h2 class="anchored" data-anchor-id="change">Change</h2>
-<p>Default window names become sequential: <code>window1</code>, <code>window2</code>, <code>window3</code>, … assigned in the order windows are reported by the browser (the same index ordering the old scheme used).</p>
-<section id="behavior-details" class="level3">
-<h3 class="anchored" data-anchor-id="behavior-details">Behavior details</h3>
+<section id="gemini-model-update-bug-fix" class="level2">
+<h2 class="anchored" data-anchor-id="gemini-model-update-bug-fix">1. Gemini model update (bug fix)</h2>
+<p><strong>Problem:</strong> “Organize with AI” failed with <code>404 — This model models/gemini-2.5-flash is no longer available to new users</code>. Google has closed <code>gemini-2.5-flash</code> to new API keys ahead of its October 2026 shutdown; new keys must use a 3.x-tier model.</p>
+<p><strong>Fix (<code>services/geminiService.ts</code>):</strong> both AI calls now go through a fallback chain — <code>gemini-3.5-flash</code> → <code>gemini-flash-latest</code> → <code>gemini-2.5-flash</code>. The first model that responds is used; a model-unavailable error (404 / NOT_FOUND / “no longer available”) advances to the next candidate, so new keys get the current model while old grandfathered keys keep working.</p>
+</section>
+<section id="interactive-tour-overhaul" class="level2">
+<h2 class="anchored" data-anchor-id="interactive-tour-overhaul">2. Interactive tour overhaul</h2>
+<p>Previous behavior: five steps, cards at hard-coded screen positions, arrows only on some steps, no way to jump between steps.</p>
+<p>New behavior (<code>components/OnboardingTour.tsx</code>):</p>
 <ul>
-<li><code>generateWindowName(index)</code> returns <code>window{index + 1}</code> (1-based, no padding, no space).</li>
-<li><code>generateWindowNames(windowIds)</code> is unchanged in shape: it maps each window ID to its generated name by input order.</li>
-<li><strong>Custom names still win.</strong> Names the user typed, and names produced by the AI “Auto Name” feature, are stored as <code>customWindowNames</code> and continue to override the generated defaults at merge time in <code>App.tsx</code> (<code>loadTabs</code>). This spec changes only the fallback default.</li>
-<li>Windows are not renamed at the browser level; as before, this is a display name inside the extension.</li>
+<li><strong>Element-anchored steps with arrows.</strong> Each step names a <code>data-tour</code> attribute on a real UI element. The tour spotlights that element (dim overlay with a bright cutout ring) and places its card on whichever side has room, with an arrow pointing at the element. Steps whose element isn’t on screen fall back to a centered card.</li>
+<li><strong>Expanded coverage.</strong> Eleven steps: welcome, windows sidebar, auto-name/undo, Organize with AI, search (including scope), detail/card views, working with tabs (checkboxes, context menus, keyboard), preview panel, export, theme, settings.</li>
+<li><strong>Stationary “Tour Steps” controller.</strong> A persistent panel lists every step; clicking one jumps straight to it. It has an <strong>End Tour</strong> button, can be dragged by its header, and automatically moves to another corner if it would cover the spotlighted element or the step card.</li>
+<li>Step cards also gained a <strong>Back</strong> button.</li>
 </ul>
 </section>
-<section id="code-cleanup" class="level3">
-<h3 class="anchored" data-anchor-id="code-cleanup">Code cleanup</h3>
-<p><code>services/nameGenerator.ts</code> shrinks from ~97 lines to ~18: the <code>ADJECTIVES</code> and <code>NOUNS</code> word tables (52 lists, 260 words) and the alphabet-cycling logic are deleted. No other module imported them.</p>
-</section>
-</section>
-<section id="affected-files" class="level2">
-<h2 class="anchored" data-anchor-id="affected-files">Affected files</h2>
+<section id="always-maximized-popup-removed" class="level2">
+<h2 class="anchored" data-anchor-id="always-maximized-popup-removed">3. Always maximized — popup removed</h2>
+<p>Previous behavior: the toolbar button opened an 800×600 popup which then (optionally, via the “Open Maximized” setting) redirected itself to a full tab; the Maximize button was kept left of the icon row so the popup couldn’t clip it.</p>
+<p>New behavior: the extension <strong>only</strong> runs as a full browser tab.</p>
 <ul>
-<li><code>services/nameGenerator.ts</code> — rewritten (word lists removed, sequential logic added).</li>
+<li><code>manifest.json</code> no longer declares <code>default_popup</code>; clicking the toolbar icon fires <code>chrome.action.onClicked</code> in <code>background.js</code>, which focuses an existing dashboard tab in the current window or opens a new one.</li>
+<li>Removed: the Maximize header button, the “Open Maximized” setting (and its storage key), popup detection (<code>isExtensionPopup</code>), <code>focusOrOpenExtensionTab</code>, the 800px popup CSS, and the <code>hidden lg:</code> classes that hid Help/Export/Preview buttons at popup widths — the full icon row is now always visible.</li>
 </ul>
-<p>Call sites in <code>App.tsx</code> are untouched; the function signatures are preserved.</p>
 </section>
-<section id="out-of-scope" class="level2">
-<h2 class="anchored" data-anchor-id="out-of-scope">Out of scope</h2>
+<section id="preview-panel-window-context-and-tab-pills" class="level2">
+<h2 class="anchored" data-anchor-id="preview-panel-window-context-and-tab-pills">4. Preview panel: window context and tab pills</h2>
+<p>The preview panel now has the <strong>same layout in every mode</strong> (tabs, windows, AI groups), making it obvious what is being previewed:</p>
 <ul>
-<li>AI-generated window naming (<code>generateWindowNamesWithAI</code> in <code>services/geminiService.ts</code>) is unchanged.</li>
-<li>Renumbering after windows close (e.g.&nbsp;gaps like window1, window3) follows the same rule as the old scheme: defaults are recomputed from current window order on each load, so numbers stay contiguous.</li>
+<li>A header row with a <strong>WINDOW badge</strong>, the window’s name, and its tab count.</li>
+<li>A <strong>pill strip</strong> with one pill per tab in that window. The previewed tab’s pill is filled (indigo) and shows its full title; other pills truncate at ~130px and reveal their full title on hover. Clicking a pill previews that tab. Beyond 8 tabs the strip collapses behind a <strong>“+N more”</strong> toggle.</li>
+<li>Below that, the previewed tab’s own row (favicon, title, switch-to-tab button) and the live content preview as before.</li>
+</ul>
+<p>Window cards in card view now label their badge <strong>“N tabs”</strong> instead of a bare number. The preview-toggle (eye) tooltip is now <strong>“Show/hide preview panel”</strong>.</p>
+</section>
+<section id="search-scope-bulk-close" class="level2">
+<h2 class="anchored" data-anchor-id="search-scope-bulk-close">5. Search scope + bulk close</h2>
+<p><strong>What search matched before:</strong> tab <strong>titles and URLs only</strong> — never page content. That is now stated in the UI and controllable:</p>
+<ul>
+<li>A scope switch inside the search bar offers <strong>“Titles &amp; URLs”</strong> (default, instant) and <strong>“Titles, URLs &amp; page text”</strong>.</li>
+<li>Page-text scope lazily captures the visible text (<code>document.body.innerText</code>, capped at 500 kB per tab) of open tabs via the <code>scripting</code> permission, through the same 4-at-a-time concurrency gate as thumbnails, cached per tab+URL (500-entry LRU). A small counter in the search bar shows indexing progress. <strong>Limits (shown in the scope menu):</strong> sleeping (discarded) tabs are never woken for indexing, and restricted pages (<code>chrome://</code>, Web Store) cannot be read — both still match by title/URL.</li>
+<li><strong>Check All + bulk close:</strong> a “Check All (N)” button checks every currently displayed tab (i.e.&nbsp;the current search results). With tabs checked, the toolbar shows <strong>Move N</strong>, <strong>Close N</strong> (with a confirmation dialog — closing is not undoable), and an uncheck button. Workflow: search “amazon” → Check All → Close.</li>
+</ul>
+</section>
+<section id="version-number" class="level2">
+<h2 class="anchored" data-anchor-id="version-number">6. Version number</h2>
+<ul>
+<li>Bumped <strong>4.0.5 → 4.1.0</strong> in <code>package.json</code> and <code>manifest.json</code>.</li>
+<li>The version is now <strong>visible in the UI</strong>: the sidebar header shows <code>N Windows • M Tabs • vX.Y.Z</code>. It is injected at build time from <code>package.json</code> via a <code>__APP_VERSION__</code> define in <code>vite.config.ts</code>, so it can never drift from the released version.</li>
+</ul>
+</section>
+<section id="verification" class="level2">
+<h2 class="anchored" data-anchor-id="verification">Verification</h2>
+<ul>
+<li><code>npm run build</code> (strict <code>tsc</code> + Vite) passes; <code>dist/</code> rebuilt.</li>
+<li><code>quarto render</code> regenerates the book with this spec.</li>
+</ul>
+</section>
+<section id="notes-accepted-limitations" class="level2">
+<h2 class="anchored" data-anchor-id="notes-accepted-limitations">Notes / accepted limitations</h2>
+<ul>
+<li>Full-text search cannot see sleeping tabs without waking them (which would be slow and memory-hungry); title/URL matching still applies to them. This is by design.</li>
+<li>The Gemini model list will need occasional refreshes as Google retires models; the fallback chain makes that a one-line change.</li>
 </ul>
 
 
@@ -954,11 +969,14 @@ ul.task-list li input[type="checkbox"] {
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../docs/SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.html" class="pagination-link" aria-label="SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.qmd">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-title">SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.qmd</span></span>
+      <a href="../docs/spec-conventions.html" class="pagination-link" aria-label="spec-conventions.qmd">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-title">spec-conventions.qmd</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
+      <a href="../docs/SPEC-4.0.5-v001-Full_code_review_findings_and_fixes.html" class="pagination-link" aria-label="SPEC-4.0.5-v001">
+        <span class="nav-page-text"><span class="chapter-title">SPEC-4.0.5-v001</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
   </div>
 </nav>
 </div> <!-- /content -->
