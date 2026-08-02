@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.qmd – TabMaster AI — Documentation</title>
+<title>SPEC-4.1.1-v001 – TabMaster AI — Documentation</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -30,8 +30,8 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../docs/SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.html" rel="next">
-<link href="../docs/SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.html" rel="prev">
+<link href="../docs/SPEC-4.1.0-v001-Gemini_model_update_tour_preview_pills_search_scope_always_maximized.html" rel="next">
+<link href="../docs/spec-conventions.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
@@ -249,7 +249,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../docs/spec-conventions.html">Specifications</a></li><li class="breadcrumb-item"><a href="../docs/SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.html"><span class="chapter-title">SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.qmd</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../docs/spec-conventions.html">Specifications</a></li><li class="breadcrumb-item"><a href="../docs/SPEC-4.1.1-v001-Stable_row_order_when_closing_tabs.html"><span class="chapter-title">SPEC-4.1.1-v001</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -309,7 +309,7 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../docs/SPEC-4.1.1-v001-Stable_row_order_when_closing_tabs.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">SPEC-4.1.1-v001</span></a>
+  <a href="../docs/SPEC-4.1.1-v001-Stable_row_order_when_closing_tabs.html" class="sidebar-item-text sidebar-link active"><span class="chapter-title">SPEC-4.1.1-v001</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -334,7 +334,7 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../docs/SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.html" class="sidebar-item-text sidebar-link active"><span class="chapter-title">SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.qmd</span></a>
+  <a href="../docs/SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.qmd</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -359,15 +359,10 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#the-actions-column-explained" id="toc-the-actions-column-explained" class="nav-link active" data-scroll-target="#the-actions-column-explained">The “Actions” column, explained</a></li>
-  <li><a href="#issue-5-continuous-icon-flicker-while-idle" id="toc-issue-5-continuous-icon-flicker-while-idle" class="nav-link" data-scroll-target="#issue-5-continuous-icon-flicker-while-idle">Issue 5 — Continuous icon flicker while idle</a></li>
-  <li><a href="#issue-6-welcome-dialog-reappears-after-being-dismissed" id="toc-issue-6-welcome-dialog-reappears-after-being-dismissed" class="nav-link" data-scroll-target="#issue-6-welcome-dialog-reappears-after-being-dismissed">Issue 6 — Welcome dialog reappears after being dismissed</a></li>
-  <li><a href="#issue-7-latent-stale-subscription-closure-resetting-undo-history" id="toc-issue-7-latent-stale-subscription-closure-resetting-undo-history" class="nav-link" data-scroll-target="#issue-7-latent-stale-subscription-closure-resetting-undo-history">Issue 7 (latent) — Stale subscription closure resetting undo history</a></li>
-  <li><a href="#issue-8-latent-unstable-lastaccessed-fallback" id="toc-issue-8-latent-unstable-lastaccessed-fallback" class="nav-link" data-scroll-target="#issue-8-latent-unstable-lastaccessed-fallback">Issue 8 (latent) — Unstable <code>lastAccessed</code> fallback</a></li>
-  <li><a href="#issue-9-adversarial-review-findings-hardening-round" id="toc-issue-9-adversarial-review-findings-hardening-round" class="nav-link" data-scroll-target="#issue-9-adversarial-review-findings-hardening-round">Issue 9 — Adversarial review findings (hardening round)</a></li>
-  <li><a href="#affected-files" id="toc-affected-files" class="nav-link" data-scroll-target="#affected-files">Affected files</a></li>
-  <li><a href="#verified-non-causes" id="toc-verified-non-causes" class="nav-link" data-scroll-target="#verified-non-causes">Verified non-causes</a></li>
-  <li><a href="#out-of-scope" id="toc-out-of-scope" class="nav-link" data-scroll-target="#out-of-scope">Out of scope</a></li>
+  <li><a href="#problem" id="toc-problem" class="nav-link active" data-scroll-target="#problem">Problem</a></li>
+  <li><a href="#behavior-change" id="toc-behavior-change" class="nav-link" data-scroll-target="#behavior-change">Behavior change</a></li>
+  <li><a href="#implementation" id="toc-implementation" class="nav-link" data-scroll-target="#implementation">Implementation</a></li>
+  <li><a href="#version" id="toc-version" class="nav-link" data-scroll-target="#version">Version</a></li>
   </ul>
 </nav>
     </div>
@@ -375,10 +370,10 @@ ul.task-list li input[type="checkbox"] {
 <main class="content" id="quarto-document-content">
 
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../docs/spec-conventions.html">Specifications</a></li><li class="breadcrumb-item"><a href="../docs/SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.html"><span class="chapter-title">SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.qmd</span></a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../docs/spec-conventions.html">Specifications</a></li><li class="breadcrumb-item"><a href="../docs/SPEC-4.1.1-v001-Stable_row_order_when_closing_tabs.html"><span class="chapter-title">SPEC-4.1.1-v001</span></a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title"><span class="chapter-title">SPEC-4.0.2-v003-Flicker_onboarding_and_stability_fixes.qmd</span></h1>
-<p class="subtitle lead">SPEC 4.0.2 — Flicker, Onboarding &amp; Stability Fixes (v003)</p>
+<h1 class="title"><span class="chapter-title">SPEC-4.1.1-v001</span></h1>
+<p class="subtitle lead">Stable row order when closing tabs</p>
 </div>
 
 
@@ -395,99 +390,35 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<table class="caption-top table">
-<tbody>
-<tr class="odd">
-<td><strong>Software version</strong></td>
-<td>4.0.2</td>
-</tr>
-<tr class="even">
-<td><strong>Spec revision</strong></td>
-<td>v003 (supersedes v002)</td>
-</tr>
-<tr class="odd">
-<td><strong>Date</strong></td>
-<td>2026-07-22</td>
-</tr>
-<tr class="even">
-<td><strong>Status</strong></td>
-<td>Implemented</td>
-</tr>
-</tbody>
-</table>
-<p>This revision extends v002 with a second round of issues: the flickering icon column, the reappearing Welcome dialog, and two latent state bugs uncovered while diagnosing them. Root causes were verified by a multi-agent investigation (three independent analysis lenses, each claim adversarially re-checked against the code).</p>
-<section id="the-actions-column-explained" class="level2">
-<h2 class="anchored" data-anchor-id="the-actions-column-explained">The “Actions” column, explained</h2>
-<p>The first table column after the checkbox holds two per-row buttons — <strong>↗ Switch to Tab</strong> and <strong>× Close Tab</strong>. They are rendered with <code>opacity: 0</code> and only become visible when the row is hovered or selected, which is why the column usually looks empty. The icon users see flickering is <strong>not</strong> in the Actions column: it is the favicon column, the narrow unlabeled column between Actions and Tab Name.</p>
+<section id="problem" class="level2">
+<h2 class="anchored" data-anchor-id="problem">Problem</h2>
+<p>In detail view, closing a tab (especially the top one) sometimes reshuffled the remaining rows. Cause: closing a tab makes Chrome activate a neighboring tab, which updates that tab’s <code>lastAccessed</code> timestamp; the resulting refresh re-sorted the list (default sort is “Last Accessed, newest first”), so the newly-activated tab jumped to the top — reordering rows right under the user’s cursor. The same reshuffle could happen from any background tab activity while the list was open.</p>
 </section>
-<section id="issue-5-continuous-icon-flicker-while-idle" class="level2">
-<h2 class="anchored" data-anchor-id="issue-5-continuous-icon-flicker-while-idle">Issue 5 — Continuous icon flicker while idle</h2>
-<p><strong>Primary cause (confirmed).</strong> Rows whose favicon could not load fell back to <code>https://via.placeholder.com/16?text=?</code> via an <code>onError</code> handler that re-assigned <code>img.src</code>. That domain is dead (TLS connections fail). Per the HTML spec, assigning <code>src</code> — even the same value — restarts image fetching, so each failure re-fired <code>onError</code>, which re-assigned <code>src</code>, forever: an infinite error/retry loop repainting the 16 px icon (blank ↔︎ broken-glyph) several times a second, on every affected row at once, with a continuous stream of doomed network requests. With 174 tabs, several rows were always looping. The same defect existed in <code>PreviewPanel</code> and the (unused) <code>TabCard</code>.</p>
-<p><strong>Amplifier (confirmed).</strong> The dashboard subscribes to eight <code>chrome.tabs</code>/ <code>chrome.windows</code> events with a 200 ms debounce and reloads the full window snapshot on each. Background tabs (Gmail unread counts, YouTube, Memory Saver discards) fire these continuously, so the table re-rendered every few hundred milliseconds even when idle. React only commits real DOM changes for rows whose data changed — but the events themselves supply such changes (title strings, tabs cycling through reload transiently reporting <strong>no</strong> favicon), so icons flipped between image and fallback as tabs slept and woke.</p>
-<p><strong>Fixes.</strong></p>
+<section id="behavior-change" class="level2">
+<h2 class="anchored" data-anchor-id="behavior-change">Behavior change</h2>
+<p>The <strong>visible row order is now frozen</strong>. It re-sorts only when the user takes an explicit action:</p>
 <ul>
-<li>New <code>components/Favicon.tsx</code>: renders the tab icon with a <strong>local</strong> Globe glyph fallback (no network). A <code>failed</code> flag latches on error and resets only when the URL actually changes — a loop is structurally impossible. Fixed 16 px box, so no width wobble. Replaces the broken <code>&lt;img onError&gt;</code> pattern in <code>TabListView</code> and <code>PreviewPanel</code>; the unused <code>TabCard.tsx</code> (same defect) was deleted.</li>
-<li><code>services/tabService.ts</code> keeps a <code>lastKnownFavicons</code> map (tab id → last non-empty <code>favIconUrl</code>), so tabs mid-reload keep their icon instead of flashing the fallback.</li>
-<li><code>loadTabs</code> now computes a JSON signature of the fresh window snapshot and <strong>skips all state updates when nothing changed</strong>, so display-irrelevant events (audible/muted/loading churn) no longer re-render 174 rows.</li>
+<li>changing the sort column or direction (including the AI-group “Sort All” menu — repeating the same field forces a fresh re-sort),</li>
+<li>changing the view, window filter, sidebar selection, or search query/scope,</li>
+<li>pressing the <strong>Refresh</strong> button (its tooltip is now “Refresh &amp; re-sort tabs”).</li>
+</ul>
+<p>Between those actions:</p>
+<ul>
+<li>closing a tab simply removes its row — nothing else moves;</li>
+<li>newly opened tabs append at the bottom of the list;</li>
+<li>cell contents (title, “last accessed” label, favicon) still update live — only the <em>order</em> is pinned.</li>
 </ul>
 </section>
-<section id="issue-6-welcome-dialog-reappears-after-being-dismissed" class="level2">
-<h2 class="anchored" data-anchor-id="issue-6-welcome-dialog-reappears-after-being-dismissed">Issue 6 — Welcome dialog reappears after being dismissed</h2>
-<p><strong>Cause (confirmed).</strong> The <strong>X</strong> button and “Got it” both close the dialog passing the “Don’t show this again” checkbox state (default <em>unchecked</em>), so plain dismissal never persists <code>hasSeenOnboarding</code>. The first-run check ran inside <code>loadTabs</code>, which re-runs on <strong>every</strong> chrome tab event — and browsing previews generates a stream of them (waking/reloading a discarded tab fires <code>onUpdated</code> several times). Result: dismiss with X, wake a few tabs, dialog pops up again.</p>
-<p><strong>Fix.</strong> A session-scoped guard (<code>hasAutoShownWelcome</code> ref): the dialog auto-shows <strong>at most once per app session</strong>, no matter how it is dismissed. Semantics now:</p>
+<section id="implementation" class="level2">
+<h2 class="anchored" data-anchor-id="implementation">Implementation</h2>
 <ul>
-<li>Fresh profile, first launch → dialog shows once.</li>
-<li>Dismissed with X or “Got it” (checkbox unchecked) → stays closed for the rest of the session; will show once again next session.</li>
-<li>“Don’t show this again” checked → never auto-shows again.</li>
-<li>Help menu → “Show Welcome Screen” still opens it manually at any time.</li>
+<li><code>App.tsx</code>: <code>currentDisplayedTabs</code> keeps a ref of the last row order plus a context key (sort + filters + search + a <code>resortEpoch</code> bumped by the Refresh button). While the key is unchanged, fresh tab data is re-mapped onto the remembered order; when it changes, the list re-sorts and the order is re-snapshotted. This also stabilizes card view and keyboard navigation, which share this list.</li>
+<li><code>TabListView.tsx</code>: in controlled mode the table now renders the parent’s (already stabilized) order verbatim instead of re-sorting it — the previous internal re-sort would have overridden the freeze. Uncontrolled tables (AI-group view) apply the same freeze internally, keyed by their own sort state and the <code>forcedSort</code> timestamp.</li>
 </ul>
 </section>
-<section id="issue-7-latent-stale-subscription-closure-resetting-undo-history" class="level2">
-<h2 class="anchored" data-anchor-id="issue-7-latent-stale-subscription-closure-resetting-undo-history">Issue 7 (latent) — Stale subscription closure resetting undo history</h2>
-<p>Found during the flicker investigation. The mount-time effect captured the first-render <code>loadTabs</code> closure permanently (<code>[]</code> deps), so every chrome event ran with <code>windows=[]</code>, <code>historyIndex=-1</code>: it blinked the toolbar refresh spinner, and — worse — took the “first load” branch, <strong>resetting the window-rename undo/redo history on every event</strong> and rebuilding the name map (un-persisted in-session names could be reverted).</p>
-<p><strong>Fix.</strong> The subscription now calls the latest <code>loadTabs</code> through a ref (<code>loadTabsRef</code>), so event-driven reloads see current state and take the normal update path. Undo history survives background events.</p>
-</section>
-<section id="issue-8-latent-unstable-lastaccessed-fallback" class="level2">
-<h2 class="anchored" data-anchor-id="issue-8-latent-unstable-lastaccessed-fallback">Issue 8 (latent) — Unstable <code>lastAccessed</code> fallback</h2>
-<p><code>getWindows</code> mapped <code>lastAccessed: t.lastAccessed || Date.now()</code> — tabs lacking the field were re-stamped with a fresh time on every reload, churning the default “Last Accessed” sort order. Now falls back to a stable <code>0</code>, displayed as “—” in the table.</p>
-</section>
-<section id="issue-9-adversarial-review-findings-hardening-round" class="level2">
-<h2 class="anchored" data-anchor-id="issue-9-adversarial-review-findings-hardening-round">Issue 9 — Adversarial review findings (hardening round)</h2>
-<p>After the fixes above, an adversarial multi-agent review of the full diff (three lenses, 21 agents, every finding re-verified against the code) confirmed nine further defects, all fixed:</p>
-<ol type="1">
-<li><strong>Popup layout</strong>: preview-pane-open-by-default would squeeze the ~800 px extension <em>popup</em> to an unusably narrow table. The pane now defaults open only when the viewport is wider than 800 px (full-tab dashboard) and stays closed in the popup.</li>
-<li><strong>Snapshot-skip side effects</strong>: the manual Refresh button silently did nothing when the snapshot was unchanged, and relative “Last Accessed” times froze during quiet periods. Refresh now forces a reload (<code>loadTabs(true)</code>), and the table re-renders once a minute so times keep ticking.</li>
-<li><strong>Duplicate window names</strong>: after closing a window, the stale in-memory name map shadowed the recomputed defaults, yielding two “window2” and no “window1”. Since every rename path (manual, AI, undo/redo) persists to storage, the recomputed defaults + stored customs are now authoritative on reload; closed windows are pruned from the map.</li>
-<li><strong>Stale favicon after navigation</strong>: the last-known-favicon cache is now scoped to the page <em>origin</em>, so a tab that navigates from github.com to a site with no favicon stops showing GitHub’s icon (the mid-reload flicker protection, where the origin is unchanged, still works).</li>
-<li><strong>Wake button on the wrong tab</strong>: switching tabs while a (up to 15 s) wake was in flight let its completion clear the <em>new</em> tab’s UI, and a previous tab’s “asleep” flag could briefly mislabel the next tab. Per-tab flags are reset on every fetch, and wake completion is keyed to the tab it started for.</li>
-<li><strong>Crash on URL-less tabs</strong>: <code>new URL('')</code> for a tab still pending its first navigation threw during render, white-screening the app (no error boundary). The PreviewPanel now guards hostname parsing like the table already did.</li>
-<li><strong>CSV export</strong> printed 12/31/1969 for tabs with the new stable <code>lastAccessed: 0</code> fallback; it now exports an empty cell.</li>
-<li><strong>Restricted-page detection</strong> missed Chrome’s “Cannot access …” error phrasings, so <code>chrome://</code> tabs showed the generic sleep message instead of the security explanation; the match now covers that family.</li>
-<li><strong>Missing events</strong>: <code>tabs.onActivated</code> and <code>windows.onFocusChanged</code> were not subscribed, so active-tab highlights and <code>lastAccessed</code> went stale until an unrelated event fired. Both added (the debounce + snapshot-skip absorb the extra firings).</li>
-</ol>
-</section>
-<section id="affected-files" class="level2">
-<h2 class="anchored" data-anchor-id="affected-files">Affected files</h2>
-<ul>
-<li><code>components/Favicon.tsx</code> — new.</li>
-<li><code>components/TabCard.tsx</code> — deleted (unused, contained the same bug).</li>
-<li><code>components/TabListView.tsx</code> — uses <code>Favicon</code>; “—” for unknown times; once-a-minute clock tick.</li>
-<li><code>components/PreviewPanel.tsx</code> — uses <code>Favicon</code>; per-tab wake/sleep state; guarded hostname parsing.</li>
-<li><code>services/tabService.ts</code> — origin-scoped favicon cache; stable <code>lastAccessed</code> fallback; broader restricted-page detection; subscribes to <code>onActivated</code>/<code>onFocusChanged</code>.</li>
-<li><code>App.tsx</code> — onboarding session guard; <code>loadTabsRef</code> stale-closure fix; snapshot-signature skip with <code>force</code> for manual refresh; authoritative name-map recompute; viewport-aware preview default; CSV export guard.</li>
-</ul>
-</section>
-<section id="verified-non-causes" class="level2">
-<h2 class="anchored" data-anchor-id="verified-non-causes">Verified non-causes</h2>
-<p>For the record, the investigation explicitly ruled out: a feedback loop from <code>loadTabs</code> itself; unstable React row keys; React resetting the DOM-mutated <code>img.src</code> (React 18 diffs against its own previous vdom, not the live DOM); CSP blocking favicons; <code>scrollIntoView</code> or CSS transitions replaying on re-render; and sticky-header repaints.</p>
-</section>
-<section id="out-of-scope" class="level2">
-<h2 class="anchored" data-anchor-id="out-of-scope">Out of scope</h2>
-<ul>
-<li>Filtering which <code>chrome.tabs.onUpdated</code> payloads trigger a reload (the snapshot-signature skip makes this mostly moot).</li>
-<li>Persisting “welcome dismissed” across sessions on plain X-dismissal (the existing checkbox already provides permanence; see Issue 6 semantics).</li>
-<li><code>table-fixed</code> column layout: considered as insurance against width redistribution, but measurement showed text columns are hard-capped by <code>truncate</code>, and fixed widths risk clipping. Revisit only if any residual jitter is observed after these fixes.</li>
-</ul>
+<section id="version" class="level2">
+<h2 class="anchored" data-anchor-id="version">Version</h2>
+<p><code>package.json</code> / <code>manifest.json</code> bumped <strong>4.1.0 → 4.1.1</strong>.</p>
 
 
 </section>
@@ -999,13 +930,13 @@ ul.task-list li input[type="checkbox"] {
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../docs/SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.html" class="pagination-link" aria-label="SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.qmd">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-title">SPEC-4.0.4-v001-Card_view_numeric_sort_rename_and_click_nav.qmd</span></span>
+      <a href="../docs/spec-conventions.html" class="pagination-link" aria-label="spec-conventions.qmd">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-title">spec-conventions.qmd</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../docs/SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.html" class="pagination-link" aria-label="SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.qmd">
-        <span class="nav-page-text"><span class="chapter-title">SPEC-4.0.2-v002-Window_names_preview_and_layout_fixes.qmd</span></span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../docs/SPEC-4.1.0-v001-Gemini_model_update_tour_preview_pills_search_scope_always_maximized.html" class="pagination-link" aria-label="SPEC-4.1.0-v001">
+        <span class="nav-page-text"><span class="chapter-title">SPEC-4.1.0-v001</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
