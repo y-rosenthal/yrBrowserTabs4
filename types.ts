@@ -24,6 +24,7 @@ export interface TabGroup {
 export enum ViewMode {
   ALL = 'ALL',
   BY_WINDOW = 'BY_WINDOW',
+  BY_WEBSITE = 'BY_WEBSITE',
   AI_GROUPED = 'AI_GROUPED'
 }
 

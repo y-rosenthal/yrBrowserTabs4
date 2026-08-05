@@ -39,6 +39,11 @@ const FULL_TOUR_STEPS: OnboardingStep[] = [
     content: 'Let Gemini generate descriptive names for your windows based on what is open in them. Every rename — manual or AI — can be reverted with the Undo/Redo arrows.'
   },
   {
+    anchor: 'organize-website',
+    title: 'Organize by Website',
+    content: 'Instantly group your tabs into a section for each website (domain name) — no AI needed. From this view, "Apply to Windows" physically reorganizes your browser so each website gets its own window — and it can be undone.'
+  },
+  {
     anchor: 'organize',
     title: 'Organize with AI',
     content: 'Gemini sorts all your tabs into semantic groups like Development, Shopping, or News. From the grouped view, "Apply to Windows" physically reorganizes your browser windows to match — and it can be undone.'
@@ -517,17 +522,39 @@ const App: React.FC = () => {
     return next;
   }, [filteredTabs, getSortedTabs, sortField, sortDirection, viewMode, activeWindowId, searchQuery, searchScope, sidebarSelectedWindowIds, resortEpoch]);
 
-  // AI Grouped Tabs with Search Filter
+  // Both grouped views (AI categories, per-website sections) share the same
+  // section-based UI; this flag gates the shared rendering and controls.
+  const isGroupedView = viewMode === ViewMode.AI_GROUPED || viewMode === ViewMode.BY_WEBSITE;
+
+  // Website groups: one section per domain name, computed locally (no AI).
+  const websiteGroups = useMemo<TabGroup[]>(() => {
+    if (viewMode !== ViewMode.BY_WEBSITE) return [];
+    const byDomain = new Map<string, string[]>();
+    for (const t of allTabs) {
+      let domain = 'local';
+      try { domain = new URL(t.url).hostname; } catch (e) { /* non-URL pages group under 'local' */ }
+      const ids = byDomain.get(domain);
+      if (ids) ids.push(t.id); else byDomain.set(domain, [t.id]);
+    }
+    return [...byDomain.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([domain, tabIds]) => ({ categoryName: domain, tabIds }));
+  }, [viewMode, allTabs]);
+
+  // Grouped tabs (AI or website sections) with Search Filter
   const filteredTabGroups = useMemo(() => {
-    if (viewMode !== ViewMode.AI_GROUPED) return [];
-    
+    const source = viewMode === ViewMode.AI_GROUPED ? tabGroups
+      : viewMode === ViewMode.BY_WEBSITE ? websiteGroups
+      : null;
+    if (!source) return [];
+
     // If no search, return all
-    if (!searchQuery.trim()) return tabGroups;
-    
+    if (!searchQuery.trim()) return source;
+
     const q = searchQuery.toLowerCase();
-    
+
     // Filter tabs within groups, return groups that are not empty
-    return tabGroups.map(group => {
+    return source.map(group => {
       const filteredIds = group.tabIds.filter(id => {
         const t = allTabs.find(tab => tab.id === id);
         if (!t) return false;
@@ -535,13 +562,13 @@ const App: React.FC = () => {
       });
       return { ...group, tabIds: filteredIds };
     }).filter(group => group.tabIds.length > 0);
-  }, [viewMode, tabGroups, searchQuery, allTabs, tabMatchesQuery]);
+  }, [viewMode, tabGroups, websiteGroups, searchQuery, allTabs, tabMatchesQuery]);
 
 
   // Navigation Tabs: Flattened list for keyboard navigation that matches the visual order
   const navigationTabs = useMemo(() => {
-    // If in AI Grouped mode, flatten the filtered groups
-    if (viewMode === ViewMode.AI_GROUPED && sidebarSelectedWindowIds.length === 0) {
+    // If in a grouped mode (AI or website), flatten the filtered groups
+    if (isGroupedView && sidebarSelectedWindowIds.length === 0) {
       return filteredTabGroups.flatMap(g => 
         // We also need to apply the sort here to match visual order
         getSortedTabs(
@@ -553,7 +580,7 @@ const App: React.FC = () => {
     }
     // Otherwise, it renders the standard sorted list
     return currentDisplayedTabs;
-  }, [viewMode, searchQuery, sidebarSelectedWindowIds, filteredTabGroups, allTabs, currentDisplayedTabs, getSortedTabs]);
+  }, [isGroupedView, searchQuery, sidebarSelectedWindowIds, filteredTabGroups, allTabs, currentDisplayedTabs, getSortedTabs]);
 
   // --- ACTIONS ---
   const handleRenameWindow = async (windowId: string, newName: string) => {
@@ -622,7 +649,7 @@ const App: React.FC = () => {
         return;
       }
       if (focusedArea === 'sidebar') {
-        const totalItems = 2 + windows.length;
+        const totalItems = 3 + windows.length;
         if (e.key === 'ArrowDown') {
           e.preventDefault();
           setSidebarFocusIndex(prev => Math.min(prev + 1, totalItems - 1));
@@ -631,9 +658,10 @@ const App: React.FC = () => {
           setSidebarFocusIndex(prev => Math.max(prev - 1, 0));
         } else if (e.key === 'Enter') {
           if (sidebarFocusIndex === 0) { setViewMode(ViewMode.ALL); setActiveWindowId(null); }
-          else if (sidebarFocusIndex === 1) { handleOrganizeTabs(); } // "Organize with AI" button logic
+          else if (sidebarFocusIndex === 1) { setViewMode(ViewMode.BY_WEBSITE); } // "Organize by Website" button logic
+          else if (sidebarFocusIndex === 2) { handleOrganizeTabs(); } // "Organize with AI" button logic
           else {
-            const winIdx = sidebarFocusIndex - 2;
+            const winIdx = sidebarFocusIndex - 3;
             if (windows[winIdx]) { setViewMode(ViewMode.BY_WINDOW); setActiveWindowId(windows[winIdx].id); }
           }
         }
@@ -1057,8 +1085,11 @@ const App: React.FC = () => {
       // the reorg midway, so only currently-open tabs are moved.
       const openTabIds = new Set(allTabs.map(t => t.id));
 
-      for (let i = 0; i < tabGroups.length; i++) {
-        const group = tabGroups[i];
+      // Apply whichever grouping is on screen: website sections or AI groups.
+      const groupsToApply = viewMode === ViewMode.BY_WEBSITE ? websiteGroups : tabGroups;
+
+      for (let i = 0; i < groupsToApply.length; i++) {
+        const group = groupsToApply[i];
         const validTabIds = group.tabIds.filter(id => openTabIds.has(id));
 
         let targetWindowId: string;
@@ -1305,6 +1336,7 @@ const App: React.FC = () => {
         activeWindowId={activeWindowId}
         setActiveWindowId={setActiveWindowId}
         onOrganize={handleOrganizeTabs}
+        onOrganizeByWebsite={() => setViewMode(ViewMode.BY_WEBSITE)}
         isOrganizing={isOrganizing}
         selectedWindowIds={sidebarSelectedWindowIds}
         onToggleWindowSelection={(id) => setSidebarSelectedWindowIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
@@ -1334,12 +1366,13 @@ const App: React.FC = () => {
                 ? `Selected Windows (${sidebarSelectedWindowIds.length})` 
                 : viewMode === ViewMode.ALL ? 'All Tabs'
                 : viewMode === ViewMode.AI_GROUPED ? 'AI Organized'
+                : viewMode === ViewMode.BY_WEBSITE ? 'By Website'
                 : (windowNameMap[activeWindowId || ''] || 'Current Window')
               }
             </h1>
 
-            {/* AI Reorg Controls */}
-            {viewMode === ViewMode.AI_GROUPED && !sidebarSelectedWindowIds.length && (
+            {/* Grouped-view controls (AI groups or website sections) */}
+            {isGroupedView && !sidebarSelectedWindowIds.length && (
               <div className="flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
                  {/* Global Sort for AI Groups */}
                  <div className="relative" ref={sortMenuRef}>
@@ -1728,9 +1761,9 @@ const App: React.FC = () => {
                 <Search size={48} className="mb-4 opacity-20" />
                 <p>No tabs found</p>
               </div>
-            ) : viewMode === ViewMode.AI_GROUPED && !sidebarSelectedWindowIds.length ? (
+            ) : isGroupedView && !sidebarSelectedWindowIds.length ? (
                <div className="space-y-8 pb-10">
-                 {filteredTabGroups.length === 0 && <div className="flex flex-col items-center justify-center h-40 text-slate-500"><p>{searchQuery ? 'No matching tabs found in groups.' : 'No groups. Click "Organize with AI".'}</p></div>}
+                 {filteredTabGroups.length === 0 && <div className="flex flex-col items-center justify-center h-40 text-slate-500"><p>{searchQuery ? 'No matching tabs found in groups.' : viewMode === ViewMode.BY_WEBSITE ? 'No tabs to group.' : 'No groups. Click "Organize with AI".'}</p></div>}
                  {filteredTabGroups.map((group, idx) => {
                    const groupTabs = group.tabIds.map(id => allTabs.find(t => t.id === id)).filter((t): t is Tab => t !== undefined);
                    return (
@@ -1834,7 +1867,9 @@ const App: React.FC = () => {
         {showReorgConfirm && (
            <ConfirmModal
              title="Reorganize Windows?"
-             message="This will move your tabs into new windows based on the AI categories. Existing window names will be updated. You can undo this action."
+             message={viewMode === ViewMode.BY_WEBSITE
+               ? `This will move your tabs so each website gets its own window (${websiteGroups.length} windows). Existing window names will be updated. You can undo this action.`
+               : "This will move your tabs into new windows based on the AI categories. Existing window names will be updated. You can undo this action."}
              confirmText="Yes, Reorganize"
              onConfirm={handleApplyAiOrganization}
              onClose={() => setShowReorgConfirm(false)}

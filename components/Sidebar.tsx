@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Layout, Sparkles, Layers, CopyPlus, Edit2, ArrowUp, ArrowDown, ArrowUpDown, Wand2, Undo2, Redo2, GripVertical, CheckSquare, Square } from 'lucide-react';
+import { Layout, Sparkles, Layers, CopyPlus, Edit2, ArrowUp, ArrowDown, ArrowUpDown, Wand2, Undo2, Redo2, GripVertical, CheckSquare, Square, Globe } from 'lucide-react';
 import { ViewMode, WindowData } from '../types';
 import { compareWindowNames } from '../services/sortUtils';
 
@@ -12,6 +12,7 @@ interface SidebarProps {
   activeWindowId: string | null;
   setActiveWindowId: (id: string | null) => void;
   onOrganize: () => void;
+  onOrganizeByWebsite: () => void;
   isOrganizing: boolean;
   selectedWindowIds: string[];
   onToggleWindowSelection: (id: string) => void;
@@ -51,6 +52,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeWindowId, 
   setActiveWindowId,
   onOrganize,
+  onOrganizeByWebsite,
   isOrganizing,
   selectedWindowIds,
   onToggleWindowSelection,
@@ -218,12 +220,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
             All Tabs
           </button>
 
+          <button
+            data-tour="organize-website"
+            onClick={onOrganizeByWebsite}
+            className={getButtonStyle(1, viewMode === ViewMode.BY_WEBSITE)}
+            title="Group tabs by website (domain name)"
+          >
+            <Globe size={18} className="shrink-0" />
+            <span className="truncate">Organize by Website</span>
+          </button>
+
           {/* Combined Organize Button */}
           <button
             data-tour="organize"
             onClick={onOrganize}
             disabled={isOrganizing}
-            className={`${getButtonStyle(1, viewMode === ViewMode.AI_GROUPED)} ${isOrganizing ? 'bg-indigo-50 dark:bg-indigo-900/30 ring-1 ring-indigo-500/50' : ''}`}
+            className={`${getButtonStyle(2, viewMode === ViewMode.AI_GROUPED)} ${isOrganizing ? 'bg-indigo-50 dark:bg-indigo-900/30 ring-1 ring-indigo-500/50' : ''}`}
             title="Group tabs using Gemini AI"
           >
             {isOrganizing ? (
@@ -308,7 +320,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
 
           {sortedWindows.map((win, idx) => {
-            const listIndex = idx + 2; 
+            const listIndex = idx + 3;
             const isSelected = selectedWindowIds.includes(win.id);
             const isActive = viewMode === ViewMode.BY_WINDOW && activeWindowId === win.id;
             const displayName = windowNames[win.id] || win.name;
