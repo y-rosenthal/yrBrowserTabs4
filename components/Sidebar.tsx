@@ -1,16 +1,19 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Layout, Sparkles, Layers, CopyPlus, Edit2, ArrowUp, ArrowDown, ArrowUpDown, Wand2, Undo2, Redo2, GripVertical, CheckSquare, Square, Globe } from 'lucide-react';
+import { Layout, Sparkles, Layers, CopyPlus, Edit2, ArrowUp, ArrowDown, ArrowUpDown, Wand2, Undo2, Redo2, GripVertical, CheckSquare, Square, Globe, ChevronDown, Search } from 'lucide-react';
 import { ViewMode, WindowData } from '../types';
 import { compareWindowNames } from '../services/sortUtils';
 
 interface SidebarProps {
   viewMode: ViewMode;
-  setViewMode: (mode: ViewMode) => void;
   windows: WindowData[];
   windowNames: Record<string, string>;
   activeWindowId: string | null;
-  setActiveWindowId: (id: string | null) => void;
+  onSelectWindow: (id: string) => void;
+  onShowAllTabs: () => void;
+  domains: { domain: string; count: number }[];
+  activeDomain: string | null;
+  onSelectDomain: (domain: string) => void;
   onOrganize: () => void;
   onOrganizeByWebsite: () => void;
   isOrganizing: boolean;
@@ -44,13 +47,16 @@ interface SidebarProps {
 type WindowSortField = 'name' | 'count';
 type SortDirection = 'asc' | 'desc';
 
-export const Sidebar: React.FC<SidebarProps> = ({ 
-  viewMode, 
-  setViewMode, 
-  windows, 
+export const Sidebar: React.FC<SidebarProps> = ({
+  viewMode,
+  windows,
   windowNames,
-  activeWindowId, 
-  setActiveWindowId,
+  activeWindowId,
+  onSelectWindow,
+  onShowAllTabs,
+  domains,
+  activeDomain,
+  onSelectDomain,
   onOrganize,
   onOrganizeByWebsite,
   isOrganizing,
@@ -85,6 +91,38 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Resizing State
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
+
+  // Domain picker dropdown (opened from the "N Domains" header count)
+  const [showDomainMenu, setShowDomainMenu] = useState(false);
+  const [domainQuery, setDomainQuery] = useState('');
+  const domainMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showDomainMenu) return;
+    const onMouseDown = (e: MouseEvent) => {
+      if (domainMenuRef.current && !domainMenuRef.current.contains(e.target as Node)) {
+        setShowDomainMenu(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        // Only this menu should close — keep the event from App's global
+        // Escape handling (document listeners run before window ones).
+        e.stopPropagation();
+        setShowDomainMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onMouseDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [showDomainMenu]);
+
+  const filteredDomains = domainQuery.trim()
+    ? domains.filter(d => d.domain.toLowerCase().includes(domainQuery.trim().toLowerCase()))
+    : domains;
 
   useEffect(() => {
     if (!isResizing) return;
@@ -201,9 +239,57 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <Layout className="w-6 h-6" />
           <span>TabMaster</span>
         </div>
-        <div className="mt-1 text-xs text-slate-500 dark:text-slate-500">
-          {windows.length} Windows • {totalTabs} Tabs
+        <div className="mt-1 text-xs text-slate-500 dark:text-slate-500 relative" ref={domainMenuRef}>
+          {windows.length} Windows • {totalTabs} Tabs •{' '}
+          <button
+            data-tour="domains"
+            onClick={() => { setShowDomainMenu(!showDomainMenu); setDomainQuery(''); }}
+            className={`inline-flex items-center gap-0.5 font-medium transition-colors ${
+              activeDomain
+                ? 'text-indigo-600 dark:text-indigo-400'
+                : 'text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400'
+            }`}
+            title="Show tabs from a single website"
+          >
+            {domains.length} Domains
+            <ChevronDown size={11} className={`transition-transform ${showDomainMenu ? 'rotate-180' : ''}`} />
+          </button>
           <span className="ml-1 text-slate-400 dark:text-slate-600" title="TabMaster AI version">• v{__APP_VERSION__}</span>
+
+          {showDomainMenu && (
+            <div className="absolute left-0 top-full mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 animate-in fade-in zoom-in-95 duration-100">
+              <div className="p-2 border-b border-slate-200 dark:border-slate-800">
+                <div className="relative">
+                  <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    autoFocus
+                    type="text"
+                    value={domainQuery}
+                    onChange={(e) => setDomainQuery(e.target.value)}
+                    placeholder="Filter domains..."
+                    className="w-full bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-indigo-400 rounded-md pl-7 pr-2 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none placeholder:text-slate-400"
+                  />
+                </div>
+              </div>
+              <div className="max-h-72 overflow-y-auto py-1">
+                {filteredDomains.length === 0 && (
+                  <div className="px-3 py-2 text-xs text-slate-400">No matching domains</div>
+                )}
+                {filteredDomains.map(({ domain, count }) => (
+                  <button
+                    key={domain}
+                    onClick={() => { onSelectDomain(domain); setShowDomainMenu(false); }}
+                    className={`w-full text-left px-3 py-1.5 text-xs flex items-center justify-between gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 ${
+                      activeDomain === domain ? 'text-indigo-600 dark:text-indigo-300 font-semibold' : 'text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <span className="truncate">{domain}</span>
+                    <span className="shrink-0 text-slate-400 font-mono">{count}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -211,23 +297,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Main Views */}
         <div className="px-3 space-y-1 mb-6">
           <p className="px-3 text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider mb-2">Views</p>
-          
-          <button
-            onClick={() => { setViewMode(ViewMode.ALL); setActiveWindowId(null); }}
-            className={getButtonStyle(0, viewMode === ViewMode.ALL)}
-          >
-            <Layers size={18} />
-            All Tabs
-          </button>
 
           <button
             data-tour="organize-website"
             onClick={onOrganizeByWebsite}
-            className={getButtonStyle(1, viewMode === ViewMode.BY_WEBSITE)}
-            title="Group tabs by website (domain name)"
+            className={getButtonStyle(0, viewMode === ViewMode.BY_WEBSITE)}
           >
             <Globe size={18} className="shrink-0" />
-            <span className="truncate">Organize by Website</span>
+            <span className="truncate">Categorize by Website</span>
           </button>
 
           {/* Combined Organize Button */}
@@ -235,8 +312,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             data-tour="organize"
             onClick={onOrganize}
             disabled={isOrganizing}
-            className={`${getButtonStyle(2, viewMode === ViewMode.AI_GROUPED)} ${isOrganizing ? 'bg-indigo-50 dark:bg-indigo-900/30 ring-1 ring-indigo-500/50' : ''}`}
-            title="Group tabs using Gemini AI"
+            className={`${getButtonStyle(1, viewMode === ViewMode.AI_GROUPED)} ${isOrganizing ? 'bg-indigo-50 dark:bg-indigo-900/30 ring-1 ring-indigo-500/50' : ''}`}
           >
             {isOrganizing ? (
               <>
@@ -246,7 +322,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             ) : (
               <>
                 <Sparkles size={18} className="shrink-0" />
-                <span className="truncate">Organize with AI</span>
+                <span className="truncate">Categorize with AI</span>
               </>
             )}
           </button>
@@ -255,6 +331,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Window Management Controls */}
         <div className="px-3 mb-2" data-tour="auto-name">
            <p className="px-3 text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider mb-2">Window Controls</p>
+
+           <button
+             onClick={onShowAllTabs}
+             className={`${getButtonStyle(2, viewMode === ViewMode.ALL)} mb-1.5`}
+           >
+             <Layers size={18} className="shrink-0" />
+             <span className="truncate">Display tabs from all windows</span>
+           </button>
+
            <div className="flex gap-1.5">
              <button
               onClick={onAutoRenameWindows}
@@ -352,10 +437,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </div>
                 ) : (
                   <button
-                    onClick={() => { 
-                      setViewMode(ViewMode.BY_WINDOW); 
-                      setActiveWindowId(win.id); 
-                    }}
+                    onClick={() => onSelectWindow(win.id)}
                     onDoubleClick={() => startEditing(win.id, displayName)}
                     onContextMenu={(e) => onWindowContextMenu?.(e, win.id)}
                     className={getButtonStyle(listIndex, isActive)}

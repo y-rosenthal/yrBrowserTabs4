@@ -1,24 +1,30 @@
 
 import React from 'react';
 import { AlertTriangle, X, ArrowRight } from 'lucide-react';
+import { useEscapeClose } from './useEscapeClose';
 
 interface ConfirmModalProps {
   title: string;
   message: string;
+  // Optional emphasized warning (e.g. "This cannot be undone.") rendered
+  // prominently below the message.
+  warning?: string;
   confirmText: string;
   isProcessing: boolean;
   onConfirm: () => void;
   onClose: () => void;
 }
 
-export const ConfirmModal: React.FC<ConfirmModalProps> = ({ 
-  title, 
-  message, 
-  confirmText, 
-  isProcessing, 
-  onConfirm, 
-  onClose 
+export const ConfirmModal: React.FC<ConfirmModalProps> = ({
+  title,
+  message,
+  warning,
+  confirmText,
+  isProcessing,
+  onConfirm,
+  onClose
 }) => {
+  useEscapeClose(onClose);
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[90] p-4 animate-in fade-in duration-200">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
@@ -30,9 +36,16 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
              <h3 className="text-lg font-bold text-slate-900 dark:text-white">{title}</h3>
           </div>
           
-          <p className="text-slate-600 dark:text-slate-300 mb-6 leading-relaxed">
+          <p className="text-slate-600 dark:text-slate-300 mb-4 leading-relaxed">
             {message}
           </p>
+
+          {warning && (
+            <div className="mb-5 flex items-center gap-2.5 px-3.5 py-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800">
+              <AlertTriangle className="text-red-600 dark:text-red-400 shrink-0" size={20} />
+              <span className="text-base font-bold text-red-700 dark:text-red-300">{warning}</span>
+            </div>
+          )}
 
           <div className="flex justify-end gap-3">
             <button 

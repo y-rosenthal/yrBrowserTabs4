@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { WindowData } from '../types';
 import { Layers, X, ArrowRight, ArrowUp, ArrowDown, CheckCircle } from 'lucide-react';
+import { useEscapeClose } from './useEscapeClose';
 
 interface MergeModalProps {
   windows: WindowData[];
@@ -20,6 +21,7 @@ export const MergeModal: React.FC<MergeModalProps> = ({
   onClose, 
   isProcessing 
 }) => {
+  useEscapeClose(onClose);
   const [targetId, setTargetId] = useState<string>('');
   const [sourceIds, setSourceIds] = useState<string[]>([]);
   const [validSelectedIds, setValidSelectedIds] = useState<string[]>([]);

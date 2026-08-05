@@ -4,10 +4,10 @@ import { OnboardingStep } from '../types';
 import { ArrowRight, X, Check, HelpCircle, Sparkles, ExternalLink, Settings, GripVertical, ListChecks } from 'lucide-react';
 
 interface OnboardingTourProps {
-  stepIndex: number;
   steps: OnboardingStep[];
-  onJump: (index: number) => void;
-  onNext: (savePreference?: boolean) => void;
+  // Called when the user completes the last step ("Finish").
+  onFinish: (savePreference?: boolean) => void;
+  // Called when the user leaves early (X, End Tour, Escape).
   onSkip: (savePreference?: boolean) => void;
   onStartTour?: () => void;
 }
@@ -31,15 +31,33 @@ const intersects = (a: Rect, b: Rect, margin = 8): boolean =>
 // lists all steps for direct jumps, can be dragged by its header, and moves
 // itself out of the way if it would cover the spotlighted element.
 export const OnboardingTour: React.FC<OnboardingTourProps> = ({
-  stepIndex,
   steps,
-  onJump,
-  onNext,
+  onFinish,
   onSkip,
   onStartTour
 }) => {
   const [dontShowAgain, setDontShowAgain] = useState(false);
+  // The step index is local state: advancing a step only re-renders this
+  // small overlay, not the whole (heavy) App tree — clicking Next used to
+  // lag noticeably because every step change re-rendered the full tab grid.
+  const [stepIndex, setStepIndex] = useState(0);
   const step = steps[stepIndex];
+
+  // Jumping between step sets (welcome dialog → full tour) restarts at 0.
+  useEffect(() => { setStepIndex(0); }, [steps]);
+
+  const onJump = (i: number) => setStepIndex(Math.max(0, Math.min(i, steps.length - 1)));
+  const onNext = (savePreference = true) =>
+    stepIndex < steps.length - 1 ? setStepIndex(stepIndex + 1) : onFinish(savePreference);
+
+  // Escape leaves the tour (same as End Tour / X).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onSkip(step?.isFirstRun ? dontShowAgain : true);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onSkip, step, dontShowAgain]);
 
   const [targetRect, setTargetRect] = useState<Rect | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -57,7 +75,12 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
       const el = step.anchor ? document.querySelector(`[data-tour="${step.anchor}"]`) : null;
       if (el) {
         const r = el.getBoundingClientRect();
-        setTargetRect({ left: r.left, top: r.top, width: r.width, height: r.height });
+        // Keep the previous object when nothing moved, so the delayed
+        // re-measure doesn't trigger a pointless reposition pass.
+        setTargetRect(prev =>
+          prev && prev.left === r.left && prev.top === r.top && prev.width === r.width && prev.height === r.height
+            ? prev
+            : { left: r.left, top: r.top, width: r.width, height: r.height });
       } else {
         setTargetRect(null);
       }
@@ -65,7 +88,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
     measure();
     window.addEventListener('resize', measure);
     // Elements can move as menus close/animations settle; re-measure briefly.
-    const t = setTimeout(measure, 250);
+    const t = setTimeout(measure, 120);
     return () => { window.removeEventListener('resize', measure); clearTimeout(t); };
   }, [stepIndex, step]);
 
@@ -269,7 +292,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
       {/* Spotlight: highlight ring + dim everything else via giant shadow */}
       {targetRect && (
         <div
-          className="absolute rounded-lg border-2 border-indigo-400 transition-all duration-300"
+          className="absolute rounded-lg border-2 border-indigo-400 transition-all duration-150"
           style={{
             left: targetRect.left - 4,
             top: targetRect.top - 4,
@@ -344,7 +367,9 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
           <ListChecks size={14} className="text-indigo-500" />
           <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider flex-1">Tour Steps</span>
         </div>
-        <div className="max-h-64 overflow-y-auto py-1">
+        {/* Tall enough to list every step without scrolling on a large
+            window; scrolls only when the viewport is genuinely short. */}
+        <div className="max-h-[calc(100vh-240px)] overflow-y-auto py-1">
           {steps.map((s, i) => (
             <button
               key={i}

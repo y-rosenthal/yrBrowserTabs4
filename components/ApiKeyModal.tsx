@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Key, Eye, EyeOff, Save, ExternalLink, ShieldCheck } from 'lucide-react';
 import { getStorageData } from '../services/storageService';
+import { useEscapeClose } from './useEscapeClose';
 
 declare const chrome: any;
 
@@ -11,6 +12,7 @@ interface ApiKeyModalProps {
 }
 
 export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onClose, onSave }) => {
+  useEscapeClose(onClose);
   const [inputValue, setInputValue] = useState('');
   const [showKey, setShowKey] = useState(false);
   const [isExtension, setIsExtension] = useState(false);

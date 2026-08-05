@@ -1,7 +1,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Tab, WindowData } from '../types';
-import { ExternalLink, X, Globe, Lock, Loader2, RefreshCw } from 'lucide-react';
+import { ExternalLink, X, Globe, Lock, Loader2, RefreshCw, ChevronLeft, ChevronRight, ChevronDown, Copy, Check } from 'lucide-react';
 import { getTabContent, injectBaseTag, isTabDiscarded, wakeTab } from '../services/tabService';
 import { Favicon } from './Favicon';
 
@@ -18,9 +18,6 @@ interface PreviewPanelProps {
   refreshSignal?: number;
 }
 
-// How many sibling-tab pills show before collapsing behind "+N more".
-const PILLS_COLLAPSED_LIMIT = 8;
-
 export const PreviewPanel: React.FC<PreviewPanelProps> = ({
   tab,
   windows,
@@ -36,19 +33,31 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
   const [isSleeping, setIsSleeping] = useState(false);
   const [isWaking, setIsWaking] = useState(false);
   const [fetchAttempt, setFetchAttempt] = useState(0);
-  const [pillsExpanded, setPillsExpanded] = useState(false);
+  const [showTabMenu, setShowTabMenu] = useState(false);
+  const [urlCopied, setUrlCopied] = useState(false);
+  const tabMenuRef = useRef<HTMLDivElement>(null);
   // Wake completion must only touch the UI of the tab it started for.
   const currentTabIdRef = useRef<string | null>(null);
 
   const windowName = tab ? (windowNames[tab.windowId] || 'Unknown Window') : '';
-  // All tabs in the selected tab's window, for the pill strip. The panel
+  // All tabs in the selected tab's window, for the tab navigator. The panel
   // always shows the same window context regardless of whether the main
   // area is in tab or window mode.
   const windowTabs = tab ? (windows.find(w => w.id === tab.windowId)?.tabs || []) : [];
-  const domain = (() => {
-    if (!tab?.url) return '';
-    try { return new URL(tab.url).hostname; } catch { return 'Local'; }
-  })();
+  const tabIndex = tab ? windowTabs.findIndex(t => t.id === tab.id) : -1;
+
+  const stepTab = (delta: number) => {
+    if (!tab || windowTabs.length < 2 || tabIndex === -1) return;
+    const next = windowTabs[(tabIndex + delta + windowTabs.length) % windowTabs.length];
+    onSelectTab(next.id);
+  };
+
+  const handleCopyUrl = () => {
+    if (!tab?.url) return;
+    navigator.clipboard.writeText(tab.url);
+    setUrlCopied(true);
+    setTimeout(() => setUrlCopied(false), 1500);
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -94,8 +103,31 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
     };
   }, [tab?.id, tab?.url, fetchAttempt, refreshSignal]); // Re-run when tab changes, a retry is requested, or an auto-wake finished
 
-  // Collapse the pill strip when the previewed window changes.
-  useEffect(() => { setPillsExpanded(false); }, [tab?.windowId]);
+  // Close the tab dropdown when the previewed tab/window changes, and close
+  // it on any outside click while open.
+  useEffect(() => { setShowTabMenu(false); }, [tab?.id]);
+  useEffect(() => {
+    if (!showTabMenu) return;
+    const onMouseDown = (e: MouseEvent) => {
+      if (tabMenuRef.current && !tabMenuRef.current.contains(e.target as Node)) {
+        setShowTabMenu(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        // Only this menu should close — keep the event from App's global
+        // Escape handling (document listeners run before window ones).
+        e.stopPropagation();
+        setShowTabMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onMouseDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [showTabMenu]);
 
   const handleWake = async () => {
     if (!tab) return;
@@ -127,10 +159,10 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
             tab belongs to, in both tab and window modes. */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0 flex-1 text-xs">
-            <span className="shrink-0 px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-600/30 text-indigo-700 dark:text-indigo-300 font-bold uppercase tracking-wider text-[10px]">
-              Window
+            <span className="shrink-0 text-slate-500 dark:text-slate-400">Current Window:</span>
+            <span className="min-w-0 truncate px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-600/30 text-indigo-700 dark:text-indigo-300 font-semibold" title={windowName}>
+              {windowName}
             </span>
-            <span className="font-semibold text-slate-700 dark:text-slate-200 truncate" title={windowName}>{windowName}</span>
             <span className="shrink-0 text-slate-400 dark:text-slate-500">({windowTabs.length} tabs)</span>
           </div>
           <button
@@ -142,36 +174,58 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
           </button>
         </div>
 
-        {/* Pills: one per tab in the window. The previewed tab's pill shows
-            its full title; the rest truncate (full title on hover). */}
+        {/* Tab navigator: step through the window's tabs with the arrows, or
+            jump directly via the dropdown list. */}
         {windowTabs.length > 1 && (
-          <div className="flex flex-wrap gap-1.5">
-            {(pillsExpanded ? windowTabs : windowTabs.slice(0, PILLS_COLLAPSED_LIMIT)).map((t) => {
-              const isCurrent = t.id === tab.id;
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => onSelectTab(t.id)}
-                  title={t.title}
-                  className={`flex items-center gap-1.5 rounded-full text-xs px-2.5 py-1 border transition-colors text-left ${
-                    isCurrent
-                      ? 'bg-indigo-600 border-indigo-600 text-white font-medium'
-                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-indigo-400 dark:hover:border-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300'
-                  }`}
-                >
-                  <Favicon src={t.favIconUrl} size={12} />
-                  <span className={isCurrent ? 'break-words' : 'truncate max-w-[130px]'}>{t.title}</span>
-                </button>
-              );
-            })}
-            {windowTabs.length > PILLS_COLLAPSED_LIMIT && (
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => stepTab(-1)}
+              className="p-1 rounded text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors"
+              title="Previous tab in this window"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              onClick={() => stepTab(1)}
+              className="p-1 rounded text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors"
+              title="Next tab in this window"
+            >
+              <ChevronRight size={16} />
+            </button>
+            <div className="relative flex-1 min-w-0" ref={tabMenuRef}>
               <button
-                onClick={() => setPillsExpanded(!pillsExpanded)}
-                className="rounded-full text-xs px-2.5 py-1 border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300 hover:border-indigo-400 transition-colors"
+                onClick={() => setShowTabMenu(!showTabMenu)}
+                className="w-full flex items-center justify-between gap-2 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-300 hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors"
+                title="Choose a tab from this window"
               >
-                {pillsExpanded ? 'Show less' : `+${windowTabs.length - PILLS_COLLAPSED_LIMIT} more`}
+                <span className="truncate">Tab {tabIndex + 1} of {windowTabs.length}</span>
+                <ChevronDown size={12} className={`shrink-0 transition-transform ${showTabMenu ? 'rotate-180' : ''}`} />
               </button>
-            )}
+              {showTabMenu && (
+                <div className="absolute right-0 top-full mt-1 w-full min-w-[260px] max-h-80 overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 py-1 animate-in fade-in zoom-in-95 duration-100">
+                  {windowTabs.map((t, i) => {
+                    const isCurrent = t.id === tab.id;
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => { onSelectTab(t.id); setShowTabMenu(false); }}
+                        title={t.title}
+                        className={`w-full text-left px-3 py-1.5 flex items-center gap-2 text-xs transition-colors ${
+                          isCurrent
+                            ? 'bg-indigo-50 dark:bg-indigo-600/20 text-indigo-700 dark:text-indigo-300 font-semibold'
+                            : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        }`}
+                      >
+                        <span className="shrink-0 w-5 text-right text-slate-400 font-mono">{i + 1}</span>
+                        <Favicon src={t.favIconUrl} size={13} />
+                        <span className="truncate flex-1">{t.title}</span>
+                        {isCurrent && <Check size={12} className="shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -192,8 +246,17 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
           </button>
         </div>
 
-        <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
-           <span className="truncate" title={domain}>{domain}</span>
+        {/* Full URL, browser-address-bar style, with copy */}
+        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-300">
+          <Globe size={12} className="shrink-0 text-slate-400" />
+          <span className="truncate flex-1 font-mono text-[11px]" title={tab.url}>{tab.url}</span>
+          <button
+            onClick={handleCopyUrl}
+            className="p-0.5 shrink-0 rounded text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors"
+            title="Copy URL"
+          >
+            {urlCopied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+          </button>
         </div>
       </div>
 

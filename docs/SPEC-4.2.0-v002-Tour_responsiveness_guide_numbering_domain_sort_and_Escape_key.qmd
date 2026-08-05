@@ -1,0 +1,75 @@
+---
+title: "SPEC-4.2.0-v002"
+subtitle: "Tour responsiveness, guide numbering, domain sort order, Escape key"
+---
+
+## Overview
+
+Follow-up fixes on the 4.2.0 batch, from hands-on testing of the tour, the
+user guide, website categorization, and destructive-action dialogs.
+
+## 1. Interactive tour responsiveness
+
+Clicking **Next** had two visible delays: first before the bubble's text
+changed, then before the bubble moved to its new position.
+
+- **Root cause of the first delay**: the current step index lived in `App`
+  state, so every step change re-rendered the entire App tree (the full
+  tab grid with its live thumbnail iframes). The index now lives inside
+  `OnboardingTour` itself — advancing a step re-renders only the small
+  overlay, and App just knows whether the tour is open (`showTour`
+  boolean, replacing `onboardingIndex`).
+- **Second delay**: the anchored element re-measure ran again 250 ms after
+  each step and always produced a new rect object, forcing a reposition
+  pass; the spotlight also animated over 300 ms. The re-measure now runs
+  at 120 ms and keeps the previous rect when nothing moved; the spotlight
+  transition is 150 ms.
+- The **Tour Steps** panel's list was capped at `max-h-64` (~9 rows); it
+  now grows to `calc(100vh - 240px)`, so all steps are visible without
+  scrolling on a reasonably tall window.
+- **Escape** ends the tour (same as End Tour / X).
+
+## 2. User guide numbered lists
+
+The install steps all rendered as "1." — the markdown parser treated the
+blank line between numbered items as the end of the list, so each item
+became its own single-item list. List parsing now:
+
+- continues across blank lines when the next non-blank line is another
+  item of the same kind,
+- renders indented `- ` lines as proper **nested sub-bullets** (previously
+  folded inline into the parent item's text),
+- honors the source's starting number via `<ol start>`.
+
+## 3. Website sort order
+
+Domain sections (Categorize by Website) and the sidebar domain picker now
+sort by **significance**: the 2nd-level label first, then the TLD, then
+3rd/4th/... levels right-to-left — so `amazon.com` sorts before
+`aaa.nyc.gov`, and all `*.google.com` subdomains sit together. Implemented
+as `compareDomains` in `services/sortUtils.ts`.
+
+## 4. Destructive-dialog prominence + Escape key
+
+- `ConfirmModal` gained a `warning` prop rendered as a prominent block —
+  larger bold red text on a red-tinted bordered panel with an alert icon.
+  The two irreversible dialogs (Close Tabs, Close Window) moved their
+  "This cannot be undone." sentence into it. The Reorganize dialog keeps a
+  plain message (that action is undoable).
+- **Escape** now works everywhere it intuitively should, closing the most
+  immediate thing first:
+  1. an open dropdown menu (export, help, settings, sort menus, move menu,
+     search scope, sidebar domain picker, preview tab picker) — closes just
+     that menu;
+  2. an open modal (confirm, prompt, merge, API key, user guide, error) or
+     context menu — closes it (each handles its own Escape; the app-level
+     handler stands back while one is open);
+  3. the search field, when focused — clears the query;
+  4. otherwise, if any tabs are checked — **unchecks all tabs**.
+  Component-local dropdowns stop the event's propagation so a single press
+  never both closes a menu and clears checks.
+
+## Version
+
+Remains **4.2.0** (these fixes ship with the still-unreleased 4.2.0
+changes described in SPEC-4.2.0-v001).

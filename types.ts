@@ -25,6 +25,7 @@ export enum ViewMode {
   ALL = 'ALL',
   BY_WINDOW = 'BY_WINDOW',
   BY_WEBSITE = 'BY_WEBSITE',
+  BY_DOMAIN = 'BY_DOMAIN',
   AI_GROUPED = 'AI_GROUPED'
 }
 

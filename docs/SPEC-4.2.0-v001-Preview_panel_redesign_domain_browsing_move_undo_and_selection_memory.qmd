@@ -1,0 +1,125 @@
+---
+title: "SPEC-4.2.0-v001"
+subtitle: "Preview panel redesign, domain browsing, move undo, selection memory"
+---
+
+## Overview
+
+A batch of UX changes driven by hands-on feedback: smarter tab selection,
+a redesigned preview panel, a move-to-any-window flow with multi-level
+undo/redo, a domain browser, relabeled sidebar actions that act on the
+*displayed* tabs, and two bug fixes.
+
+## 1. Per-window selection memory
+
+Clicking a window in the sidebar (or drilling into a window card) now
+selects the tab that was **last selected in that window**; if none was
+ever selected — or that tab is gone — the window's **first tab** is
+selected. The preview panel follows the selection, so it no longer keeps
+showing a tab from the previous window.
+
+- The memory is a session-only `windowId → tabId` map
+  (`lastSelectedByWindowRef`); it is deliberately **not persisted**
+  because Chrome tab ids are not stable across browser restarts.
+
+## 2. Smart selection when closing the previewed tab
+
+Closing the currently previewed tab no longer blanks the preview panel.
+The tab that visually takes the closed tab's place in the current list is
+selected (the next one in display order; when the last row is closed, the
+new last row). The preview only goes empty when the list itself is empty.
+
+## 3. Preview panel redesign
+
+- The sibling-tab **pill strip is gone** (it consumed too much space and
+  was confusing with many same-site tabs). It is replaced by a one-row
+  **tab navigator**: ◀ ▶ arrows step through the window's tabs (wrapping),
+  and a **"Tab N of M" dropdown** opens a scrollable list of every tab in
+  the window — row number, favicon, and full title, with the current tab
+  highlighted.
+- The `WINDOW` boilerplate badge is replaced by plain text
+  **"Current Window:"**; the highlight moved onto the actual window name
+  (real data), not the label.
+- A browser-style **address bar** now shows the **full URL** of the
+  previewed tab, truncated with the full value on hover, plus a
+  **copy button** (shows a ✓ for a moment after copying).
+
+## 4. Check All ↔ Uncheck All
+
+The toolbar "Check All (N)" button now stays visible while tabs are
+checked and flips to **"Uncheck All (N)"** once every displayed tab is
+checked. The ✕ button still clears any selection (including checks that
+span other views).
+
+## 5. Moving tabs: any window, no focus steal, multi-level undo
+
+- The "Move N" toolbar button is now **"Move N ▾"** — a dropdown offering
+  **New Window** plus **every existing window** (sorted by name, with tab
+  counts). Windows that already contain all the checked tabs are disabled.
+- **TabMaster stays the active window** after every move:
+  `tabService.moveTabs` no longer focuses the target window, and
+  `createWindowWithTabs` creates the window unfocused and then explicitly
+  refocuses the TabMaster window.
+- **Multi-level undo/redo for tab moves**: every move (toolbar menu, tab
+  context menu, window context menu "Move Checked Tabs Here", group
+  context menu) records where each tab came from (window + position).
+  Undo/Redo arrow buttons appear in the toolbar once a move has happened.
+  - Undo moves tabs back to their original window at their original index
+    (ascending-index order so positions restore correctly). Tabs closed
+    since the move — or whose original window is gone — are skipped, with
+    a notification stating how many could not be restored.
+  - Redo re-applies the move; "New Window" redo creates a fresh window.
+  - The stacks are session-only and unlimited depth.
+
+## 6. Bug fix: stuck indexing badge/spinner
+
+The page-text indexing counter next to the search-scope pill froze (e.g.
+at "9") with a forever-spinning icon if the scope changed or the query cleared
+mid-indexing: the effect cleanup stopped the countdown without resetting
+the counter. The cleanup now resets `indexingRemaining` to 0.
+
+## 7. Domain browsing
+
+- The sidebar header now reads
+  **"N Windows • N Tabs • N Domains ▾ • vX.Y.Z"**. The domain count is a
+  button (with a chevron as the affordance hint) that opens a
+  **searchable dropdown** listing every distinct domain with its tab
+  count.
+- Picking a domain enters a new **`ViewMode.BY_DOMAIN`** view: a flat
+  list of just that domain's tabs, titled "Domain: <name>" with an ✕ to
+  exit back to All Tabs. In card view the **Window** metadata field is
+  forced visible there (the window a tab lives in is part of the point);
+  the detail view already has a Window column.
+- Pages without a real URL (chrome://, local files) group under `local`.
+
+## 8. Sidebar relabels + displayed-tabs scope
+
+- **"Organize by Website" → "Categorize by Website"**,
+  **"Organize with AI" → "Categorize with AI"** (short labels, no
+  tooltips, per user preference).
+- **"All Tabs" → "Display tabs from all windows"**, moved from Views into
+  the **Window Controls** section (it is a window-filter reset, not a
+  categorization). Keyboard focus order follows the new visual order.
+- **Behavior change**: both Categorize actions now operate on the
+  **currently displayed tabs** (respecting the active window/domain
+  filter and search), not on every open tab:
+  - *Categorize by Website* snapshots the displayed tab ids
+    (`categorizeScopeIds`) and groups only those.
+  - *Categorize with AI* sends only the displayed tabs to Gemini (its
+    cached-result signature is computed over the same set).
+  - Both clear sidebar window selections on entry (the grouped views
+    don't render while sidebar multi-select is active).
+
+## 9. Documentation & guide
+
+- The interactive tour gained a **"Browse by Domain"** step and its
+  copy was updated for the renamed buttons, the new preview panel, the
+  Move ▾ menu, and selection memory.
+- `README.md` Features/User Guide sections rewritten to match 4.2.0.
+- `UserGuideModal` now **renders the guide as formatted UI** (headings,
+  lists, code, links, quotes — via a small dependency-free markdown
+  renderer) instead of dumping raw markdown text.
+
+## Version
+
+`package.json` / `manifest.json` bumped **4.1.1 → 4.2.0**.

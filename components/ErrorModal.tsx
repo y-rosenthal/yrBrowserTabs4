@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { AlertTriangle, ChevronDown, ChevronUp, Terminal } from 'lucide-react';
+import { useEscapeClose } from './useEscapeClose';
 
 interface ErrorModalProps {
   title: string;
@@ -10,6 +11,7 @@ interface ErrorModalProps {
 }
 
 export const ErrorModal: React.FC<ErrorModalProps> = ({ title, message, technicalDetails, onClose }) => {
+  useEscapeClose(onClose);
   const [showDetails, setShowDetails] = useState(false);
 
   return (

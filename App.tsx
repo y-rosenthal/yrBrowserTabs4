@@ -5,9 +5,9 @@ import { DEMO_NOTICE } from './constants';
 import { ViewMode, WindowData, Tab, TabGroup, OnboardingStep, WindowReorgSnapshot, CardMetadataSetting, CardMetadataField } from './types';
 import { Search, Info, ExternalLink, RefreshCw, AlertCircle, Download, Table, FileText, Eye, EyeOff, FolderPlus, HelpCircle, BookOpen, Sun, Moon, Key, LayoutTemplate, RotateCcw, Settings, Sparkles, ListFilter, List, LayoutGrid, Minus, Plus, Copy, FolderInput, Edit2, Trash2, CheckSquare, Undo2, Redo2, Wand2, ChevronUp, ChevronDown, X } from 'lucide-react';
 import { organizeTabsWithAI, generateWindowNamesWithAI } from './services/geminiService';
-import { getWindows, activateTab, closeTab, closeTabs, getPlatformInfo, moveTabs, createWindowWithTabs, subscribeToUpdates, focusWindow, closeWindow, wakeTab, getTabPageText } from './services/tabService';
+import { getWindows, activateTab, closeTab, closeTabs, getPlatformInfo, moveTabs, moveTabToIndex, createWindowWithTabs, subscribeToUpdates, focusWindow, closeWindow, wakeTab, getTabPageText } from './services/tabService';
 import { saveCustomWindowName, saveCustomWindowNames, getStorageData, setOnboardingSeen, saveTheme, saveApiKey, saveViewSettings, DEFAULT_CARD_METADATA } from './services/storageService';
-import { compareWindowNames } from './services/sortUtils';
+import { compareWindowNames, compareDomains } from './services/sortUtils';
 import { TabListView, SortField, SortDirection } from './components/TabListView';
 import { TabCardView } from './components/TabCardView';
 import { ContextMenu, ContextMenuItem } from './components/ContextMenu';
@@ -21,6 +21,17 @@ import { ConfirmModal } from './components/ConfirmModal';
 import { ErrorModal } from './components/ErrorModal';
 import { generateWindowNames } from './services/nameGenerator';
 
+// Hostname of a tab's URL; non-URL pages (chrome://, local files) → 'local'.
+const getDomainOf = (url: string): string => {
+  try { return new URL(url).hostname; } catch { return 'local'; }
+};
+
+// One tracked tab-move operation, for multi-level move undo/redo.
+// `origins` records where each tab came from (for undo); `target` is 'NEW'
+// (create a window) or a windowId (for redo).
+interface MoveOrigin { tabId: string; windowId: string; index: number }
+interface TabMoveOp { origins: MoveOrigin[]; target: string }
+
 // Full Tour: each step is anchored to a live UI element via its data-tour
 // attribute; the tour card points at it with an arrow and a spotlight.
 const FULL_TOUR_STEPS: OnboardingStep[] = [
@@ -31,7 +42,12 @@ const FULL_TOUR_STEPS: OnboardingStep[] = [
   {
     anchor: 'sidebar-windows',
     title: 'Your Windows',
-    content: 'Every open window is listed here. Click one to see only its tabs, double-click its name to rename it, and use the checkboxes to select several windows for merging or batch renaming. Right-click a window for more actions.'
+    content: 'Every open window is listed here. Click one to see only its tabs (your last-selected tab in that window is re-selected), double-click its name to rename it, and use the checkboxes to select several windows for merging or batch renaming. Right-click a window for more actions.'
+  },
+  {
+    anchor: 'domains',
+    title: 'Browse by Domain',
+    content: 'The header counts your windows, tabs, and distinct websites. Click the domain count to open a searchable list of every site — pick one to see only its tabs, along with the window each tab lives in.'
   },
   {
     anchor: 'auto-name',
@@ -40,13 +56,13 @@ const FULL_TOUR_STEPS: OnboardingStep[] = [
   },
   {
     anchor: 'organize-website',
-    title: 'Organize by Website',
-    content: 'Instantly group your tabs into a section for each website (domain name) — no AI needed. From this view, "Apply to Windows" physically reorganizes your browser so each website gets its own window — and it can be undone.'
+    title: 'Categorize by Website',
+    content: 'Instantly group the currently displayed tabs into a section for each website (domain name) — no AI needed. From this view, "Apply to Windows" physically reorganizes your browser so each website gets its own window — and it can be undone.'
   },
   {
     anchor: 'organize',
-    title: 'Organize with AI',
-    content: 'Gemini sorts all your tabs into semantic groups like Development, Shopping, or News. From the grouped view, "Apply to Windows" physically reorganizes your browser windows to match — and it can be undone.'
+    title: 'Categorize with AI',
+    content: 'Gemini sorts the currently displayed tabs into semantic groups like Development, Shopping, or News. From the grouped view, "Apply to Windows" physically reorganizes your browser windows to match — and it can be undone.'
   },
   {
     anchor: 'search',
@@ -61,12 +77,12 @@ const FULL_TOUR_STEPS: OnboardingStep[] = [
   {
     anchor: 'tabs-area',
     title: 'Working with Tabs',
-    content: 'Single-click previews a tab; double-click or Enter switches to it. Check several tabs to move or close them together, and right-click any tab for actions like Move to Window or Copy URL. Arrow keys navigate; Ctrl+Left/Right switches between the sidebar and the tab list.'
+    content: 'Single-click previews a tab; double-click or Enter switches to it. Check several tabs, then use "Move ▾" to send them to a new or existing window (TabMaster stays focused, and moves can be undone/redone). Right-click any tab for more actions. Arrow keys navigate; Ctrl+Left/Right switches between the sidebar and the tab list.'
   },
   {
     anchor: 'preview-toggle',
     title: 'Preview Panel',
-    content: 'Show or hide a live preview of the selected tab. The panel also shows which window the tab belongs to, with clickable pills for every other tab in that window.'
+    content: 'Show or hide a live preview of the selected tab, with its full URL and which window it belongs to. Use the ◀ ▶ arrows or the tab dropdown in the panel to flip through the other tabs of that window.'
   },
   {
     anchor: 'export',
@@ -157,7 +173,7 @@ const App: React.FC = () => {
   const sortMenuRef = useRef<HTMLDivElement>(null);
 
   // Onboarding
-  const [onboardingIndex, setOnboardingIndex] = useState<number>(-1); // -1 means inactive
+  const [showTour, setShowTour] = useState(false); // step position lives inside OnboardingTour
   const hasAutoShownWelcome = useRef(false); // first-run dialog auto-shows at most once per session
   const loadTabsRef = useRef<() => Promise<void>>(async () => {});
   const lastSnapshotSig = useRef<string>('');
@@ -184,6 +200,23 @@ const App: React.FC = () => {
   const [cardColumns, setCardColumns] = useState(1);
   const [showCardSortMenu, setShowCardSortMenu] = useState(false);
   const cardSortMenuRef = useRef<HTMLDivElement>(null);
+
+  // Domain filter view: which domain BY_DOMAIN mode is showing.
+  const [activeDomain, setActiveDomain] = useState<string | null>(null);
+
+  // Per-window memory of the last selected tab (session-only; tab ids are
+  // not stable across browser restarts, so this is deliberately not persisted).
+  const lastSelectedByWindowRef = useRef<Record<string, string>>({});
+
+  // Which tabs the grouped views categorize: snapshot of the tabs displayed
+  // when the user clicked a Categorize button (null = all tabs).
+  const [categorizeScopeIds, setCategorizeScopeIds] = useState<string[] | null>(null);
+
+  // Multi-level undo/redo for tab moves (toolbar Move menu + context menus).
+  const [moveUndoStack, setMoveUndoStack] = useState<TabMoveOp[]>([]);
+  const [moveRedoStack, setMoveRedoStack] = useState<TabMoveOp[]>([]);
+  const [showMoveMenu, setShowMoveMenu] = useState(false);
+  const moveMenuRef = useRef<HTMLDivElement>(null);
 
   // Context menus & rename modals
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
@@ -245,6 +278,9 @@ const App: React.FC = () => {
       }
       if (cardSortMenuRef.current && !cardSortMenuRef.current.contains(target)) {
         setShowCardSortMenu(false);
+      }
+      if (moveMenuRef.current && !moveMenuRef.current.contains(target)) {
+        setShowMoveMenu(false);
       }
       if (searchScopeMenuRef.current && !searchScopeMenuRef.current.contains(target)) {
         setShowSearchScopeMenu(false);
@@ -369,10 +405,10 @@ const App: React.FC = () => {
       // Auto-show at most once per session: loadTabs re-runs on every tab
       // event (including tabs woken for previews), and re-opening a dialog
       // the user already dismissed with X is wrong.
-      if (!storage.hasSeenOnboarding && onboardingIndex === -1 && !hasAutoShownWelcome.current) {
+      if (!storage.hasSeenOnboarding && !showTour && !hasAutoShownWelcome.current) {
         hasAutoShownWelcome.current = true;
         setCurrentTourSteps(FIRST_RUN_STEP);
-        setOnboardingIndex(0);
+        setShowTour(true);
       }
       
       // Clear selections if items disappeared
@@ -387,7 +423,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [windows.length, onboardingIndex, historyIndex, windowNameMap]);
+  }, [windows.length, showTour, historyIndex, windowNameMap]);
 
   // The subscription lives for the app's lifetime, so it must call the
   // LATEST loadTabs. Capturing loadTabs directly in the []-deps effect froze
@@ -424,14 +460,15 @@ const App: React.FC = () => {
         }
       });
     });
-    return () => { cancelled = true; };
+    // Reset the counter on cancel (scope switch / query cleared / tabs
+    // changed) — otherwise the toolbar badge freezes mid-count and its
+    // spinner never stops.
+    return () => { cancelled = true; setIndexingRemaining(0); };
   }, [searchScope, searchQuery, allTabs]);
 
   const tabMatchesQuery = useCallback((t: Tab, q: string): boolean => {
     if (searchScope === 'domain') {
-      let domain = 'local';
-      try { domain = new URL(t.url).hostname; } catch (e) { /* non-URL pages match as 'local' */ }
-      return domain.toLowerCase().includes(q);
+      return getDomainOf(t.url).toLowerCase().includes(q);
     }
     if (t.title.toLowerCase().includes(q) || t.url.toLowerCase().includes(q)) return true;
     if (searchScope === 'content') {
@@ -453,6 +490,10 @@ const App: React.FC = () => {
     else if (viewMode === ViewMode.BY_WINDOW && activeWindowId) {
       tabs = windows.find(w => w.id === activeWindowId)?.tabs || [];
     }
+    // 2b. Else if filtering to a single domain
+    else if (viewMode === ViewMode.BY_DOMAIN && activeDomain) {
+      tabs = tabs.filter(t => getDomainOf(t.url) === activeDomain);
+    }
 
     // 3. Search Filter (if not in AI Grouped Mode)
     // In AI Grouped mode, we filter *inside* the groups logic below to keep structure
@@ -461,7 +502,7 @@ const App: React.FC = () => {
       tabs = tabs.filter(t => tabMatchesQuery(t, q));
     }
     return tabs;
-  }, [allTabs, windows, viewMode, activeWindowId, searchQuery, sidebarSelectedWindowIds, tabMatchesQuery]);
+  }, [allTabs, windows, viewMode, activeWindowId, activeDomain, searchQuery, sidebarSelectedWindowIds, tabMatchesQuery]);
 
   const getSortedTabs = useCallback((tabs: Tab[]) => {
     return [...tabs].sort((a, b) => {
@@ -527,19 +568,34 @@ const App: React.FC = () => {
   const isGroupedView = viewMode === ViewMode.AI_GROUPED || viewMode === ViewMode.BY_WEBSITE;
 
   // Website groups: one section per domain name, computed locally (no AI).
+  // Scoped to the tabs that were displayed when "Categorize by Website" was
+  // clicked (categorizeScopeIds); tabs closed since then drop out naturally.
   const websiteGroups = useMemo<TabGroup[]>(() => {
     if (viewMode !== ViewMode.BY_WEBSITE) return [];
+    const scope = categorizeScopeIds ? new Set(categorizeScopeIds) : null;
     const byDomain = new Map<string, string[]>();
     for (const t of allTabs) {
-      let domain = 'local';
-      try { domain = new URL(t.url).hostname; } catch (e) { /* non-URL pages group under 'local' */ }
+      if (scope && !scope.has(t.id)) continue;
+      const domain = getDomainOf(t.url);
       const ids = byDomain.get(domain);
       if (ids) ids.push(t.id); else byDomain.set(domain, [t.id]);
     }
     return [...byDomain.entries()]
-      .sort((a, b) => a[0].localeCompare(b[0]))
+      .sort((a, b) => compareDomains(a[0], b[0]))
       .map(([domain, tabIds]) => ({ categoryName: domain, tabIds }));
-  }, [viewMode, allTabs]);
+  }, [viewMode, allTabs, categorizeScopeIds]);
+
+  // All distinct domains with tab counts, for the sidebar's domain picker.
+  const domainList = useMemo(() => {
+    const counts = new Map<string, number>();
+    allTabs.forEach(t => {
+      const d = getDomainOf(t.url);
+      counts.set(d, (counts.get(d) || 0) + 1);
+    });
+    return [...counts.entries()]
+      .sort((a, b) => compareDomains(a[0], b[0]))
+      .map(([domain, count]) => ({ domain, count }));
+  }, [allTabs]);
 
   // Grouped tabs (AI or website sections) with Search Filter
   const filteredTabGroups = useMemo(() => {
@@ -582,7 +638,40 @@ const App: React.FC = () => {
     return currentDisplayedTabs;
   }, [isGroupedView, searchQuery, sidebarSelectedWindowIds, filteredTabGroups, allTabs, currentDisplayedTabs, getSortedTabs]);
 
+  // Remember the most recent selection per window, so returning to a window
+  // re-selects the tab you were on.
+  useEffect(() => {
+    if (!selectedTabId) return;
+    const t = allTabs.find(tab => tab.id === selectedTabId);
+    if (t) lastSelectedByWindowRef.current[t.windowId] = t.id;
+  }, [selectedTabId, allTabs]);
+
   // --- ACTIONS ---
+  // Entering a window's view re-selects the last tab chosen there (or the
+  // first tab), so the preview panel follows the window switch.
+  const handleSelectWindow = (windowId: string) => {
+    setViewMode(ViewMode.BY_WINDOW);
+    setActiveWindowId(windowId);
+    const win = windows.find(w => w.id === windowId);
+    if (!win || win.tabs.length === 0) return;
+    const remembered = lastSelectedByWindowRef.current[windowId];
+    const target = win.tabs.find(t => t.id === remembered) || win.tabs[0];
+    setSelectedTabId(target.id);
+  };
+
+  const handleShowAllTabs = () => {
+    setViewMode(ViewMode.ALL);
+    setActiveWindowId(null);
+    setActiveDomain(null);
+  };
+
+  const handleSelectDomain = (domain: string) => {
+    setSidebarSelectedWindowIds([]);
+    setActiveWindowId(null);
+    setActiveDomain(domain);
+    setViewMode(ViewMode.BY_DOMAIN);
+  };
+
   const handleRenameWindow = async (windowId: string, newName: string) => {
     const newMap = { ...windowNameMap, [windowId]: newName };
     pushNameHistory(newMap);
@@ -592,18 +681,18 @@ const App: React.FC = () => {
 
   const startFullTour = () => {
     setCurrentTourSteps(FULL_TOUR_STEPS);
-    setOnboardingIndex(0);
+    setShowTour(true);
     setShowHelpMenu(false);
   };
 
   const handleShowIntro = () => {
     setCurrentTourSteps(FIRST_RUN_STEP);
-    setOnboardingIndex(0);
+    setShowTour(true);
     setShowHelpMenu(false);
   };
 
   const handleFinishOnboarding = async (permanent: boolean = true) => {
-    setOnboardingIndex(-1);
+    setShowTour(false);
     if (permanent) {
       await setOnboardingSeen();
     }
@@ -628,7 +717,27 @@ const App: React.FC = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable) return;
-      if (onboardingIndex !== -1) return;
+      if (showTour) return;
+
+      // Escape cancels the most immediate thing first: open dropdown menus
+      // close here; modals and the context menu close via their own Escape
+      // listeners (so we just stand back); with nothing else open, it
+      // unchecks all checked tabs.
+      if (e.key === 'Escape') {
+        const anyMenuOpen = showExportMenu || showHelpMenu || showSettingsMenu || showSortMenu || showCardSortMenu || showSearchScopeMenu || showMoveMenu;
+        const anyModalOpen = !!promptModal || !!contextMenu || showMergeModal || showReorgConfirm || showCloseCheckedConfirm || !!confirmCloseWindowId || showApiKeyModal || showUserGuide || !!errorModalState;
+        if (anyMenuOpen) {
+          setShowExportMenu(false); setShowHelpMenu(false); setShowSettingsMenu(false);
+          setShowSortMenu(false); setShowCardSortMenu(false); setShowSearchScopeMenu(false); setShowMoveMenu(false);
+          return;
+        }
+        if (anyModalOpen) return;
+        if (checkedTabIds.length > 0) {
+          e.preventDefault();
+          setCheckedTabIds([]);
+        }
+        return;
+      }
 
       // Area switching lives on Ctrl+Arrow so plain arrows can navigate the
       // card grid in two dimensions.
@@ -657,12 +766,12 @@ const App: React.FC = () => {
           e.preventDefault();
           setSidebarFocusIndex(prev => Math.max(prev - 1, 0));
         } else if (e.key === 'Enter') {
-          if (sidebarFocusIndex === 0) { setViewMode(ViewMode.ALL); setActiveWindowId(null); }
-          else if (sidebarFocusIndex === 1) { setViewMode(ViewMode.BY_WEBSITE); } // "Organize by Website" button logic
-          else if (sidebarFocusIndex === 2) { handleOrganizeTabs(); } // "Organize with AI" button logic
+          if (sidebarFocusIndex === 0) { handleOrganizeByWebsite(); } // "Categorize by Website"
+          else if (sidebarFocusIndex === 1) { handleOrganizeTabs(); } // "Categorize with AI"
+          else if (sidebarFocusIndex === 2) { handleShowAllTabs(); } // "Display tabs from all windows"
           else {
             const winIdx = sidebarFocusIndex - 3;
-            if (windows[winIdx]) { setViewMode(ViewMode.BY_WINDOW); setActiveWindowId(windows[winIdx].id); }
+            if (windows[winIdx]) { handleSelectWindow(windows[winIdx].id); }
           }
         }
       } else if (focusedArea === 'tabs') {
@@ -699,7 +808,7 @@ const App: React.FC = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [navigationTabs, selectedTabId, focusedArea, sidebarFocusIndex, windows, onboardingIndex, tabDisplayMode, cardColumns, cardWidth]);
+  }, [navigationTabs, selectedTabId, focusedArea, sidebarFocusIndex, windows, showTour, tabDisplayMode, cardColumns, cardWidth, checkedTabIds, showExportMenu, showHelpMenu, showSettingsMenu, showSortMenu, showCardSortMenu, showSearchScopeMenu, showMoveMenu, promptModal, contextMenu, showMergeModal, showReorgConfirm, showCloseCheckedConfirm, confirmCloseWindowId, showApiKeyModal, showUserGuide, errorModalState]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
@@ -719,7 +828,13 @@ const App: React.FC = () => {
     try {
       await closeTab(tabId);
       setWindows(prev => prev.map(w => ({ ...w, tabs: w.tabs.filter(t => t.id !== tabId) })));
-      if (selectedTabId === tabId) setSelectedTabId(null);
+      if (selectedTabId === tabId) {
+        // Select the tab that takes the closed one's place in the visible
+        // order (or the new last tab), so the preview doesn't go blank.
+        const idx = navigationTabs.findIndex(t => t.id === tabId);
+        const next = navigationTabs[idx + 1] || navigationTabs[idx - 1];
+        setSelectedTabId(next && next.id !== tabId ? next.id : null);
+      }
       setCheckedTabIds(prev => prev.filter(id => id !== tabId));
       showNotification("Tab closed", 'info');
     } catch (error) { 
@@ -871,22 +986,13 @@ const App: React.FC = () => {
         submenu: sortedWins.map(w => ({
           label: `${windowNameMap[w.id] || w.name} (${w.tabs.length})`,
           disabled: !multi && w.id === tab.windowId,
-          onClick: async () => {
-            try {
-              await moveTabs(targetIds, w.id);
-              await loadTabs(true);
-              showNotification(multi ? `${targetIds.length} tabs moved` : 'Tab moved', 'success');
-            } catch (err) { handleError("Move Failed", "Could not move to that window.", err); }
-          }
+          onClick: () => performTrackedMove(targetIds, w.id, multi ? `${targetIds.length} tabs moved` : 'Tab moved')
         }))
       },
       {
         label: `Move ${countLabel} to New Window`,
         icon: <FolderPlus size={14} />,
-        onClick: async () => {
-          try { await createWindowWithTabs(targetIds); await loadTabs(true); }
-          catch (err) { handleError("Move Failed", "Could not move to a new window.", err); }
-        }
+        onClick: () => performTrackedMove(targetIds, 'NEW')
       },
       {
         label: multi ? `Copy ${targetIds.length} URLs` : 'Copy URL',
@@ -951,14 +1057,7 @@ const App: React.FC = () => {
       items.push({
         label: `Move ${checkedTabIds.length} Checked Tab${checkedTabIds.length > 1 ? 's' : ''} Here`,
         icon: <FolderInput size={14} />,
-        onClick: async () => {
-          try {
-            await moveTabs(checkedTabIds, windowId);
-            setCheckedTabIds([]);
-            await loadTabs(true);
-            showNotification('Tabs moved', 'success');
-          } catch (err) { handleError("Move Failed", "Could not move the checked tabs.", err); }
-        }
+        onClick: () => performTrackedMove(checkedTabIds, windowId, 'Tabs moved')
       });
     }
     items.push({
@@ -982,23 +1081,21 @@ const App: React.FC = () => {
       {
         label: 'Move Group to New Window',
         icon: <FolderPlus size={14} />,
-        onClick: async () => {
-          try {
-            await createWindowWithTabs(group.tabIds);
-            await loadTabs(true);
-            showNotification('Group moved to new window', 'success');
-          } catch (err) { handleError("Move Failed", "Could not move the group.", err); }
-        }
+        onClick: () => performTrackedMove(group.tabIds, 'NEW', 'Group moved to new window')
       }
     ];
     setContextMenu({ x: e.clientX, y: e.clientY, items });
   };
 
+  // Categorizes the currently displayed tabs (respects the active window /
+  // domain filter and search) — not necessarily every open tab.
   const handleOrganizeTabs = async () => {
-    const currentSignature = JSON.stringify(allTabs.map(t => t.id + t.url).sort());
-    
+    const scopeTabs = currentDisplayedTabs.length > 0 ? currentDisplayedTabs : allTabs;
+    const currentSignature = JSON.stringify(scopeTabs.map(t => t.id + t.url).sort());
+
     if (tabGroups.length > 0 && currentSignature === lastOrganizedTabsSignature) {
       if (viewMode !== ViewMode.AI_GROUPED) {
+        setSidebarSelectedWindowIds([]);
         setViewMode(ViewMode.AI_GROUPED);
         showNotification("Showing cached groups", 'info');
       }
@@ -1007,9 +1104,10 @@ const App: React.FC = () => {
 
     setIsOrganizing(true);
     try {
-      const groups = await organizeTabsWithAI(allTabs);
+      const groups = await organizeTabsWithAI(scopeTabs);
       setTabGroups(groups);
       setLastOrganizedTabsSignature(currentSignature);
+      setSidebarSelectedWindowIds([]);
       setViewMode(ViewMode.AI_GROUPED);
       showNotification("Tabs organized by Gemini!", 'success');
     } catch (error: any) { 
@@ -1019,9 +1117,16 @@ const App: React.FC = () => {
       } else {
         handleError("Organization Failed", "We couldn't analyze your tabs. This often happens due to network issues or API limits.", error); 
       }
-    } finally { 
-      setIsOrganizing(false); 
+    } finally {
+      setIsOrganizing(false);
     }
+  };
+
+  // Snapshot the displayed tabs and show them grouped by domain.
+  const handleOrganizeByWebsite = () => {
+    setCategorizeScopeIds(currentDisplayedTabs.map(t => t.id));
+    setSidebarSelectedWindowIds([]);
+    setViewMode(ViewMode.BY_WEBSITE);
   };
 
   const handleAutoRenameWindows = async () => {
@@ -1200,18 +1305,85 @@ const App: React.FC = () => {
     }
   };
 
-  const handleMoveTabsToNewWindow = async () => {
-    if (checkedTabIds.length === 0) return;
+  // --- TRACKED TAB MOVES (multi-level undo/redo) ---
+  // Where each tab currently lives, captured before a move so it can be undone.
+  const captureMoveOrigins = (tabIds: string[]): MoveOrigin[] => {
+    const wanted = new Set(tabIds);
+    const origins: MoveOrigin[] = [];
+    for (const w of windows) {
+      w.tabs.forEach((t, i) => {
+        if (wanted.has(t.id)) origins.push({ tabId: t.id, windowId: w.id, index: i });
+      });
+    }
+    return origins;
+  };
+
+  // target: 'NEW' creates a window, otherwise an existing windowId.
+  const performTrackedMove = async (tabIds: string[], target: string, successMsg?: string) => {
+    if (tabIds.length === 0) return;
     setIsLoading(true);
     try {
-      await createWindowWithTabs(checkedTabIds);
-      setCheckedTabIds([]);
-      showNotification(`${checkedTabIds.length} tabs moved`, 'success');
-      if (!platformInfo.isExtension) await loadTabs();
-    } catch (e) { 
-      handleError("Move Failed", "Could not move tabs to a new window.", e);
-    } finally { 
-      setIsLoading(false); 
+      const origins = captureMoveOrigins(tabIds);
+      if (target === 'NEW') await createWindowWithTabs(tabIds);
+      else await moveTabs(tabIds, target);
+      setMoveUndoStack(prev => [...prev, { origins, target }]);
+      setMoveRedoStack([]);
+      setCheckedTabIds(prev => prev.filter(id => !tabIds.includes(id)));
+      await loadTabs(true);
+      showNotification(successMsg || `${tabIds.length} tab${tabIds.length > 1 ? 's' : ''} moved`, 'success');
+    } catch (e) {
+      handleError("Move Failed", "Could not move the tabs.", e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUndoMove = async () => {
+    const op = moveUndoStack[moveUndoStack.length - 1];
+    if (!op) return;
+    setIsLoading(true);
+    try {
+      const openIds = new Set(allTabs.map(t => t.id));
+      const existingWins = new Set(windows.map(w => w.id));
+      // Tabs closed since the move, or whose original window is gone, are skipped.
+      const restorable = op.origins.filter(o => openIds.has(o.tabId) && existingWins.has(o.windowId));
+      // Ascending original index so tabs land back in their original spots.
+      for (const o of [...restorable].sort((a, b) => a.index - b.index)) {
+        await moveTabToIndex(o.tabId, o.windowId, o.index);
+      }
+      setMoveUndoStack(prev => prev.slice(0, -1));
+      setMoveRedoStack(prev => [...prev, op]);
+      await loadTabs(true);
+      const skipped = op.origins.length - restorable.length;
+      showNotification(skipped > 0 ? `Move undone (${skipped} tab${skipped > 1 ? 's' : ''} could not be restored)` : 'Move undone', 'info');
+    } catch (e) {
+      handleError("Undo Failed", "Could not undo the tab move.", e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRedoMove = async () => {
+    const op = moveRedoStack[moveRedoStack.length - 1];
+    if (!op) return;
+    setIsLoading(true);
+    try {
+      const openIds = new Set(allTabs.map(t => t.id));
+      const ids = op.origins.map(o => o.tabId).filter(id => openIds.has(id));
+      if (ids.length === 0) throw new Error('None of the moved tabs are still open');
+      if (op.target !== 'NEW' && !windows.some(w => w.id === op.target)) {
+        throw new Error('The target window no longer exists');
+      }
+      if (op.target === 'NEW') await createWindowWithTabs(ids);
+      else await moveTabs(ids, op.target);
+      setMoveRedoStack(prev => prev.slice(0, -1));
+      setMoveUndoStack(prev => [...prev, op]);
+      await loadTabs(true);
+      showNotification('Move redone', 'info');
+    } catch (e) {
+      handleError("Redo Failed", "Could not redo the tab move.", e);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -1294,6 +1466,16 @@ const App: React.FC = () => {
   const groupingLocked = viewMode !== ViewMode.ALL;
   const effectiveGrouping: 'tab' | 'window' = groupingLocked ? 'tab' : cardGrouping;
 
+  // Drives the Check All / Uncheck All toolbar toggle.
+  const checkedIdSet = new Set(checkedTabIds);
+  const allDisplayedChecked = navigationTabs.length > 0 && navigationTabs.every(t => checkedIdSet.has(t.id));
+
+  // In the domain-filtered view the window each tab lives in is part of the
+  // point — force the Window field visible on cards there.
+  const effectiveCardMetadata = viewMode === ViewMode.BY_DOMAIN
+    ? cardMetadata.map(m => m.field === 'window' ? { ...m, visible: true } : m)
+    : cardMetadata;
+
   const cardWindows = useMemo(
     () => sidebarSelectedWindowIds.length > 0
       ? windows.filter(w => sidebarSelectedWindowIds.includes(w.id))
@@ -1308,7 +1490,7 @@ const App: React.FC = () => {
       windows={cardWindows}
       windowNames={windowNameMap}
       cardWidth={cardWidth}
-      metadata={cardMetadata}
+      metadata={effectiveCardMetadata}
       selectedTabId={selectedTabId}
       checkedTabIds={checkedTabIds}
       selectedWindowIds={sidebarSelectedWindowIds}
@@ -1320,7 +1502,7 @@ const App: React.FC = () => {
       onToggleWindowSelection={(id) => setSidebarSelectedWindowIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
       onTabContextMenu={openTabContextMenu}
       onWindowContextMenu={openWindowContextMenu}
-      onDrillIntoWindow={(id) => { setViewMode(ViewMode.BY_WINDOW); setActiveWindowId(id); }}
+      onDrillIntoWindow={handleSelectWindow}
       onFocusWindow={focusWindow}
       onColumnsChange={setCardColumns}
     />
@@ -1328,15 +1510,18 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-full overflow-hidden bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-200 font-sans transition-colors duration-200">
-      <Sidebar 
+      <Sidebar
         viewMode={viewMode}
-        setViewMode={setViewMode}
         windows={windows}
         windowNames={windowNameMap}
         activeWindowId={activeWindowId}
-        setActiveWindowId={setActiveWindowId}
+        onSelectWindow={handleSelectWindow}
+        onShowAllTabs={handleShowAllTabs}
+        domains={domainList}
+        activeDomain={viewMode === ViewMode.BY_DOMAIN ? activeDomain : null}
+        onSelectDomain={handleSelectDomain}
         onOrganize={handleOrganizeTabs}
-        onOrganizeByWebsite={() => setViewMode(ViewMode.BY_WEBSITE)}
+        onOrganizeByWebsite={handleOrganizeByWebsite}
         isOrganizing={isOrganizing}
         selectedWindowIds={sidebarSelectedWindowIds}
         onToggleWindowSelection={(id) => setSidebarSelectedWindowIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
@@ -1367,9 +1552,21 @@ const App: React.FC = () => {
                 : viewMode === ViewMode.ALL ? 'All Tabs'
                 : viewMode === ViewMode.AI_GROUPED ? 'AI Organized'
                 : viewMode === ViewMode.BY_WEBSITE ? 'By Website'
+                : viewMode === ViewMode.BY_DOMAIN ? `Domain: ${activeDomain}`
                 : (windowNameMap[activeWindowId || ''] || 'Current Window')
               }
             </h1>
+
+            {/* Exit the domain filter */}
+            {viewMode === ViewMode.BY_DOMAIN && !sidebarSelectedWindowIds.length && (
+              <button
+                onClick={handleShowAllTabs}
+                className="p-1 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                title="Show all tabs"
+              >
+                <X size={16} />
+              </button>
+            )}
 
             {/* Grouped-view controls (AI groups or website sections) */}
             {isGroupedView && !sidebarSelectedWindowIds.length && (
@@ -1426,6 +1623,13 @@ const App: React.FC = () => {
                 value={searchQuery}
                 onFocus={() => setFocusedArea('tabs')}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  // Escape clears the query (or just leaves the field when empty).
+                  if (e.key === 'Escape') {
+                    if (searchQuery) setSearchQuery('');
+                    (e.target as HTMLInputElement).blur();
+                  }
+                }}
                 className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-200 rounded-full pl-10 pr-24 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-slate-500 dark:placeholder:text-slate-600"
               />
               {/* Search scope switch: what the query matches against */}
@@ -1467,28 +1671,62 @@ const App: React.FC = () => {
             <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 mx-2 hidden sm:block"></div>
             
             <div className="flex items-center gap-1">
-              {/* Check-all: check every currently displayed tab (respects
-                  search + filters), e.g. search "amazon" → check all → close. */}
-              {checkedTabIds.length === 0 && navigationTabs.length > 0 && (
+              {/* Check-all toggle: checks every currently displayed tab
+                  (respects search + filters); once everything displayed is
+                  checked it flips to Uncheck All. */}
+              {navigationTabs.length > 0 && (
                 <button
-                  onClick={() => toggleAllChecks(navigationTabs.map(t => t.id), true)}
+                  onClick={() => toggleAllChecks(navigationTabs.map(t => t.id), !allDisplayedChecked)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors whitespace-nowrap"
-                  title="Check all tabs currently displayed"
+                  title={allDisplayedChecked ? 'Uncheck all displayed tabs' : 'Check all tabs currently displayed'}
                 >
                   <CheckSquare size={14} />
-                  Check All ({navigationTabs.length})
+                  {allDisplayedChecked ? `Uncheck All (${navigationTabs.length})` : `Check All (${navigationTabs.length})`}
                 </button>
               )}
               {checkedTabIds.length > 0 && (
                 <div className="flex items-center gap-1.5 mr-2 animate-in fade-in zoom-in duration-200">
-                  <button
-                    onClick={handleMoveTabsToNewWindow}
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 whitespace-nowrap"
-                    title="Move checked tabs to a new window"
-                  >
-                    <FolderPlus size={14} />
-                    Move {checkedTabIds.length}
-                  </button>
+                  {/* Move to… menu: new window or any existing window */}
+                  <div className="relative" ref={moveMenuRef}>
+                    <button
+                      onClick={() => setShowMoveMenu(!showMoveMenu)}
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 whitespace-nowrap"
+                      title="Move checked tabs to a window"
+                    >
+                      <FolderInput size={14} />
+                      Move {checkedTabIds.length}
+                      <ChevronDown size={12} />
+                    </button>
+                    {showMoveMenu && (
+                      <div className="absolute left-0 top-full mt-2 w-60 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 py-1 max-h-80 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
+                        <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Move {checkedTabIds.length} checked tab{checkedTabIds.length > 1 ? 's' : ''} to</div>
+                        <button
+                          onClick={() => { setShowMoveMenu(false); performTrackedMove(checkedTabIds, 'NEW'); }}
+                          className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm text-slate-700 dark:text-slate-200 flex items-center gap-2"
+                        >
+                          <FolderPlus size={14} className="text-indigo-500" />
+                          New Window
+                        </button>
+                        <div className="my-1 border-t border-slate-200 dark:border-slate-700" />
+                        {[...windows]
+                          .sort((a, b) => compareWindowNames(windowNameMap[a.id] || a.name, windowNameMap[b.id] || b.name))
+                          .map(w => {
+                            const allAlreadyHere = checkedTabIds.every(id => w.tabs.some(t => t.id === id));
+                            return (
+                              <button
+                                key={w.id}
+                                disabled={allAlreadyHere}
+                                onClick={() => { setShowMoveMenu(false); performTrackedMove(checkedTabIds, w.id); }}
+                                className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm text-slate-700 dark:text-slate-200 flex items-center justify-between gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                <span className="truncate">{windowNameMap[w.id] || w.name}</span>
+                                <span className="shrink-0 text-xs text-slate-400">({w.tabs.length})</span>
+                              </button>
+                            );
+                          })}
+                      </div>
+                    )}
+                  </div>
                   <button
                     onClick={() => setShowCloseCheckedConfirm(true)}
                     className="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 whitespace-nowrap"
@@ -1503,6 +1741,28 @@ const App: React.FC = () => {
                     title="Uncheck all"
                   >
                     <X size={14} />
+                  </button>
+                </div>
+              )}
+
+              {/* Tab-move undo/redo (multi-level); appears once a move happened */}
+              {(moveUndoStack.length > 0 || moveRedoStack.length > 0) && (
+                <div className="flex items-center gap-0.5 mr-1 animate-in fade-in duration-200">
+                  <button
+                    onClick={handleUndoMove}
+                    disabled={moveUndoStack.length === 0 || isLoading}
+                    className="p-1.5 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-indigo-600 dark:hover:text-indigo-300 disabled:opacity-40 disabled:hover:bg-transparent"
+                    title={`Undo tab move (${moveUndoStack.length})`}
+                  >
+                    <Undo2 size={14} />
+                  </button>
+                  <button
+                    onClick={handleRedoMove}
+                    disabled={moveRedoStack.length === 0 || isLoading}
+                    className="p-1.5 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-indigo-600 dark:hover:text-indigo-300 disabled:opacity-40 disabled:hover:bg-transparent"
+                    title={`Redo tab move (${moveRedoStack.length})`}
+                  >
+                    <Redo2 size={14} />
                   </button>
                 </div>
               )}
@@ -1899,7 +2159,8 @@ const App: React.FC = () => {
         {confirmCloseWindowId && (
           <ConfirmModal
             title="Close Window?"
-            message={`Close "${windowNameMap[confirmCloseWindowId] || 'this window'}" and its ${windows.find(w => w.id === confirmCloseWindowId)?.tabs.length ?? 0} tabs? This cannot be undone.`}
+            message={`Close "${windowNameMap[confirmCloseWindowId] || 'this window'}" and its ${windows.find(w => w.id === confirmCloseWindowId)?.tabs.length ?? 0} tabs?`}
+            warning="This cannot be undone."
             confirmText="Close Window"
             isProcessing={false}
             onConfirm={async () => {
@@ -1920,7 +2181,8 @@ const App: React.FC = () => {
         {showCloseCheckedConfirm && (
           <ConfirmModal
             title={`Close ${checkedTabIds.length} Tab${checkedTabIds.length > 1 ? 's' : ''}?`}
-            message={`This will close ${checkedTabIds.length} checked tab${checkedTabIds.length > 1 ? 's' : ''} in your browser. This cannot be undone.`}
+            message={`This will close ${checkedTabIds.length} checked tab${checkedTabIds.length > 1 ? 's' : ''} in your browser.`}
+            warning="This cannot be undone."
             confirmText={`Close ${checkedTabIds.length} Tab${checkedTabIds.length > 1 ? 's' : ''}`}
             isProcessing={false}
             onConfirm={handleCloseCheckedTabs}
@@ -1946,12 +2208,10 @@ const App: React.FC = () => {
           />
         )}
 
-        {onboardingIndex >= 0 && (
+        {showTour && (
           <OnboardingTour
-            stepIndex={onboardingIndex}
             steps={currentTourSteps}
-            onJump={(i) => setOnboardingIndex(Math.max(0, Math.min(i, currentTourSteps.length - 1)))}
-            onNext={(permanent = true) => onboardingIndex < currentTourSteps.length - 1 ? setOnboardingIndex(i => i + 1) : handleFinishOnboarding(permanent)}
+            onFinish={(permanent = true) => handleFinishOnboarding(permanent)}
             onSkip={(permanent = true) => handleFinishOnboarding(permanent)}
             onStartTour={startFullTour}
           />

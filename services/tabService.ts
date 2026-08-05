@@ -122,10 +122,20 @@ export const moveTabs = async (tabIds: string[], targetWindowId: string): Promis
   if (isExtension) {
     const ids = tabIds.map(id => parseInt(id));
     const winId = parseInt(targetWindowId);
+    // Deliberately no focus change: the TabMaster window stays active.
     await chrome.tabs.move(ids, { windowId: winId, index: -1 });
-    await chrome.windows.update(winId, { focused: true });
   } else {
     console.log(`[Mock] Moving tabs ${tabIds.join(', ')} to window ${targetWindowId}`);
+  }
+};
+
+// Move a single tab to a specific position in a window (used by move-undo to
+// put tabs back where they came from).
+export const moveTabToIndex = async (tabId: string, targetWindowId: string, index: number): Promise<void> => {
+  if (isExtension) {
+    await chrome.tabs.move(parseInt(tabId), { windowId: parseInt(targetWindowId), index });
+  } else {
+    console.log(`[Mock] Moving tab ${tabId} to window ${targetWindowId} at ${index}`);
   }
 };
 
@@ -135,16 +145,25 @@ export const createWindowWithTabs = async (tabIds: string[]): Promise<void> => {
     const ids = tabIds.map(id => parseInt(id));
     if (ids.length === 0) return;
 
+    // Remember the window TabMaster lives in so it can stay focused.
+    const appWindow = await chrome.windows.getCurrent();
+
     // Create window with the first tab
     const firstTabId = ids[0];
-    // Note: We don't remove the tab from the old window explicitly, 
+    // Note: We don't remove the tab from the old window explicitly,
     // passing 'tabId' to windows.create moves it.
-    const newWindow = await chrome.windows.create({ tabId: firstTabId, focused: true });
-    
+    const newWindow = await chrome.windows.create({ tabId: firstTabId, focused: false });
+
     // Move the rest
     if (ids.length > 1 && newWindow.id) {
       const remainingTabs = ids.slice(1);
       await chrome.tabs.move(remainingTabs, { windowId: newWindow.id, index: -1 });
+    }
+
+    // Some Chrome versions focus the new window despite focused:false —
+    // explicitly hand focus back to TabMaster.
+    if (appWindow?.id !== undefined) {
+      await chrome.windows.update(appWindow.id, { focused: true });
     }
   } else {
     console.log(`[Mock] Creating new window with tabs ${tabIds.join(', ')}`);
