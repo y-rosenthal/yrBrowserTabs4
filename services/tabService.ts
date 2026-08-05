@@ -179,7 +179,37 @@ export const getTabContent = async (tabId: string): Promise<string> => {
       const results = await chrome.scripting.executeScript({
         target: { tabId: id },
         func: () => {
-          return document.documentElement.outerHTML;
+          // outerHTML only serializes text that sits inside tags. CSS-in-JS
+          // libraries (styled-components/emotion in production) leave their
+          // <style> tags EMPTY and insert rules straight into the CSSOM, so
+          // a plain outerHTML capture loses most of such a page's styling
+          // (icons render huge, layout collapses). Serialize those CSSOM
+          // rules — plus adopted stylesheets — into one extra <style> block.
+          const MAX_CSSOM_CHARS = 600000; // keep pathological pages bounded
+          let cssomCss = '';
+          const grabSheet = (sheet: CSSStyleSheet, requireEmptyOwner: boolean) => {
+            try {
+              if (requireEmptyOwner) {
+                const owner = sheet.ownerNode as HTMLElement | null;
+                if (!owner || owner.tagName !== 'STYLE') return; // <link> sheets reload via <base href>
+                if ((owner.textContent || '').trim()) return;    // already captured by outerHTML
+              }
+              for (const rule of Array.from(sheet.cssRules)) {
+                if (cssomCss.length > MAX_CSSOM_CHARS) return;
+                cssomCss += rule.cssText + '\n';
+              }
+            } catch { /* cross-origin sheet — not readable, skip */ }
+          };
+          for (const s of Array.from(document.styleSheets)) grabSheet(s, true);
+          for (const s of Array.from(document.adoptedStyleSheets || [])) grabSheet(s, false);
+
+          const html = document.documentElement.outerHTML;
+          if (!cssomCss) return html;
+          // "</style" inside a rule (e.g. in a content string) would end the
+          // block early — escape it, then splice before </head> if present.
+          const styleTag = '<style data-tabmaster-cssom>' + cssomCss.replace(/<\/style/gi, '<\\/style') + '</style>';
+          const idx = html.search(/<\/head>/i);
+          return idx >= 0 ? html.slice(0, idx) + styleTag + html.slice(idx) : styleTag + html;
         }
       });
       return results[0]?.result || '';

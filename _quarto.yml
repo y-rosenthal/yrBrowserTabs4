@@ -13,6 +13,7 @@ book:
       chapters:
         - docs/spec-conventions.qmd
         # Add new spec files here, newest first:
+        - docs/SPEC-4.2.1-v001-Preview_fidelity_CSSOM_styles_and_manual_refresh.qmd
         - docs/SPEC-4.2.0-v002-Tour_responsiveness_guide_numbering_domain_sort_and_Escape_key.qmd
         - docs/SPEC-4.2.0-v001-Preview_panel_redesign_domain_browsing_move_undo_and_selection_memory.qmd
         - docs/SPEC-4.1.1-v001-Stable_row_order_when_closing_tabs.qmd

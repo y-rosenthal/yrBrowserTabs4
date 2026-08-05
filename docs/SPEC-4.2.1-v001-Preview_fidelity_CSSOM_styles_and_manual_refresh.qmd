@@ -1,0 +1,44 @@
+---
+title: "SPEC-4.2.1-v001"
+subtitle: "Preview fidelity: CSSOM styles captured; manual refresh"
+---
+
+## Problem
+
+Previews of some sites (e.g. openstax.org) rendered as a nearly unstyled
+page dominated by giant SVG icons, and re-selecting the tab appeared not
+to help.
+
+Two causes:
+
+1. **Lost styles, not staleness.** The capture used
+   `document.documentElement.outerHTML`, which serializes only text that
+   sits *inside* tags. CSS-in-JS libraries (styled-components / emotion in
+   production) leave their `<style>` tags empty and insert every rule
+   directly into the CSSOM via `insertRule` — so the capture dropped most
+   of such a page's styling. Every re-capture produced the same broken
+   render, which looked like a frozen preview.
+2. There was no way to force a re-capture of the currently previewed tab
+   after the live page changed (e.g. dismissing a full-screen dialog) —
+   only selecting a different tab and back would refetch.
+
+## Fix
+
+- `tabService.getTabContent` now serializes CSSOM rules into an extra
+  `<style data-tabmaster-cssom>` block appended to `</head>`:
+  - `<style>` sheets whose owner tag is **empty** (the CSS-in-JS case) —
+    sheets whose text already serializes via outerHTML are skipped to
+    avoid duplication, as are `<link>` sheets (they reload through the
+    injected `<base href>`);
+  - `document.adoptedStyleSheets` (constructable stylesheets);
+  - cross-origin sheets are skipped (unreadable); output is capped at
+    600 KB per capture; `</style` inside rule text is escaped.
+  - Card-view thumbnails share this capture path and gain the same
+    fidelity.
+- The preview panel header gained a **refresh button** (circular arrow,
+  next to "Switch to actual tab") that re-captures the current tab on
+  demand; it spins while the capture is in flight.
+
+## Version
+
+`package.json` / `manifest.json` bumped **4.2.0 → 4.2.1**.

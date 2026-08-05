@@ -237,13 +237,23 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
               {tab.title}
             </h3>
           </div>
-          <button
-            onClick={() => onActivate(tab)}
-            className="p-1.5 shrink-0 text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 rounded transition-colors"
-            title="Switch to actual tab"
-          >
-            <ExternalLink size={16} />
-          </button>
+          <div className="flex items-center gap-0.5 shrink-0">
+            <button
+              onClick={() => setFetchAttempt(a => a + 1)}
+              disabled={isLoading}
+              className="p-1.5 text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 rounded transition-colors disabled:opacity-40"
+              title="Re-capture the preview (e.g. after the page changed)"
+            >
+              <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+            </button>
+            <button
+              onClick={() => onActivate(tab)}
+              className="p-1.5 text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 rounded transition-colors"
+              title="Switch to actual tab"
+            >
+              <ExternalLink size={16} />
+            </button>
+          </div>
         </div>
 
         {/* Full URL, browser-address-bar style, with copy */}
