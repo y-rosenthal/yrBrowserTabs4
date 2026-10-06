@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Layout, Sparkles, Layers, CopyPlus, Edit2, ArrowUp, ArrowDown, ArrowUpDown, Wand2, Undo2, Redo2, GripVertical, CheckSquare, Square, Globe, ChevronDown, Search } from 'lucide-react';
+import { Layout, Sparkles, Layers, CopyPlus, Edit2, ArrowUp, ArrowDown, ArrowUpDown, Wand2, Undo2, Redo2, GripVertical, CheckSquare, Square, Globe, ChevronDown, Search, LayoutTemplate, RotateCcw, AppWindow } from 'lucide-react';
 import { ViewMode, WindowData } from '../types';
 import { compareWindowNames } from '../services/sortUtils';
 
@@ -15,7 +15,24 @@ interface SidebarProps {
   activeDomain: string | null;
   onSelectDomain: (domain: string) => void;
   onOrganize: () => void;
-  onOrganizeByWebsite: () => void;
+  // Windows / Domains tabs. Opening Domains categorizes the displayed tabs
+  // by website; its panel links to each website section.
+  sidebarTab: 'windows' | 'domains';
+  onSelectSidebarTab: (tab: 'windows' | 'domains') => void;
+  websiteSections: { name: string; count: number }[];
+  activeSectionIndex: number;
+  onJumpToSection: (index: number) => void;
+  // Set when the categorization covers only some open tabs (the ones that
+  // were displayed when Domains was opened); null when it covers all.
+  scopedTabCount: number | null;
+  onUseAllTabs: () => void;
+  // One section per site, subdomains combined.
+  combineSubdomains: boolean;
+  onToggleCombineSubdomains: () => void;
+  onApplyToWindows: () => void;
+  onUndoReorg: () => void;
+  canUndoReorg: boolean;
+  isReorganizing: boolean;
   isOrganizing: boolean;
   selectedWindowIds: string[];
   onToggleWindowSelection: (id: string) => void;
@@ -58,7 +75,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeDomain,
   onSelectDomain,
   onOrganize,
-  onOrganizeByWebsite,
+  sidebarTab,
+  onSelectSidebarTab,
+  websiteSections,
+  activeSectionIndex,
+  onJumpToSection,
+  scopedTabCount,
+  onUseAllTabs,
+  combineSubdomains,
+  onToggleCombineSubdomains,
+  onApplyToWindows,
+  onUndoReorg,
+  canUndoReorg,
+  isReorganizing,
   isOrganizing,
   selectedWindowIds,
   onToggleWindowSelection,
@@ -119,6 +148,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
       document.removeEventListener('keydown', onKeyDown);
     };
   }, [showDomainMenu]);
+
+  // Keep the highlighted section link in view as the tab list scrolls. Sets
+  // the sidebar's scrollTop directly: a scrollIntoView() here could cancel
+  // the tab list's in-progress smooth scroll to the clicked section.
+  const sectionLinkRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (sidebarTab !== 'domains') return;
+    const link = sectionLinkRefs.current[activeSectionIndex];
+    const area = scrollAreaRef.current;
+    if (!link || !area) return;
+    const linkRect = link.getBoundingClientRect();
+    const areaRect = area.getBoundingClientRect();
+    if (linkRect.top < areaRect.top) area.scrollTop -= areaRect.top - linkRect.top;
+    else if (linkRect.bottom > areaRect.bottom) area.scrollTop += linkRect.bottom - areaRect.bottom;
+  }, [activeSectionIndex, sidebarTab]);
 
   const filteredDomains = domainQuery.trim()
     ? domains.filter(d => d.domain.toLowerCase().includes(domainQuery.trim().toLowerCase()))
@@ -293,26 +338,49 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto py-4">
-        {/* Main Views */}
-        <div className="px-3 space-y-1 mb-6">
-          <p className="px-3 text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider mb-2">Views</p>
+      {/* Windows / Domains tab control (fixed above the scrolling panels) */}
+      <div className="shrink-0 px-3 pt-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+        <div role="tablist" className="flex gap-1 p-1 bg-slate-200/70 dark:bg-slate-800 rounded-lg">
+        <button
+          role="tab"
+          aria-selected={sidebarTab === 'windows'}
+          onClick={() => onSelectSidebarTab('windows')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-sm font-medium rounded-md transition-colors ${
+            sidebarTab === 'windows'
+              ? 'bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 shadow-sm'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
+        >
+          <AppWindow size={15} className="shrink-0" />
+          Windows
+        </button>
+        <button
+          role="tab"
+          aria-selected={sidebarTab === 'domains'}
+          data-tour="organize-website"
+          title="Categorize the displayed tabs by website and list each website"
+          onClick={() => onSelectSidebarTab('domains')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-sm font-medium rounded-md transition-colors ${
+            sidebarTab === 'domains'
+              ? 'bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 shadow-sm'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
+        >
+          <Globe size={15} className="shrink-0" />
+          Domains
+        </button>
+        </div>
+      </div>
 
-          <button
-            data-tour="organize-website"
-            onClick={onOrganizeByWebsite}
-            className={getButtonStyle(0, viewMode === ViewMode.BY_WEBSITE)}
-          >
-            <Globe size={18} className="shrink-0" />
-            <span className="truncate">Categorize by Website</span>
-          </button>
-
-          {/* Combined Organize Button */}
+      <div ref={scrollAreaRef} className="flex-1 overflow-y-auto py-4">
+        {sidebarTab === 'windows' ? (
+        <>
+        <div className="px-3 mb-6">
           <button
             data-tour="organize"
             onClick={onOrganize}
             disabled={isOrganizing}
-            className={`${getButtonStyle(1, viewMode === ViewMode.AI_GROUPED)} ${isOrganizing ? 'bg-indigo-50 dark:bg-indigo-900/30 ring-1 ring-indigo-500/50' : ''}`}
+            className={`${getButtonStyle(0, viewMode === ViewMode.AI_GROUPED)} ${isOrganizing ? 'bg-indigo-50 dark:bg-indigo-900/30 ring-1 ring-indigo-500/50' : ''}`}
           >
             {isOrganizing ? (
               <>
@@ -334,7 +402,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
            <button
              onClick={onShowAllTabs}
-             className={`${getButtonStyle(2, viewMode === ViewMode.ALL)} mb-1.5`}
+             className={`${getButtonStyle(1, viewMode === ViewMode.ALL)} mb-1.5`}
            >
              <Layers size={18} className="shrink-0" />
              <span className="truncate">Display tabs from all windows</span>
@@ -405,7 +473,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
 
           {sortedWindows.map((win, idx) => {
-            const listIndex = idx + 3;
+            const listIndex = idx + 2;
             const isSelected = selectedWindowIds.includes(win.id);
             const isActive = viewMode === ViewMode.BY_WINDOW && activeWindowId === win.id;
             const displayName = windowNames[win.id] || win.name;
@@ -476,6 +544,81 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span>Merge ({selectedWindowIds.length}) Windows</span>
             </button>
           </div>
+        )}
+        </>
+        ) : (
+        <div className="px-3">
+          {/* Domains tab: options for the website grouping, then one link
+              per website section. */}
+          <div className="px-3 mb-3 space-y-2">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {websiteSections.length} website{websiteSections.length === 1 ? '' : 's'} •{' '}
+              {websiteSections.reduce((n, s) => n + s.count, 0)} tabs
+              {scopedTabCount !== null && (
+                <>
+                  {' '}— only the tabs displayed when you opened this tab.{' '}
+                  <button onClick={onUseAllTabs} className="font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
+                    Include all tabs
+                  </button>
+                </>
+              )}
+            </p>
+            <label
+              className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white cursor-pointer select-none"
+              title="Combine subdomains that share a site (e.g. account.example.com and www.example.com) into one section — and one window when applied"
+            >
+              <input
+                type="checkbox"
+                checked={combineSubdomains}
+                onChange={onToggleCombineSubdomains}
+                className="accent-indigo-600"
+              />
+              Combine subdomains
+            </label>
+            <div className="flex gap-1.5">
+              <button
+                onClick={onApplyToWindows}
+                disabled={isReorganizing || websiteSections.length === 0}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-medium rounded-md shadow-sm transition-colors"
+                title="Move the tabs into one window per website, each named after its website"
+              >
+                <LayoutTemplate size={14} />
+                Apply to Windows
+              </button>
+              {canUndoReorg && (
+                <button
+                  onClick={onUndoReorg}
+                  disabled={isReorganizing}
+                  className="flex items-center justify-center gap-1.5 px-2 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-md text-xs font-medium transition-colors disabled:opacity-50"
+                  title="Undo the last Apply to Windows"
+                >
+                  <RotateCcw size={13} />
+                  Undo
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-0.5" role="navigation" aria-label="Website sections">
+            {websiteSections.length === 0 && (
+              <p className="px-3 py-2 text-xs text-slate-400">No tabs to group.</p>
+            )}
+            {websiteSections.map((section, idx) => (
+              <button
+                key={section.name}
+                ref={el => { sectionLinkRefs.current[idx] = el; }}
+                onClick={() => onJumpToSection(idx)}
+                className={getButtonStyle(idx, idx === activeSectionIndex)}
+                title={`Jump to ${section.name}`}
+              >
+                <span className="flex-1 text-left truncate">{section.name}</span>
+                <span className="text-xs bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-500 font-mono">
+                  {section.count}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
         )}
       </div>
 

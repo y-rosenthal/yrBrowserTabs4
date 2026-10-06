@@ -40,9 +40,9 @@
 ## 🚀 Features
 
 ### 🗂️ Categorizing Tabs
-- **Categorize by Website**: Instantly group the currently displayed tabs into a section per website (domain name) — no AI needed.
+- **Domains Tab**: The sidebar has **Windows** and **Domains** tabs. Opening **Domains** instantly groups the currently displayed tabs into a section per website (domain name) — no AI needed — and lists every website; click one to jump to its section. Tick **Combine subdomains** to merge e.g. `account.example.com` and `www.example.com` into one `example.com` section.
 - **Categorize with AI**: Let Gemini group the currently displayed tabs into semantic categories (e.g., "Development", "Social", "News").
-- **Apply to Windows**: Physically reorganize your browser windows to match either grouping — undoable.
+- **Apply to Windows**: Physically reorganize your browser windows to match either grouping — each window is named after its website or category. Undoable.
 - **Auto-Name Windows**: Let AI generate descriptive names for your windows based on their content.
 
 ### 🔍 Search & Domains
@@ -67,13 +67,14 @@
 ## 📖 User Guide
 
 ### 1. Categorizing Tabs
-1.  **Sidebar**: Click **"Categorize by Website"** (instant) or **"Categorize with AI"** (Gemini). Both act on the tabs currently displayed — filter first to categorize a subset.
-2.  **View Results**: Tabs are grouped into sections.
+1.  **Sidebar**: Switch the sidebar to the **"Domains"** tab (instant, by website) or click **"Categorize with AI"** on the **"Windows"** tab (Gemini). Both act on the tabs currently displayed — filter first to categorize a subset. On the Domains tab, **"Include all tabs"** widens a subset to every open tab, and switching back to **"Windows"** shows all tabs again.
+2.  **View Results**: Tabs are grouped into sections. On the Domains tab, the sidebar lists every website section — click one (or use the arrow keys and Enter) to jump straight to it; the website currently at the top of the list is highlighted as you scroll.
 3.  **Refine**:
     - Use the **"Sort All"** dropdown to sort all groups by Name, Domain, etc.
     - Click individual column headers to sort specific groups.
+    - Tick **"Combine subdomains"** (on the Domains tab) to merge all subdomains of a site (e.g. `account.bambibaby.com` and `www.bambibaby.com`) into a single `bambibaby.com` section. The choice is remembered.
     - Click **"Close all N"** next to a section heading (or right-click the heading) to close every tab listed under that website or category. Only the tabs shown are closed — if a search is active, tabs it hides stay open.
-4.  **Apply**: Click **"Apply to Windows"** to reorganize your actual browser windows. Use **"Undo Reorg"** if needed.
+4.  **Apply**: Click **"Apply to Windows"** (on the Domains tab, or in the toolbar for AI groups) to reorganize your actual browser windows — one window per section, named after it (e.g. `bambibaby.com`). Window names change only at this step — until then your windows still hold a mix of sites. An existing window is reused only if all of its tabs are being reorganized, so a window never keeps unrelated tabs under a new name. Use **"Undo"** next to it (or **"Undo Reorg"** in the AI view) if needed.
 
 ### 2. Managing Windows
 - **Rename**: Double-click a window name in the sidebar to rename it.

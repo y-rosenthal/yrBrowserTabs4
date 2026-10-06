@@ -1,0 +1,82 @@
+---
+title: "SPEC-4.4.0-v001"
+subtitle: "Domain window names on Apply; combine subdomains"
+---
+
+## Problems
+
+1. **Default window names after "Apply to Windows".** Applying a
+   *Categorize by Website* grouping recycles the existing windows first
+   (renaming each to its section's domain) and creates new windows for the
+   remaining sections. `tabService.createWindowWithTabs` returned nothing,
+   so the new windows could not be named and fell back to the generated
+   defaults (`window5`, `window6`, …). With more websites than open windows
+   — the usual case — most windows ended up with meaningless names. The
+   same gap affected *Categorize with AI*.
+2. **Subdomains split a site.** Sections are keyed by full hostname, so
+   `account.bambibaby.com` and `www.bambibaby.com` became separate
+   sections — and separate windows when applied.
+
+## Changes
+
+### Every applied window is named after its section
+
+- `createWindowWithTabs` now resolves to the new window's id
+  (`string | null`; `null` in demo mode or for an empty tab list). Existing
+  callers that ignore the result are unaffected.
+- `handleApplyAiOrganization` names newly created windows exactly as it
+  names recycled ones: the section name (the domain, or the AI category)
+  is saved as the window's custom name and added to the name history, so
+  name undo/redo covers it.
+- **Undo Reorg** also benefits: when a snapshot's window no longer exists
+  and is re-created, the re-created window gets the snapshot's name back
+  (previously "Name is lost for new ID").
+- The website-view confirm message now says windows are "named after its
+  domain".
+
+### "Combine subdomains" toggle
+
+UI choice (from four options considered — a toggle in the view, a checkbox
+in the Apply confirmation, a second sidebar action, and per-site merge
+links): a **checkbox pill in the By Website view's toolbar**, next to
+*Sort All*, labelled **Combine subdomains**. Rationale: the sections on
+screen always match the windows "Apply to Windows" will create.
+
+- Shown only in the By Website view.
+- Toggling regroups the sections immediately; "Close all N", context menus,
+  keyboard navigation and Apply all operate on the regrouped sections.
+- Persisted in `chrome.storage.local` as `combineSubdomains`
+  (default `false`, i.e. existing behaviour).
+- When on, sections are keyed by `getSiteOf(hostname)` and titled with the
+  site (e.g. `bambibaby.com`); the confirm message says "each site
+  (subdomains combined)".
+
+### `getSiteOf` (services/sortUtils.ts)
+
+Maps a hostname to its registrable site:
+
+| Hostname | Site |
+|---|---|
+| `account.bambibaby.com`, `www.bambibaby.com` | `bambibaby.com` |
+| `news.bbc.co.uk` | `bbc.co.uk` |
+| `a.b.c.example.org` | `example.org` |
+| `localhost`, `local`, `192.168.1.10`, `[::1]` | unchanged |
+
+- Normally keeps the last two labels. If the last two labels form a known
+  two-label public suffix (`co.uk`, `com.au`, `co.jp`, … — a built-in list
+  of common country-code second levels, not the full Public Suffix List),
+  it keeps three.
+- IPv4/IPv6 literals and single-label hosts are returned unchanged; a
+  trailing dot is ignored.
+- Sections are still ordered with `compareDomains`, which already sorts by
+  2nd-level label first.
+
+## Docs
+
+- README / in-app User Guide: Combine subdomains and window naming
+  described under *Features* and *Categorizing Tabs*.
+- Tour step "Categorize by Website" mentions both.
+
+## Version
+
+`package.json` / `manifest.json` bumped **4.3.0 → 4.4.0**.

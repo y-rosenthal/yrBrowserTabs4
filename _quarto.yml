@@ -13,6 +13,9 @@ book:
       chapters:
         - docs/spec-conventions.qmd
         # Add new spec files here, newest first:
+        - docs/SPEC-4.5.0-v001-Sidebar_Windows_and_Domains_tabs.qmd
+        - docs/SPEC-4.4.0-v002-Window_reuse_fix_and_sidebar_combine_toggle.qmd
+        - docs/SPEC-4.4.0-v001-Domain_window_names_and_combine_subdomains.qmd
         - docs/SPEC-4.3.0-v001-Close_all_tabs_per_group_in_categorized_views.qmd
         - docs/SPEC-4.2.1-v001-Preview_fidelity_CSSOM_styles_and_manual_refresh.qmd
         - docs/SPEC-4.2.0-v002-Tour_responsiveness_guide_numbering_domain_sort_and_Escape_key.qmd

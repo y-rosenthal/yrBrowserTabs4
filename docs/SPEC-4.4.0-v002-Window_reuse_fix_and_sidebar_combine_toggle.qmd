@@ -1,0 +1,103 @@
+---
+title: "SPEC-4.4.0-v002"
+subtitle: "Domain window names on Apply; combine subdomains (revised: window-reuse fix, sidebar toggle)"
+---
+
+> **Revision note (v002).** Supersedes v001 after user testing:
+>
+> - The user expected window names to change on *Categorize by Website*.
+>   They change on **Apply to Windows** — before that, windows still hold a
+>   mix of sites, so there is nothing truthful to name them. This is now
+>   stated in the Apply button's tooltip and the User Guide.
+> - Review of the Apply path found that recycling windows **by position**
+>   renamed windows that kept unrelated tabs, and could fail midway — see
+>   *Window reuse* below.
+> - The *Combine subdomains* checkbox moved from the By Website toolbar to
+>   the sidebar, directly under **Categorize by Website**.
+
+## Problems
+
+1. **Default window names after "Apply to Windows".** New windows created
+   by Apply could not be named, because `tabService.createWindowWithTabs`
+   returned nothing, so they kept generated defaults (`window5`, …).
+2. **Windows reused by position.** Apply took the existing windows in id
+   order and assigned section *i* to window *i*, renaming it — whether or
+   not that window's other tabs were part of the reorganization. With a
+   scoped categorization (e.g. one window's 8 tabs grouped into 7 sites,
+   while 25 other windows exist) it renamed 7 unrelated windows to site
+   names and dumped one site's tabs into each, leaving them full of
+   unrelated tabs. Also, if earlier moves emptied a target window, Chrome
+   closed it and the later move into it threw, aborting the reorg midway.
+3. **Subdomains split a site.** `account.bambibaby.com` and
+   `www.bambibaby.com` were separate sections and separate windows.
+
+## Changes
+
+### Window reuse and naming (`handleApplyAiOrganization`)
+
+- Groups are first reduced to their currently open tabs; empty groups are
+  skipped.
+- An existing window is **reused** for a group only if
+  1. **every** tab in it is part of this reorganization (so it never keeps
+     unrelated tabs under the group's name), and
+  2. it already holds **at least one** of the group's tabs. Those tabs never
+     leave it, so moves for other groups cannot empty it and Chrome cannot
+     close it out from under a later move.
+- Group↔window pairs are assigned greedily by number of shared tabs (most
+  first), each window used at most once — minimizing tab moves.
+- Every other group gets a new window via `createWindowWithTabs`, which now
+  resolves to the new window's id (`string | null`; `null` in demo mode).
+- **Every** resulting window — reused or new — is named after its group and
+  the name is saved and pushed onto the name history (name undo/redo).
+- Windows emptied by the moves are closed by Chrome as before; their stale
+  names are pruned on the next reload.
+- **Undo Reorg** restores the snapshot's name on windows it has to
+  re-create.
+- The Apply button gained a tooltip: "Move the tabs into one window per
+  section, each named after its section". The website-view confirm message
+  says windows are "named after its domain".
+
+### "Combine subdomains" checkbox (sidebar)
+
+- A small checkbox labelled **Combine subdomains**, indented directly under
+  the **Categorize by Website** sidebar button (aligned with its label) so
+  it reads as that action's option. Tooltip explains the effect.
+- Available in every view. In the By Website view, toggling regroups the
+  sections immediately; elsewhere it sets how the next *Categorize by
+  Website* groups.
+- Persisted in `chrome.storage.local` as `combineSubdomains` (default
+  `false` — existing behaviour).
+- When on, sections are keyed by `getSiteOf(hostname)` and titled with the
+  site (e.g. `bambibaby.com`). "Close all N", context menus, keyboard
+  navigation and Apply all operate on the combined sections.
+- Not part of the sidebar's arrow-key focus order (indices 0/1 stay the two
+  Categorize buttons).
+
+### `getSiteOf` (services/sortUtils.ts)
+
+Maps a hostname to its registrable site:
+
+| Hostname | Site |
+|---|---|
+| `account.bambibaby.com`, `www.bambibaby.com` | `bambibaby.com` |
+| `news.bbc.co.uk` | `bbc.co.uk` |
+| `a.b.c.example.org` | `example.org` |
+| `localhost`, `local`, `192.168.1.10`, `[::1]` | unchanged |
+
+- Normally keeps the last two labels; keeps three when the last two form a
+  known two-label public suffix (`co.uk`, `com.au`, `co.jp`, … — a built-in
+  list of common country-code second levels, not the full Public Suffix
+  List).
+- IPv4/IPv6 literals and single-label hosts are returned unchanged; a
+  trailing dot is ignored.
+- Sections remain ordered by `compareDomains`.
+
+## Docs
+
+- README / in-app User Guide: checkbox location, that names change on
+  Apply, and the reuse rule.
+- Tour step "Categorize by Website" points to the checkbox "just below it".
+
+## Version
+
+`package.json` / `manifest.json` bumped **4.3.0 → 4.4.0**.

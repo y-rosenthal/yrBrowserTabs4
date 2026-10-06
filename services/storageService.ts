@@ -22,7 +22,8 @@ const MOCK_STORAGE: StorageData = {
   cardGrouping: 'tab',
   cardWidth: 240,
   cardMetadata: DEFAULT_CARD_METADATA,
-  searchScope: 'domain'
+  searchScope: 'domain',
+  combineSubdomains: false
 };
 
 // In-memory fallback for demo mode
@@ -31,7 +32,7 @@ let memStorage = { ...MOCK_STORAGE };
 export const getStorageData = async (): Promise<StorageData> => {
   if (isExtension) {
     return new Promise((resolve) => {
-      chrome.storage.local.get(['customWindowNames', 'hasSeenOnboarding', 'theme', 'apiKey', 'tabViewMode', 'cardGrouping', 'cardWidth', 'cardMetadata', 'searchScope'], (result: any) => {
+      chrome.storage.local.get(['customWindowNames', 'hasSeenOnboarding', 'theme', 'apiKey', 'tabViewMode', 'cardGrouping', 'cardWidth', 'cardMetadata', 'searchScope', 'combineSubdomains'], (result: any) => {
         resolve({
           customWindowNames: result.customWindowNames || {},
           hasSeenOnboarding: result.hasSeenOnboarding || false,
@@ -41,7 +42,8 @@ export const getStorageData = async (): Promise<StorageData> => {
           cardGrouping: result.cardGrouping || 'tab',
           cardWidth: result.cardWidth || 240,
           cardMetadata: result.cardMetadata || DEFAULT_CARD_METADATA,
-          searchScope: result.searchScope === 'content' || result.searchScope === 'title' ? result.searchScope : 'domain'
+          searchScope: result.searchScope === 'content' || result.searchScope === 'title' ? result.searchScope : 'domain',
+          combineSubdomains: result.combineSubdomains === true
         });
       });
     });
@@ -108,7 +110,7 @@ export const saveApiKey = async (apiKey: string): Promise<void> => {
 
 // Persists any subset of the view preferences.
 export const saveViewSettings = async (
-  patch: Partial<Pick<StorageData, 'tabViewMode' | 'cardGrouping' | 'cardWidth' | 'cardMetadata' | 'searchScope'>>
+  patch: Partial<Pick<StorageData, 'tabViewMode' | 'cardGrouping' | 'cardWidth' | 'cardMetadata' | 'searchScope' | 'combineSubdomains'>>
 ): Promise<void> => {
   if (isExtension) {
     await chrome.storage.local.set(patch);

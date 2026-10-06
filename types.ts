@@ -59,6 +59,9 @@ export interface StorageData {
   // What the search box matches against: tab titles/URLs only, or also the
   // captured page text of open tabs.
   searchScope?: 'domain' | 'title' | 'content';
+  // "Categorize by Website": one section per site (subdomains combined)
+  // instead of one per full hostname.
+  combineSubdomains?: boolean;
 }
 
 export interface WindowReorgSnapshot {

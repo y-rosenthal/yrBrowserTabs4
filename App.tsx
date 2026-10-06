@@ -7,7 +7,7 @@ import { Search, Info, ExternalLink, RefreshCw, AlertCircle, Download, Table, Fi
 import { organizeTabsWithAI, generateWindowNamesWithAI } from './services/geminiService';
 import { getWindows, activateTab, closeTab, closeTabs, getPlatformInfo, moveTabs, moveTabToIndex, createWindowWithTabs, subscribeToUpdates, focusWindow, closeWindow, wakeTab, getTabPageText } from './services/tabService';
 import { saveCustomWindowName, saveCustomWindowNames, getStorageData, setOnboardingSeen, saveTheme, saveApiKey, saveViewSettings, DEFAULT_CARD_METADATA } from './services/storageService';
-import { compareWindowNames, compareDomains } from './services/sortUtils';
+import { compareWindowNames, compareDomains, getSiteOf } from './services/sortUtils';
 import { TabListView, SortField, SortDirection } from './components/TabListView';
 import { TabCardView } from './components/TabCardView';
 import { ContextMenu, ContextMenuItem } from './components/ContextMenu';
@@ -56,8 +56,8 @@ const FULL_TOUR_STEPS: OnboardingStep[] = [
   },
   {
     anchor: 'organize-website',
-    title: 'Categorize by Website',
-    content: 'Instantly group the currently displayed tabs into a section for each website (domain name) — no AI needed. From this view, "Apply to Windows" physically reorganizes your browser so each website gets its own window — and it can be undone.'
+    title: 'Domains Tab',
+    content: 'Switch the sidebar to "Domains" to instantly group the currently displayed tabs into a section per website — no AI needed. The tab lists every website; click one to jump to its section. Tick "Combine subdomains" to merge e.g. www.example.com and account.example.com, and use "Apply to Windows" to give each website its own window, named after it (undoable). "Windows" switches back.'
   },
   {
     anchor: 'organize',
@@ -230,6 +230,12 @@ const App: React.FC = () => {
 
   // Search scope: domain only, titles/URLs, or also the captured page text.
   const [searchScope, setSearchScope] = useState<'domain' | 'title' | 'content'>('domain');
+  // By Website view: combine subdomains into one section per site.
+  const [combineSubdomains, setCombineSubdomains] = useState(false);
+  // Domains sidebar tab: index of the website section scrolled to the top of
+  // the tab list (highlighted in the sidebar's section links).
+  const [activeSectionIndex, setActiveSectionIndex] = useState(0);
+  const mainRef = useRef<HTMLElement>(null);
   const [showSearchScopeMenu, setShowSearchScopeMenu] = useState(false);
   const searchScopeMenuRef = useRef<HTMLDivElement>(null);
   // Page-text index for content search: `${tabId}|${url}` -> lowercased text.
@@ -261,6 +267,7 @@ const App: React.FC = () => {
       if (data.cardWidth) setCardWidth(data.cardWidth);
       if (data.cardMetadata) setCardMetadata(data.cardMetadata);
       if (data.searchScope) setSearchScope(data.searchScope);
+      setCombineSubdomains(!!data.combineSubdomains);
     });
 
     // 3. Click outside handler for menus
@@ -570,7 +577,7 @@ const App: React.FC = () => {
   const isGroupedView = viewMode === ViewMode.AI_GROUPED || viewMode === ViewMode.BY_WEBSITE;
 
   // Website groups: one section per domain name, computed locally (no AI).
-  // Scoped to the tabs that were displayed when "Categorize by Website" was
+  // Scoped to the tabs that were displayed when the Domains tab was
   // clicked (categorizeScopeIds); tabs closed since then drop out naturally.
   const websiteGroups = useMemo<TabGroup[]>(() => {
     if (viewMode !== ViewMode.BY_WEBSITE) return [];
@@ -578,14 +585,15 @@ const App: React.FC = () => {
     const byDomain = new Map<string, string[]>();
     for (const t of allTabs) {
       if (scope && !scope.has(t.id)) continue;
-      const domain = getDomainOf(t.url);
+      const host = getDomainOf(t.url);
+      const domain = combineSubdomains ? getSiteOf(host) : host;
       const ids = byDomain.get(domain);
       if (ids) ids.push(t.id); else byDomain.set(domain, [t.id]);
     }
     return [...byDomain.entries()]
       .sort((a, b) => compareDomains(a[0], b[0]))
       .map(([domain, tabIds]) => ({ categoryName: domain, tabIds }));
-  }, [viewMode, allTabs, categorizeScopeIds]);
+  }, [viewMode, allTabs, categorizeScopeIds, combineSubdomains]);
 
   // All distinct domains with tab counts, for the sidebar's domain picker.
   const domainList = useMemo(() => {
@@ -682,6 +690,8 @@ const App: React.FC = () => {
   };
 
   const startFullTour = () => {
+    // Several steps point at Windows-tab elements of the sidebar.
+    if (viewMode === ViewMode.BY_WEBSITE) handleShowAllTabs();
     setCurrentTourSteps(FULL_TOUR_STEPS);
     setShowTour(true);
     setShowHelpMenu(false);
@@ -759,8 +769,9 @@ const App: React.FC = () => {
         applyCardWidth(cardWidth + (e.key === ']' ? 40 : -40));
         return;
       }
-      if (focusedArea === 'sidebar') {
-        const totalItems = 3 + windows.length;
+      if (focusedArea === 'sidebar' && viewMode === ViewMode.BY_WEBSITE) {
+        // Domains tab: the items are the website section links.
+        const totalItems = filteredTabGroups.length;
         if (e.key === 'ArrowDown') {
           e.preventDefault();
           setSidebarFocusIndex(prev => Math.min(prev + 1, totalItems - 1));
@@ -768,11 +779,22 @@ const App: React.FC = () => {
           e.preventDefault();
           setSidebarFocusIndex(prev => Math.max(prev - 1, 0));
         } else if (e.key === 'Enter') {
-          if (sidebarFocusIndex === 0) { handleOrganizeByWebsite(); } // "Categorize by Website"
-          else if (sidebarFocusIndex === 1) { handleOrganizeTabs(); } // "Categorize with AI"
-          else if (sidebarFocusIndex === 2) { handleShowAllTabs(); } // "Display tabs from all windows"
+          handleJumpToSection(sidebarFocusIndex);
+        }
+      } else if (focusedArea === 'sidebar') {
+        // Windows tab: AI button, "Display tabs from all windows", windows.
+        const totalItems = 2 + windows.length;
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setSidebarFocusIndex(prev => Math.min(prev + 1, totalItems - 1));
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setSidebarFocusIndex(prev => Math.max(prev - 1, 0));
+        } else if (e.key === 'Enter') {
+          if (sidebarFocusIndex === 0) { handleOrganizeTabs(); } // "Categorize with AI"
+          else if (sidebarFocusIndex === 1) { handleShowAllTabs(); } // "Display tabs from all windows"
           else {
-            const winIdx = sidebarFocusIndex - 3;
+            const winIdx = sidebarFocusIndex - 2;
             if (windows[winIdx]) { handleSelectWindow(windows[winIdx].id); }
           }
         }
@@ -810,7 +832,7 @@ const App: React.FC = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [navigationTabs, selectedTabId, focusedArea, sidebarFocusIndex, windows, showTour, tabDisplayMode, cardColumns, cardWidth, checkedTabIds, showExportMenu, showHelpMenu, showSettingsMenu, showSortMenu, showCardSortMenu, showSearchScopeMenu, showMoveMenu, promptModal, contextMenu, showMergeModal, showReorgConfirm, showCloseCheckedConfirm, confirmCloseWindowId, confirmCloseGroup, showApiKeyModal, showUserGuide, errorModalState]);
+  }, [navigationTabs, selectedTabId, focusedArea, sidebarFocusIndex, windows, viewMode, filteredTabGroups, showTour, tabDisplayMode, cardColumns, cardWidth, checkedTabIds, showExportMenu, showHelpMenu, showSettingsMenu, showSortMenu, showCardSortMenu, showSearchScopeMenu, showMoveMenu, promptModal, contextMenu, showMergeModal, showReorgConfirm, showCloseCheckedConfirm, confirmCloseWindowId, confirmCloseGroup, showApiKeyModal, showUserGuide, errorModalState]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
@@ -856,6 +878,12 @@ const App: React.FC = () => {
     setSearchScope(scope);
     saveViewSettings({ searchScope: scope });
     setShowSearchScopeMenu(false);
+  };
+
+  const toggleCombineSubdomains = () => {
+    const next = !combineSubdomains;
+    setCombineSubdomains(next);
+    saveViewSettings({ combineSubdomains: next });
   };
 
   // Close every checked tab (confirmed via modal beforehand).
@@ -1153,6 +1181,48 @@ const App: React.FC = () => {
     setCategorizeScopeIds(currentDisplayedTabs.map(t => t.id));
     setSidebarSelectedWindowIds([]);
     setViewMode(ViewMode.BY_WEBSITE);
+    setActiveSectionIndex(0);
+    mainRef.current?.scrollTo({ top: 0 });
+  };
+
+  // The sidebar's Windows / Domains tabs. The Domains tab *is* the By Website
+  // view: opening it categorizes the displayed tabs by website; going back
+  // to Windows shows all tabs again.
+  const sidebarTab: 'windows' | 'domains' = viewMode === ViewMode.BY_WEBSITE ? 'domains' : 'windows';
+
+  const handleSelectSidebarTab = (tab: 'windows' | 'domains') => {
+    if (tab === sidebarTab) return;
+    setSidebarFocusIndex(0);
+    if (tab === 'domains') handleOrganizeByWebsite();
+    else {
+      handleShowAllTabs();
+      mainRef.current?.scrollTo({ top: 0 });
+    }
+  };
+
+  // Scroll a website section to the top of the tab list.
+  const handleJumpToSection = (index: number) => {
+    const el = mainRef.current?.querySelector<HTMLElement>(`[data-section-index="${index}"]`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setActiveSectionIndex(index);
+  };
+
+  // Scroll spy: the active section is the last one whose top has reached the
+  // top of the list (or the last section once scrolled to the bottom).
+  const updateActiveSection = () => {
+    const main = mainRef.current;
+    if (!main || viewMode !== ViewMode.BY_WEBSITE) return;
+    const sections = main.querySelectorAll<HTMLElement>('[data-section-index]');
+    if (sections.length === 0) return;
+    let active = 0;
+    if (main.scrollTop + main.clientHeight >= main.scrollHeight - 2) {
+      active = sections.length - 1;
+    } else {
+      const threshold = main.getBoundingClientRect().top + 48;
+      sections.forEach((el, i) => { if (el.getBoundingClientRect().top <= threshold) active = i; });
+    }
+    setActiveSectionIndex(active);
   };
 
   const handleAutoRenameWindows = async () => {
@@ -1207,8 +1277,6 @@ const App: React.FC = () => {
       setReorgHistory(prev => [...prev, snapshot]);
 
       // 2. Execute Moves
-      const sortedWindows = [...windows].sort((a, b) => a.id.localeCompare(b.id)); // Stable order to recycle
-
       const newNameMap = { ...windowNameMap };
 
       // Tabs may have closed since the groups were generated (and the AI can
@@ -1217,30 +1285,48 @@ const App: React.FC = () => {
       const openTabIds = new Set(allTabs.map(t => t.id));
 
       // Apply whichever grouping is on screen: website sections or AI groups.
-      const groupsToApply = viewMode === ViewMode.BY_WEBSITE ? websiteGroups : tabGroups;
+      const groupsToApply = (viewMode === ViewMode.BY_WEBSITE ? websiteGroups : tabGroups)
+        .map(g => ({ name: g.categoryName, tabIds: g.tabIds.filter(id => openTabIds.has(id)) }))
+        .filter(g => g.tabIds.length > 0);
+
+      // An existing window is reused (and renamed) for a group only if
+      //  - every tab in it is being reorganized — otherwise it would keep
+      //    unrelated tabs under the group's name — and
+      //  - it already holds at least one of the group's tabs, which never
+      //    leave it, so moves for other groups can't empty it (Chrome closes
+      //    empty windows, and a later move into it would then throw).
+      // Pairs are assigned greedily, most shared tabs first, to minimize moves.
+      const movingIds = new Set(groupsToApply.flatMap(g => g.tabIds));
+      const reusable = windows.filter(w => w.tabs.length > 0 && w.tabs.every(t => movingIds.has(t.id)));
+      const candidates: { group: number; windowId: string; shared: number }[] = [];
+      groupsToApply.forEach((g, gi) => {
+        const ids = new Set(g.tabIds);
+        for (const w of reusable) {
+          const shared = w.tabs.filter(t => ids.has(t.id)).length;
+          if (shared > 0) candidates.push({ group: gi, windowId: w.id, shared });
+        }
+      });
+      candidates.sort((a, b) => b.shared - a.shared);
+      const targetByGroup = new Map<number, string>();
+      const usedWindows = new Set<string>();
+      for (const c of candidates) {
+        if (targetByGroup.has(c.group) || usedWindows.has(c.windowId)) continue;
+        targetByGroup.set(c.group, c.windowId);
+        usedWindows.add(c.windowId);
+      }
 
       for (let i = 0; i < groupsToApply.length; i++) {
         const group = groupsToApply[i];
-        const validTabIds = group.tabIds.filter(id => openTabIds.has(id));
-
-        let targetWindowId: string;
-
-        if (i < sortedWindows.length) {
-          // Recycle existing window
-          targetWindowId = sortedWindows[i].id;
-          // Rename it
-          newNameMap[targetWindowId] = group.categoryName;
-          await saveCustomWindowName(targetWindowId, group.categoryName);
+        let targetWindowId: string | null | undefined = targetByGroup.get(i);
+        if (targetWindowId) {
+          await moveTabs(group.tabIds, targetWindowId);
         } else {
-          // Create new window
-          if (validTabIds.length === 0) continue;
-          await createWindowWithTabs(validTabIds);
-          continue;
+          targetWindowId = await createWindowWithTabs(group.tabIds);
         }
-
-        // Move tabs to recycled window
-        if (validTabIds.length > 0) {
-          await moveTabs(validTabIds, targetWindowId);
+        // Name every resulting window after its group (null in demo mode).
+        if (targetWindowId) {
+          newNameMap[targetWindowId] = group.name;
+          await saveCustomWindowName(targetWindowId, group.name);
         }
       }
 
@@ -1291,8 +1377,11 @@ const App: React.FC = () => {
          } else {
            // Window is gone, create new one with these tabs
            if (validTabIds.length > 0) {
-              await createWindowWithTabs(validTabIds);
-              // Name is lost for new ID unless we track it, simplification for now.
+              const newWindowId = await createWindowWithTabs(validTabIds);
+              if (newWindowId) {
+                restoredNameMap[newWindowId] = snapWin.name;
+                await saveCustomWindowName(newWindowId, snapWin.name);
+              }
            }
          }
       }
@@ -1547,7 +1636,19 @@ const App: React.FC = () => {
         activeDomain={viewMode === ViewMode.BY_DOMAIN ? activeDomain : null}
         onSelectDomain={handleSelectDomain}
         onOrganize={handleOrganizeTabs}
-        onOrganizeByWebsite={handleOrganizeByWebsite}
+        sidebarTab={sidebarTab}
+        onSelectSidebarTab={handleSelectSidebarTab}
+        websiteSections={viewMode === ViewMode.BY_WEBSITE ? filteredTabGroups.map(g => ({ name: g.categoryName, count: g.tabIds.length })) : []}
+        activeSectionIndex={activeSectionIndex}
+        onJumpToSection={handleJumpToSection}
+        scopedTabCount={categorizeScopeIds && categorizeScopeIds.length < allTabs.length ? categorizeScopeIds.filter(id => allTabs.some(t => t.id === id)).length : null}
+        onUseAllTabs={() => setCategorizeScopeIds(null)}
+        combineSubdomains={combineSubdomains}
+        onToggleCombineSubdomains={toggleCombineSubdomains}
+        onApplyToWindows={() => setShowReorgConfirm(true)}
+        onUndoReorg={handleUndoReorg}
+        canUndoReorg={reorgHistory.length > 0}
+        isReorganizing={isMergeProcessing}
         isOrganizing={isOrganizing}
         selectedWindowIds={sidebarSelectedWindowIds}
         onToggleWindowSelection={(id) => setSidebarSelectedWindowIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
@@ -1617,7 +1718,7 @@ const App: React.FC = () => {
                    )}
                  </div>
 
-                 {reorgHistory.length > 0 && (
+                 {viewMode === ViewMode.AI_GROUPED && reorgHistory.length > 0 && (
                    <button
                     onClick={handleUndoReorg}
                     disabled={isMergeProcessing}
@@ -1627,13 +1728,16 @@ const App: React.FC = () => {
                     Undo Reorg
                   </button>
                  )}
+                 {viewMode === ViewMode.AI_GROUPED && (
                  <button
                    onClick={() => setShowReorgConfirm(true)}
+                   title="Move the tabs into one window per section, each named after its section"
                    className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg shadow-sm transition-colors"
                  >
                    <LayoutTemplate size={14} />
                    Apply to Windows
                  </button>
+                 )}
               </div>
             )}
             
@@ -2033,7 +2137,7 @@ const App: React.FC = () => {
         {/* Content */}
         <div className="flex flex-1 overflow-hidden" onClick={() => setFocusedArea('tabs')}>
           {/* Main Container: Removed top padding to fix sticky header gap issue */}
-          <main className="flex-1 min-w-0 overflow-y-auto px-6 pb-6 pt-0 scroll-smooth" data-tour="tabs-area">
+          <main ref={mainRef} onScroll={updateActiveSection} className="flex-1 min-w-0 overflow-y-auto px-6 pb-6 pt-0 scroll-smooth" data-tour="tabs-area">
             {/* Visual Spacer to replace padding-top, scrolls away so sticky header hits the top edge */}
             <div className="h-6"></div> 
             
@@ -2053,7 +2157,7 @@ const App: React.FC = () => {
                  {filteredTabGroups.map((group, idx) => {
                    const groupTabs = group.tabIds.map(id => allTabs.find(t => t.id === id)).filter((t): t is Tab => t !== undefined);
                    return (
-                     <div key={idx} className="space-y-2">
+                     <div key={idx} data-section-index={idx} className="space-y-2 scroll-mt-4">
                        <h3
                          className="flex items-baseline gap-3 text-lg font-semibold text-indigo-600 dark:text-indigo-300 border-b border-slate-200 dark:border-slate-800 pb-1 mb-2"
                          onContextMenu={(e) => openGroupContextMenu(e, group)}
@@ -2162,7 +2266,7 @@ const App: React.FC = () => {
            <ConfirmModal
              title="Reorganize Windows?"
              message={viewMode === ViewMode.BY_WEBSITE
-               ? `This will move your tabs so each website gets its own window (${websiteGroups.length} windows). Existing window names will be updated. You can undo this action.`
+               ? `This will move your tabs so each ${combineSubdomains ? 'site (subdomains combined)' : 'website'} gets its own window (${websiteGroups.length} windows), named after its domain. Existing window names will be updated. You can undo this action.`
                : "This will move your tabs into new windows based on the AI categories. Existing window names will be updated. You can undo this action."}
              confirmText="Yes, Reorganize"
              onConfirm={handleApplyAiOrganization}

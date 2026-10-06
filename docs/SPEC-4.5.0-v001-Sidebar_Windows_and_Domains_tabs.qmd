@@ -1,0 +1,121 @@
+---
+title: "SPEC-4.5.0-v001"
+subtitle: "Sidebar Windows / Domains tabs with jump-to-website navigation"
+---
+
+## Problem
+
+After *Categorize by Website* the tab list can hold dozens of website
+sections (53 in a typical session), and the only way to reach one was to
+scroll. Meanwhile the website grouping's controls were scattered: the
+**Categorize by Website** button and **Combine subdomains** checkbox in the
+sidebar (SPEC-4.4.0-v002), **Apply to Windows** / **Undo Reorg** in the
+toolbar.
+
+## Feature
+
+The sidebar gets a two-tab control, fixed directly below the header (it
+does not scroll with the panels):
+
+```
+[ ▭ Windows | 🌐 Domains ]
+```
+
+The active tab is derived from the view: **Domains** is active exactly when
+the view is By Website (`ViewMode.BY_WEBSITE`); every other view shows
+**Windows**.
+
+### Windows tab
+
+Everything the sidebar showed before, minus the website-grouping controls:
+
+- **Categorize with AI** (moved here from the old "Views" section)
+- *Window Controls*: Display tabs from all windows, Auto Name, name undo/redo
+- the window list (checkboxes, sorting, rename, context menu, merge)
+
+Clicking **Windows** while on Domains returns to the All Tabs view and
+scrolls the tab list to the top.
+
+### Domains tab
+
+Clicking **Domains** does what the **Categorize by Website** button did
+(that button is removed): it snapshots the currently displayed tabs as the
+categorization scope, clears window checkboxes, switches to the By Website
+view and scrolls the tab list to the top. Clicking it while already active
+does nothing.
+
+The panel contains, top to bottom:
+
+1. **Summary** — "N websites • M tabs". When the scope is a subset of the
+   open tabs (e.g. Domains was opened while viewing one window or a
+   search), it adds "— only the tabs displayed when you opened this tab."
+   and an **Include all tabs** link that widens the scope to every open tab.
+2. **Combine subdomains** checkbox (moved here; behaviour unchanged from
+   SPEC-4.4.0-v002 — persisted, regroups immediately).
+3. **Apply to Windows** (primary button; disabled while reorganizing or with
+   no sections) and, when a reorganization can be undone, **Undo** beside
+   it. Both open/run the same confirmation and undo as before.
+4. **Website section links** — one per section, in section order, showing
+   the website name and its tab count. They mirror the sections on screen,
+   so an active search filters them too.
+   - **Click** → the section smoothly scrolls to the top of the tab list
+     (`scroll-mt-4` leaves a small gap above the heading).
+   - **Scroll spy** → as the tab list scrolls, the link for the section at
+     the top of the list (the last section whose heading is within 48 px of
+     the list's top, or the last section once scrolled to the bottom) is
+     highlighted, and the sidebar scrolls just enough to keep that link
+     visible. The sidebar sets its own `scrollTop` for this rather than
+     calling `scrollIntoView`, which could cancel the tab list's
+     in-progress smooth scroll.
+
+### Toolbar
+
+In the By Website view the toolbar keeps **Sort All** but no longer shows
+**Apply to Windows** / **Undo Reorg** (they live on the Domains tab). The
+AI-grouped view is unchanged: Sort All, Undo Reorg, Apply to Windows.
+
+### Keyboard
+
+Sidebar arrow-key focus (Ctrl+Left to reach the sidebar) depends on the tab:
+
+- **Windows**: 0 = Categorize with AI, 1 = Display tabs from all windows,
+  2+ = windows. (Previously index 0 was Categorize by Website and everything
+  after it shifted by one.)
+- **Domains**: 0…n-1 = website section links; **Enter** jumps to the
+  focused section.
+
+The focus index resets to 0 when the tab changes.
+
+### Tour
+
+- The "Categorize by Website" step becomes **"Domains Tab"**, anchored on
+  the Domains tab button (`data-tour="organize-website"`), describing the
+  links, Combine subdomains and Apply to Windows.
+- Starting the full tour switches the sidebar to the Windows tab first,
+  since several steps point at Windows-tab elements.
+
+## Implementation notes
+
+- `App.tsx`: `sidebarTab` (derived), `handleSelectSidebarTab`,
+  `handleJumpToSection`, `updateActiveSection` (on `<main>`'s `onScroll`),
+  `activeSectionIndex` state, `mainRef`; grouped sections carry
+  `data-section-index`. The Sidebar's `onOrganizeByWebsite` prop is replaced
+  by `sidebarTab` / `onSelectSidebarTab` plus the Domains-panel props
+  (`websiteSections`, `activeSectionIndex`, `onJumpToSection`,
+  `scopedTabCount`, `onUseAllTabs`, `onApplyToWindows`, `onUndoReorg`,
+  `canUndoReorg`, `isReorganizing`).
+- `components/Sidebar.tsx`: tab control and the two panels.
+- README (in-app User Guide) and tour text updated.
+
+## Verification
+
+Checked in the dev server's demo mode (mock tabs): the Domains tab
+categorizes and lists all 18 demo websites; the section links scroll the
+tab list and the highlight follows the scroll; Combine subdomains regroups
+the links and sections (`mail.google.com` → `google.com`); Windows returns
+to All Tabs with the window list. The keyboard paths and the AI-view toolbar
+were not exercised in the browser.
+
+## Version
+
+`package.json` / `manifest.json` bumped **4.4.0 → 4.5.0**.

@@ -139,11 +139,13 @@ export const moveTabToIndex = async (tabId: string, targetWindowId: string, inde
   }
 };
 
-export const createWindowWithTabs = async (tabIds: string[]): Promise<void> => {
+// Resolves to the new window's id (null in demo mode or when tabIds is
+// empty), so callers can name the window.
+export const createWindowWithTabs = async (tabIds: string[]): Promise<string | null> => {
   if (isExtension) {
     // Chrome requires creating a window with the first tab, then moving the rest
     const ids = tabIds.map(id => parseInt(id));
-    if (ids.length === 0) return;
+    if (ids.length === 0) return null;
 
     // Remember the window TabMaster lives in so it can stay focused.
     const appWindow = await chrome.windows.getCurrent();
@@ -165,8 +167,10 @@ export const createWindowWithTabs = async (tabIds: string[]): Promise<void> => {
     if (appWindow?.id !== undefined) {
       await chrome.windows.update(appWindow.id, { focused: true });
     }
+    return newWindow.id !== undefined ? String(newWindow.id) : null;
   } else {
     console.log(`[Mock] Creating new window with tabs ${tabIds.join(', ')}`);
+    return null;
   }
 };
 
