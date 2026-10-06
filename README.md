@@ -72,6 +72,7 @@
 3.  **Refine**:
     - Use the **"Sort All"** dropdown to sort all groups by Name, Domain, etc.
     - Click individual column headers to sort specific groups.
+    - Click **"Close all N"** next to a section heading (or right-click the heading) to close every tab listed under that website or category. Only the tabs shown are closed — if a search is active, tabs it hides stay open.
 4.  **Apply**: Click **"Apply to Windows"** to reorganize your actual browser windows. Use **"Undo Reorg"** if needed.
 
 ### 2. Managing Windows

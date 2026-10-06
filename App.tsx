@@ -222,6 +222,8 @@ const App: React.FC = () => {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
   const [promptModal, setPromptModal] = useState<{ title: string; message?: string; initialValue?: string; submitText?: string; onSubmit: (value: string) => void } | null>(null);
   const [confirmCloseWindowId, setConfirmCloseWindowId] = useState<string | null>(null);
+  // Grouped views: the section whose listed tabs are pending a "Close all".
+  const [confirmCloseGroup, setConfirmCloseGroup] = useState<{ name: string; tabIds: string[] } | null>(null);
 
   // Bumped after a sleeping tab is auto-woken so the preview retries.
   const [wakeSignal, setWakeSignal] = useState(0);
@@ -604,17 +606,17 @@ const App: React.FC = () => {
       : null;
     if (!source) return [];
 
-    // If no search, return all
-    if (!searchQuery.trim()) return source;
+    const q = searchQuery.trim() ? searchQuery.toLowerCase() : null;
+    const tabsById = new Map(allTabs.map(t => [t.id, t] as const));
 
-    const q = searchQuery.toLowerCase();
-
-    // Filter tabs within groups, return groups that are not empty
+    // Keep only tabs that are still open (AI groups are a snapshot, so they
+    // can reference tabs closed since) and, when searching, that match.
+    // Groups left empty are dropped.
     return source.map(group => {
       const filteredIds = group.tabIds.filter(id => {
-        const t = allTabs.find(tab => tab.id === id);
+        const t = tabsById.get(id);
         if (!t) return false;
-        return tabMatchesQuery(t, q);
+        return q === null || tabMatchesQuery(t, q);
       });
       return { ...group, tabIds: filteredIds };
     }).filter(group => group.tabIds.length > 0);
@@ -725,7 +727,7 @@ const App: React.FC = () => {
       // unchecks all checked tabs.
       if (e.key === 'Escape') {
         const anyMenuOpen = showExportMenu || showHelpMenu || showSettingsMenu || showSortMenu || showCardSortMenu || showSearchScopeMenu || showMoveMenu;
-        const anyModalOpen = !!promptModal || !!contextMenu || showMergeModal || showReorgConfirm || showCloseCheckedConfirm || !!confirmCloseWindowId || showApiKeyModal || showUserGuide || !!errorModalState;
+        const anyModalOpen = !!promptModal || !!contextMenu || showMergeModal || showReorgConfirm || showCloseCheckedConfirm || !!confirmCloseWindowId || !!confirmCloseGroup || showApiKeyModal || showUserGuide || !!errorModalState;
         if (anyMenuOpen) {
           setShowExportMenu(false); setShowHelpMenu(false); setShowSettingsMenu(false);
           setShowSortMenu(false); setShowCardSortMenu(false); setShowSearchScopeMenu(false); setShowMoveMenu(false);
@@ -808,7 +810,7 @@ const App: React.FC = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [navigationTabs, selectedTabId, focusedArea, sidebarFocusIndex, windows, showTour, tabDisplayMode, cardColumns, cardWidth, checkedTabIds, showExportMenu, showHelpMenu, showSettingsMenu, showSortMenu, showCardSortMenu, showSearchScopeMenu, showMoveMenu, promptModal, contextMenu, showMergeModal, showReorgConfirm, showCloseCheckedConfirm, confirmCloseWindowId, showApiKeyModal, showUserGuide, errorModalState]);
+  }, [navigationTabs, selectedTabId, focusedArea, sidebarFocusIndex, windows, showTour, tabDisplayMode, cardColumns, cardWidth, checkedTabIds, showExportMenu, showHelpMenu, showSettingsMenu, showSortMenu, showCardSortMenu, showSearchScopeMenu, showMoveMenu, promptModal, contextMenu, showMergeModal, showReorgConfirm, showCloseCheckedConfirm, confirmCloseWindowId, confirmCloseGroup, showApiKeyModal, showUserGuide, errorModalState]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
@@ -868,6 +870,23 @@ const App: React.FC = () => {
       showNotification(`${ids.length} tab${ids.length > 1 ? 's' : ''} closed`, 'info');
     } catch (err) {
       handleError("Close Failed", "Could not close the checked tabs.", err);
+    }
+  };
+
+  // Close every tab listed under one section of a grouped view (confirmed
+  // via modal beforehand).
+  const handleCloseGroupTabs = async () => {
+    if (!confirmCloseGroup) return;
+    const ids = confirmCloseGroup.tabIds;
+    setConfirmCloseGroup(null);
+    try {
+      await closeTabs(ids);
+      setCheckedTabIds(prev => prev.filter(id => !ids.includes(id)));
+      if (selectedTabId && ids.includes(selectedTabId)) setSelectedTabId(null);
+      await loadTabs(true);
+      showNotification(`${ids.length} tab${ids.length > 1 ? 's' : ''} closed`, 'info');
+    } catch (err) {
+      handleError("Close Failed", "Could not close the tabs in this group.", err);
     }
   };
 
@@ -1082,6 +1101,13 @@ const App: React.FC = () => {
         label: 'Move Group to New Window',
         icon: <FolderPlus size={14} />,
         onClick: () => performTrackedMove(group.tabIds, 'NEW', 'Group moved to new window')
+      },
+      {
+        label: `Close All Tabs in Group (${group.tabIds.length})…`,
+        icon: <Trash2 size={14} />,
+        danger: true,
+        separatorAbove: true,
+        onClick: () => setConfirmCloseGroup({ name: group.categoryName, tabIds: group.tabIds })
       }
     ];
     setContextMenu({ x: e.clientX, y: e.clientY, items });
@@ -2029,11 +2055,19 @@ const App: React.FC = () => {
                    return (
                      <div key={idx} className="space-y-2">
                        <h3
-                         className="text-lg font-semibold text-indigo-600 dark:text-indigo-300 border-b border-slate-200 dark:border-slate-800 pb-1 mb-2"
+                         className="flex items-baseline gap-3 text-lg font-semibold text-indigo-600 dark:text-indigo-300 border-b border-slate-200 dark:border-slate-800 pb-1 mb-2"
                          onContextMenu={(e) => openGroupContextMenu(e, group)}
                          title="Right-click for group actions"
                        >
-                         {group.categoryName}
+                         <span className="min-w-0 truncate">{group.categoryName}</span>
+                         <button
+                           onClick={(e) => { e.stopPropagation(); setConfirmCloseGroup({ name: group.categoryName, tabIds: group.tabIds }); }}
+                           className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:underline transition-colors"
+                           title={`Close all ${group.tabIds.length} tab${group.tabIds.length > 1 ? 's' : ''} listed under "${group.categoryName}"`}
+                         >
+                           <Trash2 size={12} />
+                           Close all {group.tabIds.length}
+                         </button>
                        </h3>
                        {tabDisplayMode === 'card' ? (
                          renderCardView(getSortedTabs(groupTabs), 'tab')
@@ -2175,6 +2209,18 @@ const App: React.FC = () => {
               }
             }}
             onClose={() => setConfirmCloseWindowId(null)}
+          />
+        )}
+
+        {confirmCloseGroup && (
+          <ConfirmModal
+            title={`Close ${confirmCloseGroup.tabIds.length} Tab${confirmCloseGroup.tabIds.length > 1 ? 's' : ''}?`}
+            message={`This will close all ${confirmCloseGroup.tabIds.length} tab${confirmCloseGroup.tabIds.length > 1 ? 's' : ''} listed under "${confirmCloseGroup.name}" in your browser.`}
+            warning="This cannot be undone."
+            confirmText={`Close ${confirmCloseGroup.tabIds.length} Tab${confirmCloseGroup.tabIds.length > 1 ? 's' : ''}`}
+            isProcessing={false}
+            onConfirm={handleCloseGroupTabs}
+            onClose={() => setConfirmCloseGroup(null)}
           />
         )}
 

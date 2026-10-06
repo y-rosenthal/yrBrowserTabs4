@@ -1,0 +1,96 @@
+---
+title: "SPEC-4.3.0-v001"
+subtitle: "Close all tabs per group in the categorized views"
+---
+
+## Problem
+
+The two grouped views — **Categorize by Website** (one section per domain,
+e.g. `account.bambibaby.com`, `www.bambibaby.com`, `www.bowflex.com`) and
+**Categorize with AI** (one section per Gemini category) — had no quick way
+to get rid of a whole section. Closing every tab for a site meant closing
+each tab individually, or checking them one by one (or via the heading's
+right-click "Check All Tabs in Group") and then using "Close Checked".
+
+## Feature
+
+Every section heading in both grouped views gets a way to close all of the
+tabs listed under it.
+
+### "Close all N" link
+
+- A small link — trash icon plus **"Close all N"**, where *N* is the number
+  of tabs listed in that section — sits right after the section name in the
+  heading. It is muted grey and turns red (underlined) on hover, so it does
+  not compete with the section name visually.
+- Tooltip: `Close all N tabs listed under "<section name>"`.
+- Long section names truncate with an ellipsis rather than pushing the link
+  off-screen.
+
+### Context-menu item
+
+The existing heading right-click menu ("Check All Tabs in Group", "Move Group
+to New Window") gains a third, danger-styled item below a separator:
+**"Close All Tabs in Group (N)…"**. It opens the same confirmation.
+
+### Confirmation
+
+Closing tabs cannot be undone, so both entry points open the standard
+`ConfirmModal` (same pattern as "Close Checked" and "Close Window"):
+
+- Title: **Close N Tabs?**
+- Message: `This will close all N tabs listed under "<section name>" in your
+  browser.`
+- Warning: **This cannot be undone.**
+- Confirm button: **Close N Tabs**. Escape / Cancel dismisses it.
+
+### What gets closed
+
+Exactly the tabs **listed** under the heading at the moment the link was
+clicked — nothing more:
+
+- If a search is active, only the section's matching (visible) tabs are
+  closed; tabs the search hides stay open. The count *N* reflects this.
+- Tabs outside the section — including other tabs from the same domain that
+  were not part of the categorized scope — are untouched.
+
+After closing:
+
+- The closed tabs are removed from the checked-tabs set.
+- If the selected (previewed) tab was closed, the selection is cleared.
+- The tab list is reloaded and a toast reports "N tabs closed".
+- Failures surface through the standard error modal ("Close Failed").
+- The view stays in the grouped mode. In the website view the emptied
+  section disappears naturally (website groups are recomputed from the open
+  tabs).
+
+## Related fix: stale tabs in AI groups
+
+AI categories are a snapshot: their tab-ID lists are not recomputed when
+tabs close. Previously, when there was no active search, `filteredTabGroups`
+returned the snapshot unchanged, so a section whose tabs had all been closed
+still rendered as an empty heading, and its stale IDs inflated counts.
+
+`filteredTabGroups` now always drops IDs of tabs that no longer exist (using
+an ID→tab `Map` instead of a linear `find` per ID) and drops sections left
+empty. This keeps the "Close all N" count accurate and makes an emptied AI
+category vanish just like an emptied website section. "Apply to Windows" is
+unaffected — it still reads the unfiltered `tabGroups` / `websiteGroups`.
+
+## Implementation notes
+
+- `App.tsx`
+  - New state `confirmCloseGroup: { name, tabIds } | null`.
+  - New handler `handleCloseGroupTabs`, built on the existing
+    `tabService.closeTabs` bulk close.
+  - Heading markup in the grouped view adds the link (click uses
+    `stopPropagation`); `openGroupContextMenu` adds the menu item.
+  - `confirmCloseGroup` is included in the keyboard handler's "a modal is
+    open" check so arrow keys / Enter don't act on the tab list behind the
+    dialog.
+- `README.md` (also rendered as the in-app User Guide) documents the link
+  under *Categorizing Tabs → Refine*.
+
+## Version
+
+`package.json` / `manifest.json` bumped **4.2.1 → 4.3.0**.
